@@ -243,4 +243,4 @@ client.on("raw", (d) => {
     client.riffy.updateVoiceState(d);
 });
 
-client.login("");
+client.login("Discord-Token");
