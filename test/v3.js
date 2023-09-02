@@ -242,4 +242,4 @@ client.on("raw", (d) => {
     client.riffy.updateVoiceState(d);
 });
 
-client.login("MTEzNjUxMDY4ODU0Njc5OTY0OA.GbGru7.ZZjTZe6C6b9SRf7Kkmg0r1JAxas6HGUVeOo0qo");
+client.login("Discord-Token");
