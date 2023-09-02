@@ -1,7 +1,7 @@
 {
   "name": "riffy",
   "description": "Riffy is a pro lavalink client. It is designed to be simple and easy to use, with a focus on stablity and more features.",
-  "version": "1.0.0-beta",
+  "version": "1.0.1-beta",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "files": [
@@ -9,13 +9,11 @@
   ],
   "dependencies": {
     "@discordjs/collection": "^1.5.3",
-    "cheerio": "1.0.0-rc.12",
-    "discord.js": "^14.13.0",
     "jsdom": "^22.1.0",
     "undici": "^5.23.0",
     "ws": "^8.13.0"
   },
-  "license": "ISC",
+  "license": "MIT",
   "keywords": [
     "lavalink",
     "music",
@@ -34,9 +32,9 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/riffy-team/riffy"
+    "url": "https://github.com/riffy-team/riffy.git"
   },
   "bugs": {
-    "url": "https://github.com/riffy-team/riffy/issues"
+    "url": "https://github.com/riffy-team/riffy.js/issues"
   }
 }

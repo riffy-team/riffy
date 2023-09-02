@@ -1,20 +1,14 @@
 const undici = require("undici")
-const cheerio = require('cheerio');
 
 async function getImageUrl(info) {
     if (info.sourceName === "spotify") {
         try {
             const match = info.uri.match(/track\/([a-zA-Z0-9]+)/);
             if (match) {
-                const spotifyTrackId = match[1];
+                const res = await undici.fetch(`https://open.spotify.com/oembed?url=${info.uri}`);
+                const json = await res.json();
 
-                const res = await undici.fetch(`https://embed-standalone.spotify.com/embed/track/${spotifyTrackId}?utm_source=generator`);
-                const html = await res.text();
-
-                const $ = cheerio.load(html);
-                const imageUrl = $('div.Metadata_coverArt__AZhtt').attr('style').match(/url\('(.*)'\)/)[1];
-
-                return imageUrl;
+                return json.thumbnail_url
             }
         } catch (error) {
             return null;
