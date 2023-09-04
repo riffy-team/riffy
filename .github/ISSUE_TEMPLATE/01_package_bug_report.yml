@@ -1,0 +1,59 @@
+name: Bug report
+description: Report an issue with riffy package.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for filing an issue! If you are here to ask a question, use Discord instead: https://discord.com/invite/TvjrWtEuyP
+
+        This issue form is for Riffy package bugs only. Don't report issues with other packages here.
+  - type: textarea
+    id: description
+    attributes:
+      label: Issue description
+      description: Describe the issue in as much detail as possible.
+      placeholder: |
+        Steps to reproduce with below code sample:
+        1. Do thing
+        2. Do thing in Discord client
+        3. Observe behavior
+        4. See error logs below
+    validations:
+      required: true
+  - type: textarea
+    id: code_sample
+    attributes:
+      label: Code sample
+      description: |
+        Your code sample should be:
+        1. Minimal - Use as little code as possible that still produces the same problem (and is understandable)
+        2. Complete - Provide all parts someone else needs to reproduce your problem
+        3. Reproducible - Test the code you're about to provide to make sure it reproduces the problem
+
+        This will be automatically formatted into code, so no need for backticks.
+      render: typescript
+  - type: textarea
+    id: versions
+    attributes:
+      label: Versions
+      description: List necessary versions here. This includes your package version, runtime version, operating system etc.
+      placeholder: |
+        - riffy 1.0.0 (`npm ls riffy` or another package)
+        - discord.js 14.12.1 (`npm ls discord.js` or another package)
+        - Node.js 16.11.0 (`node --version`)
+        - TypeScript 5.1.6 (`npm ls typescript` if you use it)
+        - macOS Ventura 13.3.1 (or Windows 11, or Linux distribution and version)
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Issue priority
+      description: Please be realistic. If you need to elaborate on your reasoning, please use the issue description field above.
+      options:
+        - Low (slightly annoying)
+        - Medium (should be fixed soon)
+        - High (immediate attention needed)
+    validations:
+      required: true
