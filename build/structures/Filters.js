@@ -1,7 +1,7 @@
 class Filters {
     constructor(player, options = {}) {
         this.player = player;
-        this.volume = options.volume || 1;
+        this.volume = player.volume | 100
         this.equalizer = options.equalizer || [];
         this.karaoke = options.karaoke || null;
         this.timescale = options.timescale || null;
@@ -23,9 +23,10 @@ class Filters {
         this.updateFilters();
         return this;
     }
-
+    
     setKaraoke(karaoke) {
         if (!this.player) return;
+        if(karaoke == null) {this.karaoke = null; this.updateFilters(); return this;}
         this.karaoke = karaoke || {
             level: 1.0,
             monoLevel: 1.0,
@@ -38,6 +39,7 @@ class Filters {
     }
 
     setTimescale(timescale) {
+        if(timescale == null) {this.timescale = null; this.updateFilters(); return this;}
         this.timescale = timescale || {
             "speed": 1.0,
             "pitch": 1.0,
@@ -48,6 +50,7 @@ class Filters {
     }
 
     setTremolo(tremolo) {
+        if(tremolo == null) {this.tremolo = null; this.updateFilters(); return this;}
         this.tremolo = tremolo || {
             "frequency": 2.0,
             "depth": 0.5
@@ -57,6 +60,7 @@ class Filters {
     }
 
     setVibrato(vibrato) {
+        if(vibrato == null) {this.vibrato = null; this.updateFilters(); return this;}
         this.vibrato = vibrato || {
             "frequency": 2.0,
             "depth": 0.5
@@ -66,6 +70,7 @@ class Filters {
     }
 
     setRotation(rotation) {
+        if(rotation == null) {this.rotation = null; this.updateFilters(); return this;}
         this.rotation = rotation || {
             "rotationHz": 0.0
         };
@@ -74,6 +79,7 @@ class Filters {
     }
 
     setDistortion(distortion) {
+        if(distortion == null) {this.distortion = null; this.updateFilters(); return this;}
         this.distortion = distortion || {
             "sinOffset": 0.0,
             "sinScale": 1.0,
@@ -89,6 +95,7 @@ class Filters {
     }
 
     setChannelMix(mix) {
+        if(channelMix == null) {this.channelMix = null; this.updateFilters(); return this;}
         this.channelMix = mix || {
             "leftToLeft": 1.0,
             "leftToRight": 0.0,
@@ -100,6 +107,7 @@ class Filters {
     }
 
     setLowPass(pass) {
+        if(lowPass == null) {this.lowPass = null; this.updateFilters(); return this;}
         this.lowPass = pass || {
             "smoothing": 20.0
         };
