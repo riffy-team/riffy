@@ -1,7 +1,7 @@
 class Filters {
     constructor(player, options = {}) {
         this.player = player;
-        this.volume = player.volume | 100
+        this.volume = options.volume | 1
         this.equalizer = options.equalizer || [];
         this.karaoke = options.karaoke || null;
         this.timescale = options.timescale || null;

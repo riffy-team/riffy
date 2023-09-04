@@ -29,6 +29,7 @@ class Player extends EventEmitter {
         this.connected = false;
         this.timestamp = 0;
         this.ping = 0;
+        this.isAutoplay = false;
 
         this.on("playerUpdate", (packet) => {
             (this.connected = packet.state.connected),
@@ -69,67 +70,88 @@ class Player extends EventEmitter {
         return this;
     }
 
+    /**
+     * 
+     * @param {this} player 
+     * @returns 
+     */
     async autoplay(player) {
-        if (!player) return this.stop()
-        if (player.previous.info.sourceName === "youtube") {
-            try {
-                let data = `https://www.youtube.com/watch?v=${player.previous.info.identifier}&list=RD${player.previous.info.identifier}`;
-
-                let response = await this.riffy.resolve({ query: data, source: "ytmsearch", requester: player.previous.info.requester });
-
-                if (this.node.rest.version === "v4") {
-                    if (!response || !response.tracks || ["error", "empty"].includes(response.loadType)) return this.stop();
-                } else {
-                    if (!response || !response.tracks || ["LOAD_FAILED", "NO_MATCHES"].includes(response.loadType)) return this.stop();
-                }
-
-                let track = response.tracks[Math.floor(Math.random() * Math.floor(response.tracks.length))];
-                this.queue.push(track);
-                this.play();
+        if(!player) {
+            if(player == null) {
+                this.isAutoplay = false;
                 return this;
-            } catch (e) {
-                return this.stop();
-            }
-        } else if (player.previous.info.sourceName === "soundcloud") {
-            try {
-                scAutoPlay(player.previous.info.uri).then(async (data) => {
-                    let response = await this.riffy.resolve({ query: data, source: "scsearch", requester: player.previous.info.requester });
-
-                    if (this.node.rest.version === "v4") {
-                        if (!response || !response.tracks || ["error", "empty"].includes(response.loadType)) return this.stop();
-                    } else {
-                        if (!response || !response.tracks || ["LOAD_FAILED", "NO_MATCHES"].includes(response.loadType)) return this.stop();
-                    }
-
-                    let track = response.tracks[Math.floor(Math.random() * Math.floor(response.tracks.length))];
-
-                    this.queue.push(track);
-                    this.play();
-                    return this;
-                })
-            } catch (e) {
-                return this.stop();
-            }
-        } else if (player.previous.info.sourceName === "spotify") {
-            try {
-                spAutoPlay(player.previous.info.identifier).then(async (data) => {
-                    const response = await this.riffy.resolve({ query: `https://open.spotify.com/track/${data}`, requester: player.previous.info.requester });
-
-                    if (this.node.rest.version === "v4") {
-                        if (!response || !response.tracks || ["error", "empty"].includes(response.loadType)) return this.stop();
-                    } else {
-                        if (!response || !response.tracks || ["LOAD_FAILED", "NO_MATCHES"].includes(response.loadType)) return this.stop();
-                    }
-
-                    let track = response.tracks[Math.floor(Math.random() * Math.floor(response.tracks.length))];
-                    this.queue.push(track);
-                    this.play();
-                    return this;
-                })
-            } catch (e) {
-                return this.stop();
-            }
+            } else if (player == false) {
+                this.isAutoplay = false;
+                return this;
+            } else throw new Error("Missing argument. Quick Fix: player.autoplay(player)");
         }
+
+        this.isAutoplay = true;
+
+        // If ran on queueEnd event
+        if(player.previous) {
+            if (player.previous.info.sourceName === "youtube") {
+                try {
+                    let data = `https://www.youtube.com/watch?v=${player.previous.info.identifier}&list=RD${player.previous.info.identifier}`;
+    
+                    let response = await this.riffy.resolve({ query: data, source: "ytmsearch", requester: player.previous.info.requester });
+    
+                    if (this.node.rest.version === "v4") {
+                        if (!response || !response.tracks || ["error", "empty"].includes(response.loadType)) return this.stop();
+                    } else {
+                        if (!response || !response.tracks || ["LOAD_FAILED", "NO_MATCHES"].includes(response.loadType)) return this.stop();
+                    }
+
+                    let track = response.tracks[Math.floor(Math.random() * Math.floor(response.tracks.length))];
+                    this.queue.push(track);
+                    this.play();
+                    return this
+                } catch (e) {
+                    return this.stop();
+                }
+            } else if (player.previous.info.sourceName === "soundcloud") {
+                try {
+                    scAutoPlay(player.previous.info.uri).then(async (data) => {
+                        let response = await this.riffy.resolve({ query: data, source: "scsearch", requester: player.previous.info.requester });
+    
+                        if (this.node.rest.version === "v4") {
+                            if (!response || !response.tracks || ["error", "empty"].includes(response.loadType)) return this.stop();
+                        } else {
+                            if (!response || !response.tracks || ["LOAD_FAILED", "NO_MATCHES"].includes(response.loadType)) return this.stop();
+                        }
+    
+                        let track = response.tracks[Math.floor(Math.random() * Math.floor(response.tracks.length))];
+    
+                        this.queue.push(track);
+                        this.play();
+                        return this;
+                    })
+                } catch (e) {
+                    console.log(e);
+                    return this.stop();
+                }
+            } else if (player.previous.info.sourceName === "spotify") {
+                try {
+                    spAutoPlay(player.previous.info.identifier).then(async (data) => {
+                        const response = await this.riffy.resolve({ query: `https://open.spotify.com/track/${data}`, requester: player.previous.info.requester });
+    
+                        if (this.node.rest.version === "v4") {
+                            if (!response || !response.tracks || ["error", "empty"].includes(response.loadType)) return this.stop();
+                        } else {
+                            if (!response || !response.tracks || ["LOAD_FAILED", "NO_MATCHES"].includes(response.loadType)) return this.stop();
+                        }
+    
+                        let track = response.tracks[Math.floor(Math.random() * Math.floor(response.tracks.length))];
+                        this.queue.push(track);
+                        this.play();
+                        return this;
+                    })
+                } catch (e) {
+                    console.log(e);
+                    return this.stop();
+                }
+            }
+        } else return this;
     }
 
     connect(options = this) {

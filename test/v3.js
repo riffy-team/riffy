@@ -74,6 +74,16 @@ client.on("messageCreate", async (message) => {
         }
     }
 
+    if(command === "autoplay") {
+        const player = client.riffy.players.get(message.guild.id);
+        if (!player) return message.channel.send("No player found.");
+
+        if(player.isAutoplay == false) await player.autoplay(player);
+        else await player.autoplay(null);
+
+        message.channel.send(`Autoplay is now ${player.isAutoplay ? "enabled" : "disabled"}.`);
+    }
+
     if (command === "skip") {
         const player = client.riffy.players.get(message.guild.id);
         if (!player) return message.channel.send("No player found.");
@@ -186,6 +196,13 @@ client.on("messageCreate", async (message) => {
         message.channel.send("Shuffled the queue.");
     }
 
+    if(command === '8d') {
+        const player = client.riffy.players.get(message.guild.id);
+        if (!player) return message.channel.send("No player found.");
+
+        player.filters.setBassboost(true);
+    }
+
     if (command === "remove") {
         const player = client.riffy.players.get(message.guild.id);
         if (!player) return message.channel.send("No player found.");
@@ -227,9 +244,7 @@ client.riffy.on("trackStart", async (player, track) => {
 client.riffy.on("queueEnd", async (player) => {
     const channel = client.channels.cache.get(player.textChannel);
 
-    const autoplay = false;
-
-    if (autoplay) {
+    if (player.isAutoplay) {
         player.autoplay(player)
     } else {
         player.destroy();

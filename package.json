@@ -9,6 +9,7 @@
   ],
   "dependencies": {
     "@discordjs/collection": "^1.5.3",
+    "discord.js": "^14.13.0",
     "jsdom": "^22.1.0",
     "undici": "^5.23.0",
     "ws": "^8.13.0"
