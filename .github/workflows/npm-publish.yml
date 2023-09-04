@@ -4,6 +4,9 @@
 name: publish-riffy
 
 on:
+  push:
+    branches:
+      - main
   release:
     types: [published]
 
