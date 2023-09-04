@@ -15,8 +15,6 @@ class Riffy extends EventEmitter {
         this.client = client;
         this.nodes = nodes;
         this.nodeMap = new Collection();
-        this.voiceServers = new Collection();
-        this.voiceStates = new Collection();
         this.players = new Collection();
         this.options = options;
         this.clientId = null;

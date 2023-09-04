@@ -45,6 +45,7 @@ class Player extends EventEmitter {
     }
 
     async play() {
+        if(!this.connected) throw new Error("Player connection is not initiated. Kindly user Riffy.createConnection() and establish a connection");
         if (!this.queue.length) return;
 
         this.current = this.queue.shift();
@@ -64,6 +65,8 @@ class Player extends EventEmitter {
                 encodedTrack: track,
             },
         });
+
+        return this;
     }
 
     async autoplay(player) {

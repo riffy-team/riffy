@@ -115,7 +115,7 @@ export declare class Player extends EventEmitter {
     public timestamp: Number;
     public ping: Number;
 
-    public play(): Promise<void>;
+    public play(): Promise<Player>;
 
     public autoplay(player: Player): Promise<Player>;
 
@@ -151,8 +151,28 @@ export declare class Player extends EventEmitter {
 }
 
 export type SearchPlatform = "ytsearch" | "ytmsearch" | "scsearch" | "spsearch" | "amsearch" | "dzsearch" | "ymsearch";
-export type LoadType = "track" | "playlist" | "search" | "empty" | "error";
 export type Version = "v3" | "v4";
+export type nodeResponse = {
+    /**
+     * Array of Loaded Tracks
+     */
+    tracks: Array<Track>;
+    /**
+     * Load Type - "TRACK_LOADED", "PLAYLIST_LOADED", "SEARCH_RESULT", "NO_MATCHES", "LOAD_FAILED" for v3 and "track", "playlist", "search", "error" for v4
+     */
+    loadType: String
+    /**
+     * Playlist Info
+     */
+    playlistInfo?: {
+        name: String;
+        selectedTrack: Number;
+    };
+    /**
+     * Plugin Info
+     */
+    pluginInfo?: any;
+}
 
 export type RiffyOptions = {
     send: (payload: {
@@ -182,9 +202,7 @@ export declare class Riffy extends EventEmitter {
     }, options: RiffyOptions);
     public client: any;
     public nodes: Array<LavalinkNode>;
-    public nodeMap: Collection<k, v>;
-    public voiceServers: Collection<k, v>;
-    public voiceStates: Collection<k, v>;
+    public nodeMap: Collection<k, Node>;
     public players: Collection<k, Player>;
     public options: RiffyOptions;
     public clientId: String;
@@ -212,7 +230,7 @@ export declare class Riffy extends EventEmitter {
         deaf?: Boolean;
     }): Player;
 
-    public createPlayer(node: Node, options: any): Player;
+    public createPlayer(node: Node, options: PlayerOptions): Player;
 
     public removeConnection(guildId: String): void;
 
@@ -220,12 +238,8 @@ export declare class Riffy extends EventEmitter {
         query: String;
         source?: String;
         requester: any;
-    }): Promise<{
-        tracks: Array<Track>, loadType: LoadType, playlistInfo?: {
-            name: String;
-            selectedTrack: Number;
-        }, pluginInfo?: any
-    }>;
+    }): Promise<nodeResponse>;
+
 
     public get(guildId: String): Player;
 
