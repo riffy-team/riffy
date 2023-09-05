@@ -2,8 +2,9 @@ import { EventEmitter } from "events";
 import { Collection } from "@discordjs/collection";
 
 export declare class Track {
-    constructor(data: any, requester: any);
+    constructor(data: any, requester: any, node: Node);
 
+    public track: String;
     public info: {
         identifier: String;
         seekable: Boolean;
@@ -17,7 +18,7 @@ export declare class Track {
         requester: any;
     };
 
-    public track: String;
+    public resolve(riffy: Riffy): Promise<Track>;
 }
 
 export interface RestOptions {
@@ -114,6 +115,7 @@ export declare class Player extends EventEmitter {
     public connected: Boolean;
     public timestamp: Number;
     public ping: Number;
+    public isAutoplay: Boolean;
 
     public play(): Promise<Player>;
 
