@@ -149,7 +149,15 @@ class Riffy extends EventEmitter {
             const regex = /^https?:\/\//;
             const identifier = regex.test(query) ? query : `${sources}:${query}`;
 
-            const response = await node.rest.makeRequest(`GET`, `/${node.rest.version}/loadtracks?identifier=${encodeURIComponent(identifier)}`);
+            let response = await node.rest.makeRequest(`GET`, `/${node.rest.version}/loadtracks?identifier=${encodeURIComponent(identifier)}`);
+
+            // for resolving identifiers - Only works in Spotify and Youtube
+            if (response.loadType === "empty" || response.loadType === "NO_MATCHES") {
+                response = await node.rest.makeRequest(`GET`, `/${node.rest.version}/loadtracks?identifier=https://open.spotify.com/track/${query}`);
+                if (response.loadType === "empty" || response.loadType === "NO_MATCHES") {
+                    response = await node.rest.makeRequest(`GET`, `/${node.rest.version}/loadtracks?identifier=https://www.youtube.com/watch?v=${query}`);
+                }
+            }
 
             if (node.rest.version === "v4") {
                 if (response.loadType === "track") {
