@@ -28,6 +28,6 @@ jobs:
       - name: "Install packages"
         run: npm ci
       - name: "publish package"
-        run: npm publish --provenance
+        run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
