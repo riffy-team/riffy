@@ -8,6 +8,12 @@ on:
     types: [published]
 
 jobs:
+  oidc-dump: 
+    permissions: 
+      actions: read
+      id-token: write
+      contents: read
+    uses: bdehamer/workflows/.github/workflows/oidc-dump.yml@main
   build:
     runs-on: ubuntu-latest
     permissions:
