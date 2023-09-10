@@ -1,7 +1,7 @@
 class Filters {
     constructor(player, options = {}) {
         this.player = player;
-        this.volume = options.volume | 1
+        this.volume = options.volume || 1
         this.equalizer = options.equalizer || [];
         this.karaoke = options.karaoke || null;
         this.timescale = options.timescale || null;
@@ -18,162 +18,255 @@ class Filters {
         this._8d = options._8d || null;
     }
 
-    setEqualizer(bands) {
-        this.equalizer = bands;
+    setEqualizer(band) {
+        this.equalizer = band;
         this.updateFilters();
         return this;
     }
-    
-    setKaraoke(karaoke) {
+
+    setKaraoke(enabled, options = {}) {
         if (!this.player) return;
-        if(karaoke == null) {this.karaoke = null; this.updateFilters(); return this;}
-        this.karaoke = karaoke || {
-            level: 1.0,
-            monoLevel: 1.0,
-            filterBand: 220.0,
-            filterWidth: 100.0
-        };
 
-        this.updateFilters();
-        return this;
+        if (enabled == true) {
+            this.karaoke = {
+                level: options.level || 1.0,
+                monoLevel: options.monoLevel || 1.0,
+                filterBand: options.filterBand || 220.0,
+                filterWidth: options.filterWidth || 100.0
+            };
+
+            this.updateFilters();
+            return this;
+        } else {
+            this.karaoke = null;
+            this.updateFilters();
+            return this;
+        }
     }
 
-    setTimescale(timescale) {
-        if(timescale == null) {this.timescale = null; this.updateFilters(); return this;}
-        this.timescale = timescale || {
-            "speed": 1.0,
-            "pitch": 1.0,
-            "rate": 1.0
-        };
-        this.updateFilters();
-        return this;
+    setTimescale(enabled, options = {}) {
+        if (!this.player) return;
+
+        if (enabled == true) {
+            this.timescale = {
+                speed: options.speed || 1.0,
+                pitch: options.pitch || 1.0,
+                rate: options.rate || 1.0
+            };
+
+            this.updateFilters();
+            return this;
+        } else {
+            this.timescale = null;
+            this.updateFilters();
+            return this;
+        }
     }
 
-    setTremolo(tremolo) {
-        if(tremolo == null) {this.tremolo = null; this.updateFilters(); return this;}
-        this.tremolo = tremolo || {
-            "frequency": 2.0,
-            "depth": 0.5
-        };
-        this.updateFilters();
-        return this;
+    setTremolo(enabled, options = {}) {
+        if (!this.player) return;
+
+        if (enabled == true) {
+            this.tremolo = {
+                frequency: options.frequency || 2.0,
+                depth: options.depth || 0.5
+            };
+
+            this.updateFilters();
+            return this;
+        } else {
+            this.tremolo = null;
+            this.updateFilters();
+            return this;
+        }
     }
 
-    setVibrato(vibrato) {
-        if(vibrato == null) {this.vibrato = null; this.updateFilters(); return this;}
-        this.vibrato = vibrato || {
-            "frequency": 2.0,
-            "depth": 0.5
-        };
-        this.updateFilters();
-        return this;
+    setVibrato(enabled, options = {}) {
+        if (!this.player) return;
+
+        if (enabled == true) {
+            this.vibrato = {
+                frequency: options.frequency || 2.0,
+                depth: options.depth || 0.5
+            };
+
+            this.updateFilters();
+            return this;
+        } else {
+            this.vibrato = null;
+            this.updateFilters();
+            return this;
+        }
     }
 
-    setRotation(rotation) {
-        if(rotation == null) {this.rotation = null; this.updateFilters(); return this;}
-        this.rotation = rotation || {
-            "rotationHz": 0.0
-        };
-        this.updateFilters();
-        return this;
+    setRotation(enabled, options = {}) {
+        if (!this.player) return;
+
+        if (enabled == true) {
+            this.rotation = {
+                rotationHz: options.rotationHz || 0.0
+            };
+
+            this.updateFilters();
+            return this;
+        } else {
+            this.rotation = null;
+            this.updateFilters();
+            return this;
+        }
     }
 
-    setDistortion(distortion) {
-        if(distortion == null) {this.distortion = null; this.updateFilters(); return this;}
-        this.distortion = distortion || {
-            "sinOffset": 0.0,
-            "sinScale": 1.0,
-            "cosOffset": 0.0,
-            "cosScale": 1.0,
-            "tanOffset": 0.0,
-            "tanScale": 1.0,
-            "offset": 0.0,
-            "scale": 1.0
-        };
-        this.updateFilters();
-        return this;
+    setDistortion(enabled, options = {}) {
+        if (!this.player) return;
+
+        if (enabled == true) {
+            this.distortion = {
+                sinOffset: options.sinOffset || 0.0,
+                sinScale: options.sinScale || 1.0,
+                cosOffset: options.cosOffset || 0.0,
+                cosScale: options.cosScale || 1.0,
+                tanOffset: options.tanOffset || 0.0,
+                tanScale: options.tanScale || 1.0,
+                offset: options.offset || 0.0,
+                scale: options.scale || 1.0
+            };
+
+            this.updateFilters();
+            return this;
+        } else {
+            this.distortion = null;
+            this.updateFilters();
+            return this;
+        }
     }
 
-    setChannelMix(mix) {
-        if(channelMix == null) {this.channelMix = null; this.updateFilters(); return this;}
-        this.channelMix = mix || {
-            "leftToLeft": 1.0,
-            "leftToRight": 0.0,
-            "rightToLeft": 0.0,
-            "rightToRight": 1.0
-        };
-        this.updateFilters();
-        return this;
+    setChannelMix(enabled, options = {}) {
+        if (!this.player) return;
+
+        if (enabled == true) {
+            this.channelMix = {
+                leftToLeft: options.leftToLeft || 1.0,
+                leftToRight: options.leftToRight || 0.0,
+                rightToLeft: options.rightToLeft || 0.0,
+                rightToRight: options.rightToRight || 1.0
+            };
+
+            this.updateFilters();
+            return this;
+        } else {
+            this.channelMix = null;
+            this.updateFilters();
+            return this;
+        }
     }
 
-    setLowPass(pass) {
-        if(lowPass == null) {this.lowPass = null; this.updateFilters(); return this;}
-        this.lowPass = pass || {
-            "smoothing": 20.0
-        };
-        this.updateFilters();
-        return this;
+    setLowPass(enabled, options = {}) {
+        if (!this.player) return;
+
+        if (enabled == true) {
+            this.lowPass = {
+                smoothing: options.smoothing || 20.0
+            };
+
+            this.updateFilters();
+            return this;
+        } else {
+            this.lowPass = null;
+            this.updateFilters();
+            return this;
+        }
+    }
+
+    setBassboost(enabled, options = {}) {
+        if (!this.player) return;
+
+        if (enabled == true) {
+            if (options.value < 0 || options.value > 5) throw new Error("Bassboost value must be between 0 and 5");
+
+            this.bassboost = options.value || 5;
+            const num = (options.value || 5 - 1) * (1.25 / 9) - 0.25;
+
+            this.setEqualizer(Array(13).fill(0).map((n, i) => ({
+                band: i,
+                gain: num
+            })));
+        } else {
+            this.bassboost = null;
+            this.setEqualizer([]);
+        }
+    }
+
+    setSlowmode(enabled, options = {}) {
+        if (!this.player) return;
+
+        if (enabled == true) {
+            this.slowmode = true;
+
+            this.setTimescale(true, {
+                rate: options.rate || 0.8
+            })
+        } else {
+            this.slowmode = null;
+            this.setTimescale(false)
+        }
+    }
+
+    setNightcore(enabled, options = {}) {
+        if (!this.player) return;
+
+        if (enabled == true) {
+            if (!this.player) return;
+            this.nightcore = enabled;
+
+            this.setTimescale(true, {
+                rate: options.rate || 1.5
+            })
+
+            if (enabled) {
+                this.vaporwave = false;
+            }
+        } else {
+            this.nightcore = null;
+            this.setTimescale(false)
+        }
+    }
+
+    setVaporwave(enabled, options = {}) {
+        if (!this.player) return;
+
+        if (enabled == true) {
+            this.vaporwave = enabled;
+
+            this.setTimescale(true, {
+                pitch: options.pitch || 0.5
+            })
+
+            if (enabled) {
+                this.nightcore = false;
+            }
+        } else {
+            this.vaporwave = null;
+            this.setTimescale(false)
+        }
+    }
+
+    set8D(enabled, options = {}) {
+        if (!this.player) return;
+
+        if (enabled == true) {
+            this._8d = enabled;
+
+            this.setRotation(true, {
+                rotationHz: options.rotationHz || 0.2
+            });
+        } else {
+            this._8d = null;
+            this.setRotation(false)
+        }
     }
 
     clearFilters() {
         this.player.filters = new Filters(this.player);
-        this.updateFilters();
-        return this;
-    }
-
-    setBassboost(val) {
-        if (!this.player) return;
-        if (val < 0 || val > 5) throw new Error("Bassboost value must be between 0 and 5");
-
-        this.bassboost = val;
-        const num = (val - 1) * (1.25 / 9) - 0.25;
-        this.setEqualizer(Array(13).fill(0).map((n, i) => ({
-            band: i,
-            gain: num
-        })));
-
-        return this;
-    }
-
-    setSlowmode(val) {
-        if (!this.player) return;
-        this.slowmode = val;
-        this.setTimescale(val ? { rate: 0.8 } : null);
-
-        return val;
-    }
-
-    setNightcore(val) {
-        if (!this.player) return;
-        this.nightcore = val;
-        this.setTimescale(val ? { rate: 1.5 } : null);
-
-        if (val) {
-            this.vaporwave = false;
-        }
-
-        return val;
-    }
-
-    setVaporwave(val) {
-        if (!this.player) return;
-        this.vaporwave = val;
-
-        if (val) {
-            this.nightcore = false;
-        }
-
-        this.setTimescale(val ? { pitch: 0.5 } : null);
-    }
-
-    set8D(val) {
-        if (!this.player) return;
-        this._8d = val;
-        this.setRotation(val ? { rotationHz: 0.2 } : null);
-    }
-
-    setFilters(options) {
-        this.player.filters = new Filters(this.player, options);
         this.updateFilters();
         return this;
     }
@@ -190,7 +283,6 @@ class Filters {
 
         return this;
     }
-
 }
 
 module.exports = { Filters };

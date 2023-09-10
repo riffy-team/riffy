@@ -205,6 +205,110 @@ client.on("messageCreate", async (message) => {
         player.queue.clear();
         message.channel.send("Cleared the queue.");
     }
+
+    if (command === "filter") {
+        const player = client.riffy.players.get(message.guild.id);
+        if (!player) return message.channel.send("No player found.");
+
+        const filter = args[0];
+
+        if (filter === "8d") {
+            player.filters.set8D(true)
+            message.channel.send("8D filter enabled.")
+        } else if (filter === "bassboost") {
+            player.filters.setBassboost(true)
+            message.channel.send("Bassboost filter enabled.")
+        } else if (filter === "channelmix") {
+            player.filters.setChannelMix(true)
+            message.channel.send("Channelmix filter enabled.")
+        } else if (filter === "distortion") {
+            player.filters.setDistortion(true)
+            message.channel.send("Distortion filter enabled.")
+        } else if (filter === "karaoke") {
+            player.filters.setKaraoke(true)
+            message.channel.send("Karaoke filter enabled.")
+        } else if (filter === "lowpass") {
+            player.filters.setLowPass(true)
+            message.channel.send("Lowpass filter enabled.")
+        } else if (filter === "nightcore") {
+            player.filters.setNightcore(true)
+            message.channel.send("Nightcore filter enabled.")
+        } else if (filter === "rotate") {
+            player.filters.setRotation(true)
+            message.channel.send("Rotate filter enabled.")
+        } else if (filter === "slowmode") {
+            player.filters.setSlowmode(true)
+            message.channel.send("Slowmode filter enabled.")
+        } else if (filter === "timescale") {
+            player.filters.setTimescale(true)
+            message.channel.send("Timescale filter enabled.")
+        } else if (filter === "tremolo") {
+            player.filters.setTremolo(true)
+            message.channel.send("Tremolo filter enabled.")
+        } else if (filter === "vaporwave") {
+            player.filters.setVaporwave(true)
+            message.channel.send("Vaporwave filter enabled.")
+        } else if (filter === "vibrato") {
+            player.filters.setVibrato(true)
+            message.channel.send("Vibrato filter enabled.")
+        } else {
+            return message.channel.send("Please provide a valid filter option.");
+        }
+
+        console.log(player.filters)
+    }
+
+    if (command === "dfilter") {
+        const player = client.riffy.players.get(message.guild.id);
+        if (!player) return message.channel.send("No player found.");
+
+        const filter = args[0];
+
+        if (filter === "8d") {
+            player.filters.set8D(false)
+            message.channel.send("8D filter disabled.")
+        } else if (filter === "bassboost") {
+            player.filters.setBassboost(false)
+            message.channel.send("Bassboost filter disabled.")
+        } else if (filter === "channelmix") {
+            player.filters.setChannelMix(false)
+            message.channel.send("Channelmix filter disabled.")
+        } else if (filter === "distortion") {
+            player.filters.setDistortion(false)
+            message.channel.send("Distortion filter disabled.")
+        } else if (filter === "karaoke") {
+            player.filters.setKaraoke(false)
+            message.channel.send("Karaoke filter disabled.")
+        } else if (filter === "lowpass") {
+            player.filters.setLowPass(false)
+            message.channel.send("Lowpass filter disabled.")
+        } else if (filter === "nightcore") {
+            player.filters.setNightcore(false)
+            message.channel.send("Nightcore filter disabled.")
+        } else if (filter === "rotate") {
+            player.filters.setRotation(false)
+            message.channel.send("Rotate filter disabled.")
+        } else if (filter === "slowmode") {
+            player.filters.setSlowmode(false)
+            message.channel.send("Slowmode filter disabled.")
+        } else if (filter === "timescale") {
+            player.filters.setTimescale(false)
+            message.channel.send("Timescale filter disabled.")
+        } else if (filter === "tremolo") {
+            player.filters.setTremolo(false)
+            message.channel.send("Tremolo filter disabled.")
+        } else if (filter === "vaporwave") {
+            player.filters.setVaporwave(false)
+            message.channel.send("Vaporwave filter disabled.")
+        } else if (filter === "vibrato") {
+            player.filters.setVibrato(false)
+            message.channel.send("Vibrato filter disabled.")
+        } else {
+            return message.channel.send("Please provide a valid filter option.");
+        }
+
+        console.log(player.filters)
+    }
 })
 
 client.riffy.on("nodeConnect", node => {

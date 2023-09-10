@@ -5,6 +5,8 @@ const { Player } = require("./Player");
 const { Track } = require("./Track");
 const { Collection } = require("@discordjs/collection");
 
+const versions = ["v3", "v4"];
+
 class Riffy extends EventEmitter {
     constructor(client, nodes, options) {
         super();
@@ -26,6 +28,8 @@ class Riffy extends EventEmitter {
         this.loadType = null;
         this.playlistInfo = null;
         this.pluginInfo = null;
+
+        if (this.restVersion && !versions.includes(this.restVersion)) throw new RangeError(`${this.restVersion} is not a valid version`);
     }
 
     get leastUsedNodes() {
@@ -53,6 +57,8 @@ class Riffy extends EventEmitter {
         const node = new Node(this, options, this.options);
         this.nodeMap.set(options.name || options.host, node);
         node.connect();
+
+        this.emit("nodeCreate", node);
         return node;
     }
 
@@ -61,6 +67,7 @@ class Riffy extends EventEmitter {
         if (!node) return;
         node.disconnect();
         this.nodeMap.delete(identifier);
+        this.emit("nodeDestroy", node);
     }
 
     updateVoiceState(packet) {
@@ -171,16 +178,13 @@ class Riffy extends EventEmitter {
                 this.tracks = response.tracks.map((track) => new Track(track, requester, node));
             }
 
-            let playlistInfo;
-
             if (node.rest.version === "v4") {
-                playlistInfo = response.data.info
+                this.playlistInfo = response.data.info
             } else {
-                playlistInfo = response.playlistInfo
+                this.playlistInfo = response.playlistInfo
             }
 
             this.loadType = response.loadType
-            this.playlistInfo = playlistInfo;
             this.pluginInfo = response.pluginInfo;
 
             return this;
@@ -191,7 +195,7 @@ class Riffy extends EventEmitter {
 
     get(guildId) {
         const player = this.players.get(guildId);
-        if (!player) throw new Error('Player not found!');
+        if (!player) throw new Error(`Player not found for ${guildId} guildId`);
         return player;
     }
 }

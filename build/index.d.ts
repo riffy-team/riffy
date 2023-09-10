@@ -248,16 +248,22 @@ export declare class Riffy extends EventEmitter {
     public on(event: "nodeConnect", listener: (node: Node) => void): this;
     public on(event: "nodeReconnect", listener: (node: Node) => void): this;
     public on(event: "nodeDisconnect", listener: (node: Node, reason: String) => void): this;
+    public on(event: "nodeCreate", listener: (node: Node) => void): this;
+    public on(event: "nodeDestroy", listener: (node: Node) => void): this;
     public on(event: "nodeError", listener: (node: Node, error: Error) => void): this;
+
     public on(event: "trackStart", listener: (player: Player, track: Track, payload: any) => void): this;
     public on(event: "trackEnd", listener: (player: Player, track: Track, payload: any) => void): this;
     public on(event: "trackError", listener: (player: Player, track: Track, payload: any) => void): this;
     public on(event: "trackStuck", listener: (player: Player, track: Track, payload: any) => void): this;
+
     public on(event: "socketClosed", listener: (player: Player, payload: any) => void): this;
+
     public on(event: "playerCreate", listener: (player: Player) => void): this;
     public on(event: "playerDestroy", listener: (player: Player) => void): this;
     public on(event: "playerMove", listener: (player: Player, oldChannel: String, newChannel: String) => void): this;
     public on(event: "playerUpdate", listener: (player: Player, payload: any) => void): this;
+
     public on(event: "queueEnd", listener: (player: Player) => void): this;
     public on(event: "debug", listener: (message: String) => void): this;
 }
@@ -505,34 +511,37 @@ export declare class Filters {
     public vaporwave: FilterOptions["vaporwave"];
     public _8d: FilterOptions["_8d"];
 
-    public setKaraoke(karaoke: {
+    public setEquilizer(band: Array<{ band: Number; gain: Number }>): this;
+
+    public setKaraoke(enabled: Boolean, options?: {
         level: Number;
         monoLevel: Number;
         filterBand: Number;
         filterWidth: Number;
     }): this;
 
-    public setTimescale(timescale: {
+    public setTimescale(enabled: Boolean, options?: {
         speed: Number;
         pitch: Number;
         rate: Number;
     }): this;
 
-    public setTremolo(tremolo: {
+
+    public setTremolo(enabled: Boolean, options?: {
         frequency: Number;
         depth: Number;
     }): this;
 
-    public setVibrato(vibrato: {
+    public setVibrato(enabled: Boolean, options?: {
         frequency: Number;
         depth: Number;
     }): this;
 
-    public setRotation(rotation: {
+    public setRotation(enabled: Boolean, options?: {
         rotationHz: Number;
     }): this;
 
-    public setDistortion(distortion: {
+    public setDistortion(enabled: Boolean, options?: {
         sinOffset: Number;
         sinScale: Number;
         cosOffset: Number;
@@ -543,30 +552,39 @@ export declare class Filters {
         scale: Number;
     }): this;
 
-    public setChannelMix(mix: {
+    public setChannelMix(enabled: Boolean, options?: {
         leftToLeft: Number;
         leftToRight: Number;
         rightToLeft: Number;
         rightToRight: Number;
     }): this;
 
-    public setLowPass(pass: {
+    public setLowPass(enabled: Boolean, options?: {
         smoothing: Number;
     }): this;
 
+
+    public setBassboost(enabled: Boolean, options?: {
+        value: Number;
+    }): this;
+
+    public setSlowmode(enabled: Boolean, options?: {
+        rate: Number;
+    }): this;
+
+    public setNightcore(enabled: Boolean, options?: {
+        rate: Number;
+    }): this;
+
+    public setVaporwave(enabled: Boolean, options?: {
+        pitch: Number;
+    }): this;
+
+    public set8D(enabled: Boolean, options?: {
+        rotationHz: Number;
+    }): this;
+
     public clearFilters(): this;
-
-    public setBassboost(val: Number): this;
-
-    public setSlowmode(val: Number): Number;
-
-    public setNightcore(val: Boolean): Boolean;
-
-    public setVaporwave(val: Boolean): void;
-
-    public set8D(val: Boolean): void;
-
-    public setFilters(options: FilterOptions): this;
 
     public updateFilters(): this;
 }

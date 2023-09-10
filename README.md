@@ -10,6 +10,10 @@ npm install riffy
 - Supports v3 and v4 of the lavalink protocols.
 - Autoplay support for youtube, soundcloud & spotify.
 - Works with all discord libraries (discord.js, eris, etc..)
+- All working filters (bassboost, nightcore, etc..)
+
+## ___Example Project___
+- [Riffy Music Bot](https://github.com/riffy-team/riffy-music-bot)
 
 ## ___Documentation___
 - [Documentation](https://riffy.js.org)

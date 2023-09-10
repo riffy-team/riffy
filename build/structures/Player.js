@@ -46,7 +46,7 @@ class Player extends EventEmitter {
     }
 
     async play() {
-        if(!this.connected) throw new Error("Player connection is not initiated. Kindly user Riffy.createConnection() and establish a connection");
+        if (!this.connected) throw new Error("Player connection is not initiated. Kindly user Riffy.createConnection() and establish a connection");
         if (!this.queue.length) return;
 
         this.current = this.queue.shift();
@@ -76,8 +76,8 @@ class Player extends EventEmitter {
      * @returns 
      */
     async autoplay(player) {
-        if(!player) {
-            if(player == null) {
+        if (!player) {
+            if (player == null) {
                 this.isAutoplay = false;
                 return this;
             } else if (player == false) {
@@ -89,13 +89,13 @@ class Player extends EventEmitter {
         this.isAutoplay = true;
 
         // If ran on queueEnd event
-        if(player.previous) {
+        if (player.previous) {
             if (player.previous.info.sourceName === "youtube") {
                 try {
                     let data = `https://www.youtube.com/watch?v=${player.previous.info.identifier}&list=RD${player.previous.info.identifier}`;
-    
+
                     let response = await this.riffy.resolve({ query: data, source: "ytmsearch", requester: player.previous.info.requester });
-    
+
                     if (this.node.rest.version === "v4") {
                         if (!response || !response.tracks || ["error", "empty"].includes(response.loadType)) return this.stop();
                     } else {
@@ -113,15 +113,15 @@ class Player extends EventEmitter {
                 try {
                     scAutoPlay(player.previous.info.uri).then(async (data) => {
                         let response = await this.riffy.resolve({ query: data, source: "scsearch", requester: player.previous.info.requester });
-    
+
                         if (this.node.rest.version === "v4") {
                             if (!response || !response.tracks || ["error", "empty"].includes(response.loadType)) return this.stop();
                         } else {
                             if (!response || !response.tracks || ["LOAD_FAILED", "NO_MATCHES"].includes(response.loadType)) return this.stop();
                         }
-    
+
                         let track = response.tracks[Math.floor(Math.random() * Math.floor(response.tracks.length))];
-    
+
                         this.queue.push(track);
                         this.play();
                         return this;
@@ -134,13 +134,13 @@ class Player extends EventEmitter {
                 try {
                     spAutoPlay(player.previous.info.identifier).then(async (data) => {
                         const response = await this.riffy.resolve({ query: `https://open.spotify.com/track/${data}`, requester: player.previous.info.requester });
-    
+
                         if (this.node.rest.version === "v4") {
                             if (!response || !response.tracks || ["error", "empty"].includes(response.loadType)) return this.stop();
                         } else {
                             if (!response || !response.tracks || ["LOAD_FAILED", "NO_MATCHES"].includes(response.loadType)) return this.stop();
                         }
-    
+
                         let track = response.tracks[Math.floor(Math.random() * Math.floor(response.tracks.length))];
                         this.queue.push(track);
                         this.play();

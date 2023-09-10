@@ -25,17 +25,17 @@ class Connection {
         this.region = endpoint.split(".").shift()?.replace(/[0-9]/g, "") || null;
 
         if (this.player.paused) {
-          this.player.riffy.emit(
-            "debug",
-            this.player.node.name,
-            `unpaused ${this.player.guildId} player, expecting it was paused while the player moved to ${this.voiceChannel}`
-          );
-          this.player.pause(false);
+            this.player.riffy.emit(
+                "debug",
+                this.player.node.name,
+                `unpaused ${this.player.guildId} player, expecting it was paused while the player moved to ${this.voiceChannel}`
+            );
+            this.player.pause(false);
         }
 
         this.updatePlayerVoiceData();
     }
-    
+
     setStateUpdate(data) {
         const { session_id, channel_id, self_deaf, self_mute } = data;
 
@@ -51,7 +51,7 @@ class Connection {
     }
 
     updatePlayerVoiceData() {
-        this.player.riffy.emit("debug", this.player.node.name,`[Rest Manager] Sending an Update Player request with data: ${JSON.stringify({ voice: this.voice})}`)
+        this.player.riffy.emit("debug", this.player.node.name, `[Rest Manager] Sending an Update Player request with data: ${JSON.stringify({ voice: this.voice })}`)
         this.player.node.rest.updatePlayer({
             guildId: this.player.guildId,
             data: { voice: this.voice },

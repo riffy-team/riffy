@@ -1,5 +1,4 @@
 const undici = require("undici");
-const versions = ["v3", "v4"];
 
 class Rest {
     constructor(riffy, options) {
@@ -8,7 +7,6 @@ class Rest {
         this.sessionId = options.sessionId;
         this.password = options.password;
         this.version = options.restVersion
-        if (this.version && !versions.includes(this.version)) throw new RangeError(`${this.version} is not a valid version`);
     }
 
     setSessionId(sessionId) {
