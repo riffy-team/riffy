@@ -14,9 +14,9 @@ const client = new Client({
 
 const nodes = [
     {
-        host: "lava.raidenbot.xyz",
-        port: 5500,
-        password: "rcontop",
+        host: "localhost",
+        port: 2333,
+        password: "youshallnotpass",
         secure: false
     }
 ];
@@ -361,4 +361,4 @@ client.on("raw", (d) => {
     client.riffy.updateVoiceState(d);
 });
 
-client.login("MTEzNjUxMDY4ODU0Njc5OTY0OA.Gk-1Sc.vTODNH1t9ltJ-BAlkBE7UBJ-oipFYvLtkKf_ZU");
+client.login("Discord-Token");
