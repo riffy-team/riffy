@@ -192,7 +192,7 @@ class Player extends EventEmitter {
 
     seek(position) {
         const trackLength = this.current.info.length;
-        position = Math.max(0, Math.min(trackLength, this.position + position));
+        this.position = Math.max(0, Math.min(trackLength, position));
 
         this.node.rest.updatePlayer({ guildId: this.guildId, data: { position } });
     }
