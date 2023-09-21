@@ -260,7 +260,7 @@ export declare class Riffy extends EventEmitter {
     public on(event: "socketClosed", listener: (player: Player, payload: any) => void): this;
 
     public on(event: "playerCreate", listener: (player: Player) => void): this;
-    public on(event: "playerDestroy", listener: (player: Player) => void): this;
+    public on(event: "playerDisconnect", listener: (player: Player) => void): this;
     public on(event: "playerMove", listener: (player: Player, oldChannel: String, newChannel: String) => void): this;
     public on(event: "playerUpdate", listener: (player: Player, payload: any) => void): this;
 
