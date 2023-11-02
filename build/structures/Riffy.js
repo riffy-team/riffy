@@ -35,7 +35,7 @@ class Riffy extends EventEmitter {
     get leastUsedNodes() {
         return [...this.nodeMap.values()]
             .filter((node) => node.connected)
-            .sort((a, b) => b.calls - a.calls);
+            .sort((a, b) => b.rest.calls - a.rest.calls);
     }
 
     init(clientId) {

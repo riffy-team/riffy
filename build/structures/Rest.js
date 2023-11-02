@@ -6,7 +6,8 @@ class Rest {
         this.url = `http${options.secure ? "s" : ""}://${options.host}:${options.port}`;
         this.sessionId = options.sessionId;
         this.password = options.password;
-        this.version = options.restVersion
+        this.version = options.restVersion;
+        this.calls = 0;
     }
 
     setSessionId(sessionId) {
@@ -26,6 +27,8 @@ class Rest {
         };
 
         const response = await undici.fetch(this.url + endpoint, requestOptions);
+
+        this.calls++
 
         if (response.statusCode === 204) {
             return null;

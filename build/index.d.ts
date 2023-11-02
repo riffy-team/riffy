@@ -46,6 +46,7 @@ export declare class Rest extends EventEmitter {
     public sessionId: RestOptions["sessionId"];
     public password: RestOptions["password"];
     public version: RestOptions["restVersion"];
+    public calls: Number;
 
     public setSessionId(sessionId: String): void;
     public makeRequest(method: String, endpoint: String, body?: any): Promise<RestResponse | null>;
