@@ -28,6 +28,7 @@ class Riffy extends EventEmitter {
         this.loadType = null;
         this.playlistInfo = null;
         this.pluginInfo = null;
+        this.plugins = options.plugins;
 
         if (this.restVersion && !versions.includes(this.restVersion)) throw new RangeError(`${this.restVersion} is not a valid version`);
     }
@@ -44,10 +45,8 @@ class Riffy extends EventEmitter {
         this.nodes.forEach((node) => this.createNode(node));
         this.initiated = true;
 
-        if (this.options.plugins) {
-            this.options.plugins.forEach((plugin) => {
-                if (!(plugin instanceof Plugin))
-                    throw new RangeError(`[Plugin] ${plugin} is not a plugin`);
+        if (this.plugins) {
+            this.plugins.forEach((plugin) => {
                 plugin.load(this);
             });
         }

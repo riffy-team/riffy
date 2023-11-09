@@ -1,28 +1,28 @@
-## ___About___
+## **About**
 **Riffy** is a lavalink client for node.js. It is designed to be simple and easy to use, with a focus on stablity and more features.
 
-## ___Installation___
+## **Installation**
 ```
 npm install riffy
 ```
 
-## ___Features___
+## **Features**
 - Supports v3 and v4 of the lavalink protocols.
 - Autoplay support for youtube, soundcloud & spotify.
 - Works with all discord libraries (discord.js, eris, etc..)
 - All working filters (bassboost, nightcore, etc..)
 
-## ___Example Project___
+## **Example Project**
 - [Riffy Music Bot](https://github.com/riffy-team/riffy-music-bot)
 
-## ___Documentation___
+## **Documentation**
 - [Documentation](https://riffy.js.org)
 - [Discord Server](https://discord.gg/TvjrWtEuyP)
 
-#### ___1. Lavalink Node___
+#### **1. Lavalink Node**
 First thing first, you need to have a lavalink node running. You can download the latest version of lavalink from [here](https://github.com/lavalink-devs/Lavalink), or you can use [this]() for free.
 
-#### ___2. Creating a Project___
+#### **2. Creating a Project**
 We are using [discord.js](https://discord.js.org) for this example, but you can use any discord library you want.
 
 Import the `Riffy` from the package.
@@ -63,7 +63,7 @@ client.riffy = new Riffy(client, nodes, {
         const guild = client.guilds.cache.get(payload.d.guild_id);
         if (guild) guild.shard.send(payload);
     },
-    defaultSearchPlatform: "spsearch",
+    defaultSearchPlatform: "ytmsearch",
     restVersion: "v4" // or v3 based on your lavalink version
 });
 
@@ -163,17 +163,17 @@ client.on("raw", (d) => {
 client.login("Discord-Bot-Token-Here");
 ```
 
-#### ___3. Running our Discord bot___
+#### **3. Running our Discord bot**
 Now that we have created our project, we can run our bot by typing __node index.js__ in the terminal.
 
 When the bot is running, you can use the __!play song_name__ command to play music.
 
-#### ___Conclusion___
+#### **Conclusion**
 That's it! You have successfully created a discord music bot using riffy. If you have any questions, feel free to join our [discord server](https://discord.gg/TvjrWtEuyP).
 
 We have set this example by keeping in mind that you know the basics of discord.js or any other discord library you are using.
 
-## ___Our Team___
+## **Our Team**
 🟪 Elitex
 - Github: [@Elitex](https://github.com/Elitex07)
 - Discord: @elitex
@@ -186,5 +186,5 @@ We have set this example by keeping in mind that you know the basics of discord.
 - Github: [@UnschooledGamer](https://github.com/UnschooledGamer)
 - Discord: @unschooledgamer
 
-## ___License___
+## **License**
 This project is licensed under the [MIT License](./LICENSE)
