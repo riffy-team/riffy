@@ -84,6 +84,50 @@ class Node {
         this.connected = true;
         this.riffy.emit('debug', this.name, `Connection with Lavalink established on ${this.wsUrl}`);
 
+        /** @todo Add Version Checking of Node */
+
+        // this.riffy.emit('debug', this.name, `Checking Node Version`)
+        
+        // (async () => {
+        //     const requestOpts = (version = this.restVersion) => { 
+        //         return {
+        //           method: "GET",
+        //           endpoint: `/${version}/stats`,
+        //         };
+        //     }
+            
+        //     await Promise.all([this.rest.makeRequest(requestOpts), this.rest.makeRequest(requestOpts(this.restVersion == "v3" ? "v4" : "v3"))]).then((restVersionRequest, flippedRestRequest) => {
+
+        //         if(restVersionRequest == null) this.riffy.emit(
+        //           "debug",
+        //           `[Node (${this.name}) - Version Check] ${
+        //             this.restVersion
+        //           } set By User/Defaulted Version Check Failed, attempted ${
+        //             this.restVersion == "v3" ? "v4" : "v3"
+        //           } For version Checking`
+        //         );
+
+        //         if(flippedRestRequest == null && restVersionRequest == null) {
+        //             this.riffy.emit("debug", `[Node (${this.name}) - Version Check] Both Version Checks failed, Disconnecting Gracefully & Throwing Error`)
+
+        //             // Disconnect Websocket & Destroy the players(if any created - Just incase)
+        //             this.destroy()
+                    
+        //             throw new Error(`${this.name}(${this.host}) is using unsupported Lavalink Version, Supported Lavalink Versions are v3 and v4.`)
+        //         }
+
+        //         if(restVersionRequest !== null || flippedRestRequest !== null) {
+        //             this.riffy.emit(
+        //               "debug",
+        //               `[Node (${this.name}) - Version Check] Check ${restVersionRequest == null ? "Un" : ""}successful Lavalink Server uses ${(restVersionRequest || flippedRestRequest).version.string} ${restVersionRequest == null && this.restVersion !== `v${restVersionRequest.version.major}` ? `Doesn't match with restVersion: ${this.restVersion}, Provided in Riffy Options` : ""}`
+        //             );
+                    
+        //         }
+
+        //     })
+
+        // })()
+
         if (this.autoResume) {
             for (const player of this.riffy.players.values()) {
                 if (player.node === this) {
@@ -105,7 +149,7 @@ class Node {
         const payload = JSON.parse(msg.toString());
         if (!payload.op) return;
 
-        this.riffy.emit("riffyRaw", payload);
+        this.riffy.emit("raw", "Node", payload);
         this.riffy.emit("debug", this.name, `Lavalink Node Update : ${JSON.stringify(payload)}`);
 
         if (payload.op === "stats") {

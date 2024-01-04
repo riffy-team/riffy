@@ -63,7 +63,9 @@ class Player extends EventEmitter {
         this.node.rest.updatePlayer({
             guildId: this.guildId,
             data: {
-                encodedTrack: track,
+                track: {
+                    encoded: track,
+                },
             },
         });
 
@@ -172,7 +174,7 @@ class Player extends EventEmitter {
         this.playing = false;
         this.node.rest.updatePlayer({
             guildId: this.guildId,
-            data: { encodedTrack: null },
+            data: { track: { encoded: null } },
         });
 
         return this;
