@@ -167,24 +167,24 @@ class Riffy extends EventEmitter {
 
             if (node.rest.version === "v4") {
                 if (response.loadType === "track") {
-                    this.tracks = [new Track(response.data, requester, node)];
+                    this.tracks = response.data ? [new Track(response.data, requester, node)] : [];
                 } else if (response.loadType === "playlist") {
-                    this.tracks = response.data.tracks.map((track) => new Track(track, requester, node));
+                    this.tracks = response.data?.tracks ? response.data.tracks.map((track) => new Track(track, requester, node)) : [];
                 } else {
-                    this.tracks = response.data.map((track) => new Track(track, requester, node));
+                    this.tracks = response.data ? response.data.map((track) => new Track(track, requester, node)) : [];
                 }
             } else {
-                this.tracks = response.tracks.map((track) => new Track(track, requester, node));
+                this.tracks = response.data?.tracks ? response.tracks.map((track) => new Track(track, requester, node)) : [];
             }
 
             if (node.rest.version === "v4") {
-                this.playlistInfo = response.data.info
+                this.playlistInfo = response.data?.info ?? null
             } else {
-                this.playlistInfo = response.playlistInfo
+                this.playlistInfo = response.playlistInfo ?? null
             }
 
-            this.loadType = response.loadType
-            this.pluginInfo = response.pluginInfo;
+            this.loadType = response.loadType ?? null
+            this.pluginInfo = response.pluginInfo ?? null;
 
             return this;
         } catch (error) {
