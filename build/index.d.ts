@@ -155,27 +155,106 @@ export declare class Player extends EventEmitter {
 
 export type SearchPlatform = "ytsearch" | "ytmsearch" | "scsearch" | "spsearch" | "amsearch" | "dzsearch" | "ymsearch";
 export type Version = "v3" | "v4";
-export type nodeResponse = {
-    /**
-     * Array of Loaded Tracks
-     */
-    tracks: Array<Track>;
-    /**
-     * Load Type - "TRACK_LOADED", "PLAYLIST_LOADED", "SEARCH_RESULT", "NO_MATCHES", "LOAD_FAILED" for v3 and "track", "playlist", "search", "error" for v4
-     */
-    loadType: String
-    /**
-     * Playlist Info
-     */
-    playlistInfo?: {
+
+type Prettify<T> = {
+  [K in keyof T]: T[K];
+} & {};
+
+export type v3nodeResponse =
+  | {
+      loadType: "TRACK_LOADED";
+      pluginInfo: object;
+      tracks: Array<Prettify<Track>>;
+    }
+  | {
+      loadType: "PLAYLIST_LOADED";
+      playlistInfo: {
         name: String;
         selectedTrack: Number;
+      };
+      pluginInfo: object;
+      tracks: Array<Prettify<Track>>;
+    }
+  | {
+      loadType: "SEARCH_RESULT";
+      playlistInfo: {
+        name: String;
+        selectedTrack: Number;
+      };
+      tracks: Array<Prettify<Track>>;
+    }
+  | {
+      loadType: "NO_MATCHES";
+      pluginInfo: object;
+    }
+  | {
+      loadType: "LOAD_FAILED";
+      exception: { 
+        message: string;
+        severity: string;
+        cause: string;
+      }
     };
-    /**
-     * Plugin Info
-     */
-    pluginInfo?: any;
-}
+
+export type v4nodeResponse =
+  | {
+      loadType: "track";
+      pluginInfo: object;
+      tracks: Array<Prettify<Track>>;
+    }
+  | {
+      loadType: "playlist";
+      playlistInfo: {
+        name: String;
+        selectedTrack: Number;
+      };
+      pluginInfo: object;
+      tracks: Array<Prettify<Track>>;
+    }
+  | {
+      loadType: "search";
+      playlistInfo: {
+        name: String;
+        selectedTrack: Number;
+      };
+      tracks: Array<Prettify<Track>>;
+    }
+  | {
+      loadType: "empty";
+      pluginInfo: object;
+    }
+  | {
+      loadType: "error";
+      exception: {
+        message: string;
+        severity: string;
+        cause: string;
+      };
+    };
+
+// export type nodeResponse = {
+//     /**
+//      * Array of Loaded Tracks
+//      */
+//     tracks: Array<Track>;
+//     /**
+//      * Load Type - "TRACK_LOADED", "PLAYLIST_LOADED", "SEARCH_RESULT", "NO_MATCHES", "LOAD_FAILED" for v3 and "track", "playlist", "search", "error" for v4
+//      */
+//     loadType: String
+//     /**
+//      * Playlist Info
+//      */
+//     playlistInfo?: {
+//         name: String;
+//         selectedTrack: Number;
+//     };
+//     /**
+//      * Plugin Info
+//      */
+//     pluginInfo?: any;
+// }
+
+export type nodeResponse = v3nodeResponse | v4nodeResponse
 
 export type RiffyOptions = {
     send: (payload: {
@@ -239,7 +318,7 @@ export declare class Riffy extends EventEmitter {
 
     public resolve(params: {
         query: String;
-        source?: String;
+        source?: SearchPlatform | string;
         requester: any;
     }): Promise<nodeResponse>;
 
