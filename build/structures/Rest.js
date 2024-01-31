@@ -45,7 +45,7 @@ class Rest {
         endpoint.startsWith("/") ? endpoint : `/${endpoint}`
       } ${body ? `body: ${JSON.stringify(body)}` : ""} -> \n Status Code: ${
         response.status
-      }(${response.statusText}) \n Response(body): ${await data} \n Headers: ${
+      }(${response.statusText}) \n Response(body): ${JSON.stringify(await data)} \n Headers: ${
         response.headers
       }`
     );
@@ -146,7 +146,6 @@ class Rest {
    * @returns {object | null}
    */
   async parseResponse(req) {
-    console.log("undici Req", req, "condition", req.statusCode === 204)
     if (req.status === 204) {
       return null;
     }

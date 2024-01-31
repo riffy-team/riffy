@@ -177,10 +177,13 @@ class Riffy extends EventEmitter {
                 this.tracks = response.data?.tracks ? response.tracks.map((track) => new Track(track, requester, node)) : [];
             }
 
-            if (node.rest.version === "v4") {
-                this.playlistInfo = response.data?.info ?? null
+            if (
+              node.rest.version === "v4" &&
+              this.loadType === "PLAYLIST_LOADED"
+            ) {
+              this.playlistInfo = response.data?.info ?? null;
             } else {
-                this.playlistInfo = response.playlistInfo ?? null
+              this.playlistInfo = response.playlistInfo ?? null;
             }
 
             this.loadType = response.loadType ?? null
