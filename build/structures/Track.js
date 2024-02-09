@@ -22,6 +22,8 @@ class Track {
 
             if (data.info.thumbnail) {
                 this.info.thumbnail = data.info.thumbnail
+            } else if (data.info.artworkUrl) {
+                this.info.thumbnail = data.info.artworkUrl
             } else {
                 this.info.thumbnail = getImageUrl(this.info)
             }
