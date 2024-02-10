@@ -15,21 +15,22 @@ class Track {
             uri: data.info.uri,
             requester,
             sourceName: data.info.sourceName,
-        };
+            get thumbnail() {
+            if (node.rest.version === "v4") {
+                this.info.isrc = data.info.isrc
 
-        if (node.rest.version === "v4") {
-            this.info.isrc = data.info.isrc
-
-            if (data.info.thumbnail) {
-                this.info.thumbnail = data.info.thumbnail
-            } else if (data.info.artworkUrl) {
-                this.info.thumbnail = data.info.artworkUrl
+              if (data.info.thumbnail) {
+                  this.info.thumbnail = data.info.thumbnail
+              } else if (data.info.artworkUrl) {
+                  this.info.thumbnail = data.info.artworkUrl
+              } else {
+                  this.info.thumbnail = getImageUrl(this.info)
+              }
             } else {
-                this.info.thumbnail = getImageUrl(this.info)
+              this.info.thumbnail = getImageUrl(this.info)
+              } 
             }
-        } else {
-            this.info.thumbnail = getImageUrl(this.info)
-        }
+        };
     }
 
     async resolve(riffy) {
