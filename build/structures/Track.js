@@ -17,17 +17,16 @@ class Track {
             sourceName: data.info.sourceName,
             get thumbnail() {
             if (node.rest.version === "v4") {
-                this.info.isrc = data.info.isrc
-
-              if (data.info.thumbnail) {
-                  this.info.thumbnail = data.info.thumbnail
-              } else if (data.info.artworkUrl) {
-                  this.info.thumbnail = data.info.artworkUrl
+                this.isrc = data.info.isrc
+               if (data.thumbnail) {
+                  return data.info.thumbnail
+               } else if (data.info.artworkUrl) {
+                  return data.info.artworkUrl
+               } else {
+                  return getImageUrl(this)
+               }
               } else {
-                  this.info.thumbnail = getImageUrl(this.info)
-              }
-            } else {
-              this.info.thumbnail = getImageUrl(this.info)
+              return getImageUrl(this)
               } 
             }
         };
