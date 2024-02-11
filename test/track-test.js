@@ -15,7 +15,7 @@ const testTrack =     {
         "title": "ROY KNOX - Memory Box | Dubstep | NCS - Copyright Free Music",
         "uri": "https://www.youtube.com/watch?v=DFyIA76BvD0",
         "sourceName": "youtube",
-        // "artworkUrl": "https://i.ytimg.com/vi/DFyIA76BvD0/maxresdefault.jpg?sqp=-oaymwEmCIAKENAF8quKqQMa8AEB-AH-CYAC0AWKAgwIABABGCwgUih_MA8=&rs=AOn4CLDN2ld7TUNuCkoAVDUR_vujS7z_pw",
+        "artworkUrl": "https://i.ytimg.com/vi/DFyIA76BvD0/maxresdefault.jpg?sqp=-oaymwEmCIAKENAF8quKqQMa8AEB-AH-CYAC0AWKAgwIABABGCwgUih_MA8=&rs=AOn4CLDN2ld7TUNuCkoAVDUR_vujS7z_pw",
         "isrc": null
       },
       "pluginInfo": {},
@@ -28,4 +28,8 @@ console.log(track);
 (async () => {
 console.log("1", await track.info.thumbnail);
 console.log("2", await track.info.thumbnail);
+// console.log("2", await track.#cachedThumbnail, track.#rawData);
+setTimeout(async () => {
+console.log("3", await track._cachedThumbnail)
+}, 5000)
 })()
