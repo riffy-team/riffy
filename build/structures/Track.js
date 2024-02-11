@@ -3,7 +3,8 @@ const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 class Track {
     constructor(data, requester, node) {
-        this.track = data.encoded
+        this.track = data.encoded;
+        this.#cachedThumbnail = null;
         this.info = {
             identifier: data.info.identifier,
             seekable: data.info.isSeekable,
@@ -30,6 +31,7 @@ class Track {
               } 
             }
         };
+        this.#rawData = data;
     }
 
     async resolve(riffy) {
