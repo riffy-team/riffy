@@ -61,7 +61,7 @@ class Node {
         const headers = {
             "Authorization": this.password,
             "User-Id": this.riffy.clientId,
-            "Client-Name": "Riffy",
+            "Client-Name": `Riffy/${this.riffy.version}`,
         };
 
         if (this.restVersion === "v4") {

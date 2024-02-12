@@ -1,4 +1,4 @@
-process.env.NODE_DEBUG = "fetch"
+console.log(process.env)
 const { Track } = require("../build/index")
 
 

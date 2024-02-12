@@ -4,6 +4,7 @@ const { Plugin } = require("./Plugins");
 const { Player } = require("./Player");
 const { Track } = require("./Track");
 const { Collection } = require("@discordjs/collection");
+const { version: pkgVersion } = require("../../package.json")
 
 const versions = ["v3", "v4"];
 
@@ -29,6 +30,10 @@ class Riffy extends EventEmitter {
         this.playlistInfo = null;
         this.pluginInfo = null;
         this.plugins = options.plugins;
+        /**
+         * @description Package Version Of Riffy
+         */
+        this.version = pkgVersion;
 
         if (this.restVersion && !versions.includes(this.restVersion)) throw new RangeError(`${this.restVersion} is not a valid version`);
     }
