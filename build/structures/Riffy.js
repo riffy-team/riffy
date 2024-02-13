@@ -1,9 +1,7 @@
 const { EventEmitter } = require("events");
 const { Node } = require("./Node");
-const { Plugin } = require("./Plugins");
 const { Player } = require("./Player");
 const { Track } = require("./Track");
-const { Collection } = require("@discordjs/collection");
 const { version: pkgVersion } = require("../../package.json")
 
 const versions = ["v3", "v4"];
@@ -17,8 +15,8 @@ class Riffy extends EventEmitter {
 
         this.client = client;
         this.nodes = nodes;
-        this.nodeMap = new Collection();
-        this.players = new Collection();
+        this.nodeMap = new Map();
+        this.players = new Map();
         this.options = options;
         this.clientId = null;
         this.initiated = false;

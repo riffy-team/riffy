@@ -1,5 +1,4 @@
 import { EventEmitter } from "events";
-import { Collection } from "@discordjs/collection";
 
 export declare class Track {
     constructor(data: any, requester: any, node: Node);
@@ -205,8 +204,8 @@ export declare class Riffy extends EventEmitter {
     }, options: RiffyOptions);
     public client: any;
     public nodes: Array<LavalinkNode>;
-    public nodeMap: Collection<k, Node>;
-    public players: Collection<k, Player>;
+    public nodeMap: Map<k, Node>;
+    public players: Map<k, Player>;
     public options: RiffyOptions;
     public clientId: String;
     public initiated: Boolean;

@@ -209,8 +209,11 @@ class Node {
     destroy() {
         if (!this.connected) return;
 
-        const player = this.riffy.players.filter((player) => player.node === this);
-        if (player.size) player.forEach((player) => player.destroy());
+        this.riffy.players.forEach((player) => {
+          if (!player.node) return;
+
+          player.destroy()
+        });
 
         if (this.ws) this.ws.close(1000, "destroy");
         this.ws.removeAllListeners();
