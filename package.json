@@ -8,7 +8,6 @@
     "build"
   ],
   "dependencies": {
-    "@discordjs/collection": "^2.0.0",
     "jsdom": "^23.0.1",
     "undici": "^6.2.1",
     "ws": "^8.16.0"
