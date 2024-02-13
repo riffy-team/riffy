@@ -8,8 +8,8 @@
     "build"
   ],
   "dependencies": {
-    "jsdom": "^23.0.1",
-    "undici": "^6.2.1",
+    "jsdom": "^24.0.0",
+    "undici": "^6.6.2",
     "ws": "^8.16.0"
   },
   "license": "MIT",

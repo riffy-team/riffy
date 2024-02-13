@@ -2,8 +2,13 @@ const { getImageUrl } = require("../functions/fetchImage");
 const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 class Track {
+
+    #rawData = {};
+    #cachedThumbnail = null;
     constructor(data, requester, node) {
-        this.track = data.encoded
+        this.rawData = data;
+        this._cachedThumbnail = data.info.thumbnail ?? null
+        this.track = data.encoded;
         this.info = {
             identifier: data.info.identifier,
             seekable: data.info.isSeekable,
@@ -15,21 +20,23 @@ class Track {
             uri: data.info.uri,
             requester,
             sourceName: data.info.sourceName,
-        };
-
-        if (node.rest.version === "v4") {
-            this.info.isrc = data.info.isrc
-
-            if (data.info.thumbnail) {
-                this.info.thumbnail = data.info.thumbnail
-            } else if (data.info.artworkUrl) {
-                this.info.thumbnail = data.info.artworkUrl
-            } else {
-                this.info.thumbnail = getImageUrl(this.info)
+            get thumbnail() {
+            if (node.rest.version === "v4") {
+                this.isrc = data.info.isrc
+               if (data.info.thumbnail) {
+                  return data.info.thumbnail
+               } else if (data.info.artworkUrl) {
+                  this._cachedThumbnail = data.info.artworkUrl;
+                  return data.info.artworkUrl
+               } else {
+                  return getImageUrl(this)
+               }
+              } else {
+              if(data.info.thumbnail) return data.info.thumbnail;
+              return getImageUrl(this)
+              } 
             }
-        } else {
-            this.info.thumbnail = getImageUrl(this.info)
-        }
+        };
     }
 
     async resolve(riffy) {
