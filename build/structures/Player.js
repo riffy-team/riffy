@@ -287,11 +287,11 @@ class Player extends EventEmitter {
 
         const track = this.current;
 
-        if (this.node.rest.version === "v4") {
-            track.info.thumbnail = await track.info.thumbnail;
-        } else {
-            track.info.thumbnail = await track.info.thumbnail;
-        }
+        // if (this.node.rest.version === "v4") {
+        //     track.info.thumbnail = await track.info.thumbnail;
+        // } else {
+        //     track.info.thumbnail = await track.info.thumbnail;
+        // }
 
         switch (payload.type) {
             case "TrackStartEvent":

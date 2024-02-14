@@ -210,7 +210,7 @@ class Node {
         if (!this.connected) return;
 
         this.riffy.players.forEach((player) => {
-          if (!player.node) return;
+          if (player.node !== this) return;
 
           player.destroy()
         });

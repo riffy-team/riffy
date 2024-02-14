@@ -1,4 +1,4 @@
-const { Client, GatewayDispatchEvents } = require("discord.js");
+const { Client, GatewayDispatchEvents, codeBlock, AttachmentBuilder } = require("discord.js");
 const { Riffy } = require("../build/index.js");
 
 const client = new Client({
@@ -309,6 +309,30 @@ client.on("messageCreate", async (message) => {
 
         console.log(player.filters)
     }
+
+    if(command === "eval") {
+        
+        const { inspect } = require("node:util")
+
+        const userInputtedCode = args.join(" ").replace("client.token", "String('**************************')")
+
+        let evaluatedCode;
+        try {
+            evaluatedCode = eval(userInputtedCode)
+            console.log(typeof evaluatedCode, evaluatedCode)
+            if (evaluatedCode && evaluatedCode.constructor.name === "Promise")
+              evaluatedCode = await evaluatedCode;
+
+            evaluatedCode = inspect(evaluatedCode, false, 3)
+        } catch (error) {
+            message.react("❌");
+            console.log(`${message.guildId} Eval Code - Error :: ${Date.now()}`, error)
+            return message.reply({ content: `Errored ref timestamp: ${Date.now()}, **Error msg**: ${codeBlock(error)}`})
+        }
+        
+        await message.reply(evaluatedCode.length > 2999 ? { files: [new AttachmentBuilder(Buffer.from(evaluatedCode)).setName("result.js")]} : { content: codeBlock("sh",evaluatedCode)}).catch((e) => message.reply("Error occurred while telling the result.") && console.log(e))
+
+    }
 })
 
 client.riffy.on("nodeConnect", node => {
@@ -341,6 +365,9 @@ client.riffy.on("queueEnd", async (player) => {
         channel.send("Queue has ended.");
     }
 })
+
+process.on("uncaughtException", (err, origin) => console.log(`[UNCAUGHT ERRORS Reporting - Exception] >> origin: ${origin} | Error: ${err}`))
+process.on("unhandledRejection", (err, _) => console.log(`[unhandled ERRORS Reporting - Rejection] >> ${err}, Promise: ignored/not included`))
 
 client.on("raw", (d) => {
     if (![GatewayDispatchEvents.VoiceStateUpdate, GatewayDispatchEvents.VoiceServerUpdate,].includes(d.t)) return;

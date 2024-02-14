@@ -24,10 +24,10 @@
     "riffyjs",
     "eris"
   ],
-  "author": [
-    "@flameface",
-    "@unschooledgamers",
-    "@elitex"
+  "contributors": [
+    "FlameFace (https://github.com/flameface)",
+    "Elitex (https://github.com/Elitex07)",
+    "UnschooledGamer (https://github.com/unschooledgamer/)"
   ],
   "repository": {
     "type": "git",
@@ -36,5 +36,8 @@
   "bugs": {
     "url": "https://github.com/riffy-team/riffy.js/issues"
   },
-  "homepage": "https://riffy.js.org/"
+  "homepage": "https://riffy.js.org/",
+  "devDependencies": {
+    "discord.js": "^14.14.1"
+  }
 }
