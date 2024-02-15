@@ -44,6 +44,7 @@ class Node {
                 deficit: 0,
             },
         };
+
         this.connected = false;
 
         this.resumeKey = options.resumeKey || null;
@@ -87,7 +88,7 @@ class Node {
         /** @todo Add Version Checking of Node */
 
         // this.riffy.emit('debug', this.name, `Checking Node Version`)
-        
+
         // (async () => {
         //     const requestOpts = (version = this.restVersion) => { 
         //         return {
@@ -95,7 +96,7 @@ class Node {
         //           endpoint: `/${version}/stats`,
         //         };
         //     }
-            
+
         //     await Promise.all([this.rest.makeRequest(requestOpts), this.rest.makeRequest(requestOpts(this.restVersion == "v3" ? "v4" : "v3"))]).then((restVersionRequest, flippedRestRequest) => {
 
         //         if(restVersionRequest == null) this.riffy.emit(
@@ -112,7 +113,7 @@ class Node {
 
         //             // Disconnect Websocket & Destroy the players(if any created - Just incase)
         //             this.destroy()
-                    
+
         //             throw new Error(`${this.name}(${this.host}) is using unsupported Lavalink Version, Supported Lavalink Versions are v3 and v4.`)
         //         }
 
@@ -121,7 +122,7 @@ class Node {
         //               "debug",
         //               `[Node (${this.name}) - Version Check] Check ${restVersionRequest == null ? "Un" : ""}successful Lavalink Server uses ${(restVersionRequest || flippedRestRequest).version.string} ${restVersionRequest == null && this.restVersion !== `v${restVersionRequest.version.major}` ? `Doesn't match with restVersion: ${this.restVersion}, Provided in Riffy Options` : ""}`
         //             );
-                    
+
         //         }
 
         //     })
@@ -210,9 +211,9 @@ class Node {
         if (!this.connected) return;
 
         this.riffy.players.forEach((player) => {
-          if (player.node !== this) return;
+            if (player.node !== this) return;
 
-          player.destroy()
+            player.destroy()
         });
 
         if (this.ws) this.ws.close(1000, "destroy");

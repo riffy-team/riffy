@@ -181,12 +181,12 @@ class Riffy extends EventEmitter {
             }
 
             if (
-              node.rest.version === "v4" &&
-              this.loadType === "PLAYLIST_LOADED"
+                node.rest.version === "v4" &&
+                this.loadType === "PLAYLIST_LOADED"
             ) {
-              this.playlistInfo = response.data?.info ?? null;
+                this.playlistInfo = response.data?.info ?? null;
             } else {
-              this.playlistInfo = response.playlistInfo ?? null;
+                this.playlistInfo = response.playlistInfo ?? null;
             }
 
             this.loadType = response.loadType ?? null
