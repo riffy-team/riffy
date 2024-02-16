@@ -330,7 +330,7 @@ client.on("messageCreate", async (message) => {
             return message.reply({ content: `Errored ref timestamp: ${Date.now()}, **Error msg**: ${codeBlock(error)}`})
         }
         
-        await message.reply(evaluatedCode.length > 2999 ? { files: [new AttachmentBuilder(Buffer.from(evaluatedCode)).setName("result.js")]} : { content: codeBlock("sh",evaluatedCode)}).catch((e) => message.reply("Error occurred while telling the result.") && console.log(e))
+        await message.reply(evaluatedCode.length > 1999 ? { files: [new AttachmentBuilder(Buffer.from(evaluatedCode)).setName("result.js")]} : { content: codeBlock("sh",evaluatedCode)}).catch((e) => message.reply("Error occurred while telling the result.") && console.log(e))
 
     }
 })

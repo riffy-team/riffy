@@ -174,7 +174,7 @@ class Riffy extends EventEmitter {
                 } else if (response.loadType === "playlist") {
                     this.tracks = response.data?.tracks ? response.data.tracks.map((track) => new Track(track, requester, node)) : [];
                 } else {
-                    this.tracks = response.data ? response.data.map((track) => new Track(track, requester, node)) : [];
+                    this.tracks = response.loadType === "search" && response.data ? response.data.map((track) => new Track(track, requester, node)) : [];
                 }
             } else {
                 this.tracks = response.data?.tracks ? response.tracks.map((track) => new Track(track, requester, node)) : [];
@@ -182,7 +182,7 @@ class Riffy extends EventEmitter {
 
             if (
                 node.rest.version === "v4" &&
-                this.loadType === "PLAYLIST_LOADED"
+                this.loadType === "playlist"
             ) {
                 this.playlistInfo = response.data?.info ?? null;
             } else {
