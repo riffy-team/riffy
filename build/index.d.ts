@@ -154,6 +154,12 @@ export declare class Player extends EventEmitter {
 
 export type SearchPlatform = "ytsearch" | "ytmsearch" | "scsearch" | "spsearch" | "amsearch" | "dzsearch" | "ymsearch" | string;
 export type Version = "v3" | "v4";
+
+export type LavalinkTrackLoadException = {
+  message: string | null,
+  severity: "common" | "suspicious" | "fault",
+  cause: string
+}
 export type nodeResponse = {
     /**
      * Array of Loaded Tracks
@@ -174,6 +180,8 @@ export type nodeResponse = {
      * Plugin Info
      */
     pluginInfo?: any;
+    
+    exception: LavalinkTrackLoadException 
 }
 
 export type RiffyOptions = {
@@ -295,6 +303,12 @@ export type LavalinkNode = {
      * @default false 
      */
     secure?: Boolean;
+    
+    /**
+     * Voice Regions for the Node
+     */
+    regions?: string[];
+
 } & Partial<NodeOptions>
 
 export type NodeOptions = {
@@ -348,7 +362,7 @@ export declare class Node {
 
     public resumeKey: NodeOptions["resumeKey"];
     public sessionId: NodeOptions["sessionId"];
-    public region: String | null;
+    public regions: string[] | null;
     public resumeTimeout: NodeOptions["resumeTimeout"];
     public autoResume: NodeOptions["autoResume"];
     public reconnectTimeout: NodeOptions["reconnectTimeout"];

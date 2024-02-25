@@ -39,7 +39,7 @@ class Riffy extends EventEmitter {
     get leastUsedNodes() {
         return [...this.nodeMap.values()]
             .filter((node) => node.connected)
-            .sort((a, b) => b.rest.calls - a.rest.calls);
+            .sort((a, b) => a.rest.calls - b.rest.calls);
     }
 
     init(clientId) {
@@ -192,7 +192,12 @@ class Riffy extends EventEmitter {
             this.loadType = response.loadType ?? null
             this.pluginInfo = response.pluginInfo ?? null;
 
-            return this;
+            return {
+              loadType: this.loadType,
+              playlistInfo: this.playlistInfo,
+              pluginInfo: this.pluginInfo,
+              exception: this.loadType == "error" ? response.data : this.loadType == "LOAD_FAILED" ? response.exception : null
+            };
         } catch (error) {
             throw new Error(error);
         }
