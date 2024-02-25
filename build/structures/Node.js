@@ -2,8 +2,12 @@ const Websocket = require("ws");
 const { Rest } = require("./Rest");
 
 class Node {
+   /**
+    * @param {import("./Riffy").Riffy} riffy 
+    * @param {} node 
+    */
     constructor(riffy, node, options) {
-        this.riffy = riffy;
+        this.riffy = riffy
         this.name = node.name || node.host;
         this.host = node.host || "localhost";
         this.port = node.port || 2333;
@@ -21,8 +25,7 @@ class Node {
 
         this.restUrl = `http${this.secure ? "s" : ""}://${this.host}:${this.port}`;
         this.ws = null;
-        this.send = options.send;
-        this.region = null;
+        this.regions = node.regions;
         this.stats = {
             players: 0,
             playingPlayers: 0,
@@ -228,15 +231,7 @@ class Node {
 
         this.riffy.nodeMap.delete(this.name);
         this.connected = false;
-    }
-
-    send(payload) {
-        const data = JSON.stringify(payload);
-        this.ws.send(data, (error) => {
-            if (error) return error;
-            return null;
-        });
-    }
+    } 
 
     disconnect() {
         if (!this.connected) return;
