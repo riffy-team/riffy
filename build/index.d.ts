@@ -181,7 +181,7 @@ export type nodeResponse = {
      */
     pluginInfo?: any;
     
-    exception: LavalinkTrackLoadException 
+    exception: LavalinkTrackLoadException | null 
 }
 
 export type RiffyOptions = {
