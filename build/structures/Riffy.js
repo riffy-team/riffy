@@ -147,44 +147,50 @@ class Riffy extends EventEmitter {
   }
 
   /**
+   * @param {Object} param0 
+   * @param {string} param0.query used for searching as a search Query  
+   * @param {*} param0.source  A source to search the query on example:ytmsearch for youtube music
+   * @param {*} param0.requester the requester who's requesting 
+   * @param {string | Node} param0.node  the node to request the query on either use node identifier/name or the node class itself
    * @returns -- returned properties values are nullable if lavlink doesn't  give them
    * */
-  async resolve({ query, source, requester }) {
+  async resolve({ query, source, requester, node }) {
     try {
       if (!this.initiated) throw new Error("You have to initialize Riffy in your ready event");
+      if(typeof node !== "string" || !(node instanceof Node)) throw new Error(`'node' property must either be an node identifier/name('string') or an Node/Node Class, But Received: ${typeof node}`)
 
       const sources = source || this.defaultSearchPlatform;
 
-      const node = this.leastUsedNodes[0];
-      if (!node) throw new Error("No nodes are available.");
+      const requestNode = (node && typeof node === 'string' ? this.nodeMap.get(node) : node) || this.leastUsedNodes[0];
+      if (!requestNode) throw new Error("No nodes are available.");
 
       const regex = /^https?:\/\//;
       const identifier = regex.test(query) ? query : `${sources}:${query}`;
 
-      let response = await node.rest.makeRequest(`GET`, `/${node.rest.version}/loadtracks?identifier=${encodeURIComponent(identifier)}`);
+      let response = await requestNode.rest.makeRequest(`GET`, `/${requestNode.rest.version}/loadtracks?identifier=${encodeURIComponent(identifier)}`);
 
       // for resolving identifiers - Only works in Spotify and Youtube
       if (response.loadType === "empty" || response.loadType === "NO_MATCHES") {
-        response = await node.rest.makeRequest(`GET`, `/${node.rest.version}/loadtracks?identifier=https://open.spotify.com/track/${query}`);
+        response = await requestNode.rest.makeRequest(`GET`, `/${requestNode.rest.version}/loadtracks?identifier=https://open.spotify.com/track/${query}`);
         if (response.loadType === "empty" || response.loadType === "NO_MATCHES") {
-          response = await node.rest.makeRequest(`GET`, `/${node.rest.version}/loadtracks?identifier=https://www.youtube.com/watch?v=${query}`);
+          response = await requestNode.rest.makeRequest(`GET`, `/${requestNode.rest.version}/loadtracks?identifier=https://www.youtube.com/watch?v=${query}`);
         }
       }
 
-      if (node.rest.version === "v4") {
+      if (requestNode.rest.version === "v4") {
         if (response.loadType === "track") {
-          this.tracks = response.data ? [new Track(response.data, requester, node)] : [];
+          this.tracks = response.data ? [new Track(response.data, requester, requestNode)] : [];
         } else if (response.loadType === "playlist") {
-          this.tracks = response.data?.tracks ? response.data.tracks.map((track) => new Track(track, requester, node)) : [];
+          this.tracks = response.data?.tracks ? response.data.tracks.map((track) => new Track(track, requester, requestNode)) : [];
         } else {
-          this.tracks = response.loadType === "search" && response.data ? response.data.map((track) => new Track(track, requester, node)) : [];
+          this.tracks = response.loadType === "search" && response.data ? response.data.map((track) => new Track(track, requester, requestNode)) : [];
         }
       } else {
-        this.tracks = response.data?.tracks ? response.tracks.map((track) => new Track(track, requester, node)) : [];
+        this.tracks = response.data?.tracks ? response.tracks.map((track) => new Track(track, requester, requestNode)) : [];
       }
 
       if (
-        node.rest.version === "v4" &&
+        requestNode.rest.version === "v4" &&
         this.loadType === "playlist"
       ) {
         this.playlistInfo = response.data?.info ?? null;

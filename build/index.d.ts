@@ -253,6 +253,7 @@ export declare class Riffy extends EventEmitter {
         query: String;
         source?: String;
         requester: any;
+        node: string | Node
     }): Promise<nodeResponse>;
 
 
