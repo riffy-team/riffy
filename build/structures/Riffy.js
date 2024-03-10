@@ -157,7 +157,8 @@ class Riffy extends EventEmitter {
   async resolve({ query, source, requester, node }) {
     try {
       if (!this.initiated) throw new Error("You have to initialize Riffy in your ready event");
-      if(typeof node !== "string" || !(node instanceof Node)) throw new Error(`'node' property must either be an node identifier/name('string') or an Node/Node Class, But Received: ${typeof node}`)
+      
+      if(node && (typeof node !== "string" && !(node instanceof Node))) throw new Error(`'node' property must either be an node identifier/name('string') or an Node/Node Class, But Received: ${typeof node}`)
 
       const sources = source || this.defaultSearchPlatform;
 
@@ -188,10 +189,10 @@ class Riffy extends EventEmitter {
       } else {
         this.tracks = response.data?.tracks ? response.tracks.map((track) => new Track(track, requester, requestNode)) : [];
       }
-
+      
       if (
         requestNode.rest.version === "v4" &&
-        this.loadType === "playlist"
+        response.loadType === "playlist"
       ) {
         this.playlistInfo = response.data?.info ?? null;
       } else {

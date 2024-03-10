@@ -203,13 +203,7 @@ type k = String;
 type v = any;
 
 export declare class Riffy extends EventEmitter {
-    constructor(client: any, nodes: {
-        name?: String;
-        host: String;
-        port: Number;
-        password: String;
-        secure: Boolean;
-    }, options: RiffyOptions);
+    constructor(client: any, nodes: LavalinkNode[], options: RiffyOptions);
     public client: any;
     public nodes: Array<LavalinkNode>;
     public nodeMap: Map<k, Node>;

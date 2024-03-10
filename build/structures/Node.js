@@ -84,7 +84,6 @@ class Node {
     open() {
         if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
 
-        this.riffy.emit("nodeConnect", this);
         this.connected = true;
         this.riffy.emit('debug', this.name, `Connection with Lavalink established on ${this.wsUrl}`);
 
@@ -165,6 +164,8 @@ class Node {
                 this.rest.setSessionId(payload.sessionId);
                 this.sessionId = payload.sessionId;
             }
+            
+            this.riffy.emit("nodeConnect", this);
 
             this.riffy.emit("debug", this.name, `Ready Payload received ${JSON.stringify(payload)}`);
 
