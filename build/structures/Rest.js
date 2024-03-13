@@ -100,7 +100,7 @@ class Rest {
       );
     }
 
-    return this.makeRequest(
+    return await this.makeRequest(
       "PATCH",
       `/${this.version}/sessions/${this.sessionId}/players/${options.guildId}?noReplace=false`,
       options.data
@@ -108,14 +108,14 @@ class Rest {
   }
 
   async destroyPlayer(guildId) {
-    return this.makeRequest(
+    return await this.makeRequest(
       "DELETE",
       `/${this.version}/sessions/${this.sessionId}/players/${guildId}`
     );
   }
 
   async getTracks(identifier) {
-    return this.makeRequest(
+    return await this.makeRequest(
       "GET",
       `/${this.version}/loadtracks?identifier=${encodeURIComponent(identifier)}`
     );
@@ -123,7 +123,7 @@ class Rest {
 
   async decodeTrack(track, node) {
     if (!node) node = this.leastUsedNodes[0];
-    return this.makeRequest(
+    return await this.makeRequest(
       `GET`,
       `/${this.version}/decodetrack?encodedTrack=${encodeURIComponent(track)}`
     );
@@ -138,11 +138,11 @@ class Rest {
   }
 
   async getStats() {
-    return this.makeRequest("GET", `/${this.version}/stats`);
+    return await this.makeRequest("GET", `/${this.version}/stats`);
   }
 
   async getInfo() {
-    return this.makeRequest("GET", `/${this.version}/info`);
+    return await this.makeRequest("GET", `/${this.version}/info`);
   }
 
   async getRoutePlannerStatus() {
@@ -152,7 +152,7 @@ class Rest {
     );
   }
   async getRoutePlannerAddress(address) {
-    return this.makeRequest(
+    return await this.makeRequest(
       `POST`,
       `/${this.version}/routeplanner/free/address`,
       { address }
