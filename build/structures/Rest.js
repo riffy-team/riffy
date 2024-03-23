@@ -18,7 +18,7 @@ class Rest {
     this.sessionId = sessionId;
   }
 
-  async makeRequest(method, endpoint, body = null) {
+  async makeRequest(method, endpoint, body = null, includeHeaders = false) {
     const headers = {
       "Content-Type": "application/json",
       Authorization: this.password,
@@ -40,10 +40,10 @@ class Rest {
     // Emit apiResponse event with important data and Response
     this.riffy.emit("apiResponse", endpoint, response);
 
-  const headersJson = {};
-  for (const [name, value] of response.headers) {
-    headersJson[name] = value;
-  }
+    const headersJson = {};
+    for (const [name, value] of response.headers) {
+      headersJson[name] = value;
+    }
 
     this.riffy.emit(
       "debug",
@@ -59,7 +59,7 @@ class Rest {
       )} \n Headers: ${JSON.stringify(headersJson, null, 2)}`
     );
 
-    return data;
+    return Object.assign(data, includeHeaders ? { headers: response.headers } : {});
   }
 
   async getPlayers() {

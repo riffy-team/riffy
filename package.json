@@ -8,7 +8,7 @@
     "build"
   ],
   "dependencies": {
-    "undici": "^6.6.2",
+    "undici": "^6.9.0",
     "ws": "^8.16.0"
   },
   "license": "MIT",
