@@ -20,9 +20,12 @@ class Connection {
         const { endpoint, token } = data;
         if (!endpoint) throw new Error("Session not found");
 
+        this.player.riffy.emit("debug", `[Player ${this.player.guildId} - CONNECTION] Received voice server, Updating LavaLink Voice Data.`)
+
         this.voice.endpoint = endpoint;
         this.voice.token = token;
         this.region = endpoint.split(".").shift()?.replace(/[0-9]/g, "") || null;
+        this.player.connected = true;
 
         if (this.player.paused) {
             this.player.riffy.emit(
@@ -38,6 +41,8 @@ class Connection {
 
     setStateUpdate(data) {
         const { session_id, channel_id, self_deaf, self_mute } = data;
+
+        this.player.riffy.emit("debug", `[Player ${this.player.guildId} - CONNECTION] Received Voice State Update Informing the player ${channel_id !== null ? `Connected to ${this.voiceChannel}` : `Disconnected from ${this.voiceChannel}`}`)
 
         // If player is manually disconnected from VC
         if(channel_id == null) {
