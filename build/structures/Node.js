@@ -22,7 +22,7 @@ class Node {
         this.restUrl = `http${this.secure ? "s" : ""}://${this.host}:${this.port}`;
         this.ws = null;
         this.send = options.send;
-        this.region = null;
+        this.region = node.region || null;
         this.stats = {
             players: 0,
             playingPlayers: 0,

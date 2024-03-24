@@ -17,6 +17,7 @@ class Riffy extends EventEmitter {
         this.client = client;
         this.nodes = nodes;
         this.nodeMap = new Collection();
+        this.nodeByRegion = null;
         this.players = new Collection();
         this.options = options;
         this.clientId = null;
@@ -84,16 +85,8 @@ class Riffy extends EventEmitter {
 
     fetchRegion(region) {
         const nodesByRegion = [...this.nodeMap.values()]
-            .filter((node) => node.connected && node.regions?.includes(region?.toLowerCase()))
-            .sort((a, b) => {
-                const aLoad = a.stats.cpu
-                    ? (a.stats.cpu.systemLoad / a.stats.cpu.cores) * 100
-                    : 0;
-                const bLoad = b.stats.cpu
-                    ? (b.stats.cpu.systemLoad / b.stats.cpu.cores) * 100
-                    : 0;
-                return aLoad - bLoad;
-            });
+            .filter((node) => node.connected && node.regions == region?.toLowerCase())
+            .sort((a, b) => b.rest.calls - a.rest.calls);
 
         return nodesByRegion;
     }
@@ -108,8 +101,10 @@ class Riffy extends EventEmitter {
 
         let node;
         if (options.region) {
-            const region = this.fetchRegion(options.region)[0];
-            node = this.nodeMap.get(region.name || this.leastUsedNodes[0].name);
+            let node = this.fetchRegion(options.region)[0];
+            if (!node) throw new Error("No nodes are available in the specified region.");
+
+            this.nodeByRegion = node;
         } else {
             node = this.nodeMap.get(this.leastUsedNodes[0].name);
         }
@@ -149,7 +144,7 @@ class Riffy extends EventEmitter {
 
             const sources = source || this.defaultSearchPlatform;
 
-            const node = this.leastUsedNodes[0];
+            const node = this.nodeByRegion || this.leastUsedNodes[0];
             if (!node) throw new Error("No nodes are available.");
 
             const regex = /^https?:\/\//;
