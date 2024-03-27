@@ -1,26 +1,60 @@
-const { EventEmitter } = require("events");
-const { Connection } = require("./Connection");
-const { Filters } = require("./Filters");
-const { Queue } = require("./Queue");
-const { scAutoPlay, spAutoPlay } = require('../functions/autoPlay');
+import { Node, Riffy, Connection, Filters, Queue, Track } from "..";
+import { EventEmitter } from "events"
+import { Soundcloud, Spotify } from '../functions/autoplay';
 
-class Player extends EventEmitter {
-    constructor(riffy, node, options) {
+type Loop = "none" | "track" | "queue";
+
+export interface PlayerOptions {
+    guildId: string;
+    textChannel: string;
+    voiceChannel: string;
+    mute?: boolean;
+    deaf?: boolean;
+    volume?: number;
+    loop?: Loop;
+}
+
+export class Player extends EventEmitter {
+    public riffy: Riffy;
+    public node: Node;
+    public connection: Connection;
+    public filters: Filters;
+    public queue: Queue;
+    public options: any;
+    public guildId: string;
+    public textChannel: string;
+    public voiceChannel: string | null;
+    public mute: boolean;
+    public deaf: boolean;
+    public volume: number;
+    public loop: Loop;
+    public data: any;
+    public position: number;
+    public current: Track | any;
+    public previous: Track | any;
+    public playing: boolean;
+    public paused: boolean;
+    public connected: boolean;
+    public timestamp: number;
+    public ping: number;
+    public isAutoplay: boolean;
+
+    constructor(riffy: Riffy, node: Node, options: PlayerOptions) {
         super();
         this.riffy = riffy;
         this.node = node;
+        this.connection = new Connection(this);
+        this.filters = new Filters(this);
+        this.queue = new Queue();
         this.options = options;
         this.guildId = options.guildId;
         this.textChannel = options.textChannel;
         this.voiceChannel = options.voiceChannel;
-        this.connection = new Connection(this);
-        this.filters = new Filters(this);
-        this.mute = options.mute ?? false;
-        this.deaf = options.deaf ?? false;
-        this.volume = options.volume ?? 100;
-        this.loop = options.loop ?? "none";
+        this.mute = options.mute || false;
+        this.deaf = options.deaf || false;
+        this.volume = options.volume || 100;
+        this.loop = options.loop || "none";
         this.data = {};
-        this.queue = new Queue();
         this.position = 0;
         this.current = null;
         this.previous = null;
@@ -45,14 +79,14 @@ class Player extends EventEmitter {
         });
     }
 
-    async play() {
+    public async play() {
         if (!this.connected) throw new Error("Player connection is not initiated. Kindly user Riffy.createConnection() and establish a connection");
         if (!this.queue.length) return;
 
         this.current = this.queue.shift();
 
-        if (!this.current.track) {
-            this.current = await this.current.resolve(this.riffy);
+        if (!this.current?.track) {
+            this.current = await this.current?.resolve(this.riffy);
         }
 
         this.playing = true;
@@ -63,21 +97,14 @@ class Player extends EventEmitter {
         this.node.rest.updatePlayer({
             guildId: this.guildId,
             data: {
-                track: {
-                    encoded: track,
-                },
+                encodedTrack: track,
             },
         });
 
         return this;
     }
 
-    /**
-     * 
-     * @param {this} player 
-     * @returns 
-     */
-    async autoplay(player) {
+    public async autoplay(player: Player) {
         if (!player) {
             if (player == null) {
                 this.isAutoplay = false;
@@ -90,7 +117,6 @@ class Player extends EventEmitter {
 
         this.isAutoplay = true;
 
-        // If ran on queueEnd event
         if (player.previous) {
             if (player.previous.info.sourceName === "youtube") {
                 try {
@@ -113,8 +139,10 @@ class Player extends EventEmitter {
                 }
             } else if (player.previous.info.sourceName === "soundcloud") {
                 try {
-                    scAutoPlay(player.previous.info.uri).then(async (data) => {
-                        let response = await this.riffy.resolve({ query: data, source: "scsearch", requester: player.previous.info.requester });
+                    Soundcloud(player.previous.info.uri).then(async (data) => {
+                        if (data.status !== 200) return this.stop();
+
+                        const response = await this.riffy.resolve({ query: data.songs, source: "scsearch", requester: player.previous.info.requester });
 
                         if (this.node.rest.version === "v4") {
                             if (!response || !response.tracks || ["error", "empty"].includes(response.loadType)) return this.stop();
@@ -122,20 +150,21 @@ class Player extends EventEmitter {
                             if (!response || !response.tracks || ["LOAD_FAILED", "NO_MATCHES"].includes(response.loadType)) return this.stop();
                         }
 
-                        let track = response.tracks[Math.floor(Math.random() * Math.floor(response.tracks.length))];
+                        const track = response.tracks[Math.floor(Math.random() * Math.floor(response.tracks.length))];
 
                         this.queue.push(track);
                         this.play();
                         return this;
                     })
                 } catch (e) {
-                    console.log(e);
                     return this.stop();
                 }
             } else if (player.previous.info.sourceName === "spotify") {
                 try {
-                    spAutoPlay(player.previous.info.identifier).then(async (data) => {
-                        const response = await this.riffy.resolve({ query: `https://open.spotify.com/track/${data}`, requester: player.previous.info.requester });
+                    Spotify(player.previous.info.identifier).then(async (data) => {
+                        if (data.status !== 200) return this.stop();
+
+                        const response = await this.riffy.resolve({ query: `https://open.spotify.com/track/${data.songs}`, requester: player.previous.info.requester });
 
                         if (this.node.rest.version === "v4") {
                             if (!response || !response.tracks || ["error", "empty"].includes(response.loadType)) return this.stop();
@@ -143,20 +172,25 @@ class Player extends EventEmitter {
                             if (!response || !response.tracks || ["LOAD_FAILED", "NO_MATCHES"].includes(response.loadType)) return this.stop();
                         }
 
-                        let track = response.tracks[Math.floor(Math.random() * Math.floor(response.tracks.length))];
+                        const track = response.tracks[Math.floor(Math.random() * Math.floor(response.tracks.length))];
                         this.queue.push(track);
                         this.play();
                         return this;
                     })
                 } catch (e) {
-                    console.log(e);
                     return this.stop();
                 }
             }
         } else return this;
     }
 
-    connect(options = this) {
+    public connect(options: {
+        guildId: string,
+        voiceChannel: string,
+        textChannel?: string
+        deaf?: boolean,
+        mute?: boolean
+    }) {
         const { guildId, voiceChannel, deaf = true, mute = false } = options;
         this.send({
             guild_id: guildId,
@@ -169,18 +203,18 @@ class Player extends EventEmitter {
         this.riffy.emit("debug", this.guildId, "Player has been connected");
     }
 
-    stop() {
+    public stop() {
         this.position = 0;
         this.playing = false;
         this.node.rest.updatePlayer({
             guildId: this.guildId,
-            data: { track: { encoded: null } },
+            data: { encodedTrack: null },
         });
 
         return this;
     }
 
-    pause(toggle = true) {
+    public pause(toggle = true) {
         this.node.rest.updatePlayer({
             guildId: this.guildId,
             data: { paused: toggle },
@@ -192,14 +226,14 @@ class Player extends EventEmitter {
         return this;
     }
 
-    seek(position) {
+    public seek(position: number) {
         const trackLength = this.current.info.length;
         this.position = Math.max(0, Math.min(trackLength, position));
 
         this.node.rest.updatePlayer({ guildId: this.guildId, data: { position } });
     }
 
-    setVolume(volume) {
+    public setVolume(volume: number) {
         if (volume < 0 || volume > 1000) {
             throw new Error("[Volume] Volume must be between 0 to 1000");
         }
@@ -209,7 +243,7 @@ class Player extends EventEmitter {
         return this;
     }
 
-    setLoop(mode) {
+    public setLoop(mode: Loop) {
         if (!mode) {
             throw new Error("You must provide the loop mode as an argument for setLoop");
         }
@@ -222,13 +256,13 @@ class Player extends EventEmitter {
         return this;
     }
 
-    setTextChannel(channel) {
+    public setTextChannel(channel: string) {
         if (typeof channel !== "string") throw new TypeError("Channel must be a non-empty string.");
         this.textChannel = channel;
         return this;
     }
 
-    setVoiceChannel(channel, options) {
+    public setVoiceChannel(channel: string, options: { mute?: boolean, deaf?: boolean } = {}) {
         if (typeof channel !== "string") throw new TypeError("Channel must be a non-empty string.");
 
         if (this.connected && channel === this.voiceChannel) {
@@ -247,13 +281,13 @@ class Player extends EventEmitter {
             guildId: this.guildId,
             voiceChannel: this.voiceChannel,
             textChannel: this.textChannel,
-            mute: this.mute,
+            mute: this.mute
         });
 
         return this;
     }
 
-    disconnect() {
+    public disconnect() {
         if (!this.voiceChannel) {
             return;
         }
@@ -270,18 +304,29 @@ class Player extends EventEmitter {
         return this;
     }
 
-    destroy() {
+    public async restart() {
+        if (!this.current.track && !this.queue.length) return;
+        if (!this.current.track) return await this.play();
+
+        await this.node.rest.updatePlayer({
+            guildId: this.guildId,
+            data: {
+                position: this.position,
+                track: this.current,
+            },
+        });
+
+        return this;
+    };
+
+    public destroy() {
         this.disconnect();
-
         this.node.rest.destroyPlayer(this.guildId);
-
         this.riffy.emit("playerDisconnect", this);
-        this.riffy.emit("debug", this.guildId, "Destroyed the player");
-
         this.riffy.players.delete(this.guildId);
     }
 
-    async handleEvent(payload) {
+    public async handleEvent(payload: any) {
         const player = this.riffy.players.get(payload.guildId);
         if (!player) return;
 
@@ -321,13 +366,26 @@ class Player extends EventEmitter {
         }
     }
 
-    trackStart(player, track, payload) {
+    public trackStart(player: Player, track: Track, payload: {
+        encodedTrack?: string;
+        track?: string;
+        guildId?: string;
+        op?: string;
+        type?: string;
+    }) {
         this.playing = true;
         this.paused = false;
         this.riffy.emit("trackStart", player, track, payload);
     }
 
-    trackEnd(player, track, payload) {
+    public trackEnd(player: Player, track: Track, payload: {
+        encodedTrack?: string;
+        track?: string;
+        reason?: string;
+        guildId?: string;
+        op?: string;
+        type?: string;
+    }) {
         this.previous = track;
         if (this.loop === "track") {
             player.queue.unshift(this.previous);
@@ -355,17 +413,33 @@ class Player extends EventEmitter {
         this.riffy.emit("queueEnd", player);
     }
 
-    trackError(player, track, payload) {
+    public trackError(player: Player, track: Track, payload: {
+        track?: string;
+        exception?: {
+            message?: string;
+            severity?: string;
+            cause?: string;
+        }
+    }) {
         this.riffy.emit("trackError", player, track, payload);
         this.stop();
     }
 
-    trackStuck(player, track, payload) {
+    public trackStuck(player: Player, track: Track, payload: {
+        track?: string;
+        thresholdMs?: number;
+    }) {
         this.riffy.emit("trackStuck", player, track, payload);
         this.stop();
     }
 
-    socketClosed(player, payload) {
+    public socketClosed(player: Player, payload: {
+        guildId?: string;
+        code: number;
+        reason?: string;
+        byRemote?: boolean;
+        op?: string;
+    }) {
         if ([4015, 4009].includes(payload.code)) {
             this.send({
                 guild_id: payload.guildId,
@@ -380,17 +454,15 @@ class Player extends EventEmitter {
         this.riffy.emit("debug", this.guildId, "Player paused, channel deleted, Or Client was kicked");
     }
 
-    set(key, value) {
+    public set(key: string, value: any) {
         return this.data[key] = value;
     }
 
-    get(key) {
+    public get(key: string) {
         return this.data[key];
     }
 
-    send(data) {
+    public send(data: any) {
         this.riffy.send({ op: 4, d: data });
     }
 }
-
-module.exports = { Player };

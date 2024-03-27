@@ -1,8 +1,86 @@
-const Websocket = require("ws");
-const { Rest } = require("./Rest");
+import Websocket, { WebSocket } from "ws";
+import { Rest, Riffy, Player } from "../index";
 
-class Node {
-    constructor(riffy, node, options) {
+export interface LavalinkNode {
+    name?: string;
+    host: string;
+    port: number;
+    password: string;
+    secure: boolean;
+    sessionId?: string;
+}
+
+export interface NodeOptions {
+    restVersion: "v3" | "v4";
+    send: (payload: {
+        op: number;
+        d: {
+            guild_id: string;
+            channel_id: string;
+            self_deaf: boolean;
+            self_mute: boolean;
+        }
+    }) => void;
+    resumeKey?: string;
+    sessionId?: string;
+    resumeTimeout?: number;
+    autoResume?: boolean;
+    reconnectTimeout?: number;
+    reconnectTries?: number;
+}
+
+export interface NodeStats {
+    players: number;
+    playingPlayers: number;
+    memory: {
+        reservable: number;
+        used: number;
+        free: number;
+        allocated: number;
+    };
+    frameStats: {
+        sent: number;
+        deficit: number;
+        nulled: number;
+    };
+    cpu: {
+        cores: number;
+        systemLoad: number;
+        lavalinkLoad: number;
+    };
+    uptime: number;
+};
+
+export class Node {
+    public riffy: Riffy;
+    public name: string | null;
+    public host: string | null;
+    public port: number | null;
+    public password: string | null;
+    public restVersion: string | null;
+    public secure: boolean | null;
+    public sessionId: string | null;
+    public rest: Rest;
+
+    public readonly restURL: string | null;
+    public readonly socketURL: string | null;
+
+    public ws: WebSocket | any;
+    public regions: string | null;
+    public stats: NodeStats | any;
+    public connected: boolean | null;
+
+    public resumeKey: string | null;
+    public resumeTimeout: number;
+    public autoResume: boolean;
+
+    public reconnectTimeout: number;
+    public reconnectTries: number;
+    public reconnectAttempt: any;
+    public reconnectAttempted: number;
+    forEach: any;
+
+    constructor(riffy: Riffy, node: LavalinkNode, options: NodeOptions) {
         this.riffy = riffy;
         this.name = node.name || node.host;
         this.host = node.host || "localhost";
@@ -14,15 +92,15 @@ class Node {
         this.rest = new Rest(riffy, this);
 
         if (options.restVersion === "v4") {
-            this.wsUrl = `ws${this.secure ? "s" : ""}://${this.host}:${this.port}/v4/websocket`;
+            this.socketURL = `ws${this.secure ? "s" : ""}://${this.host}:${this.port}/v4/websocket`;
         } else {
-            this.wsUrl = `ws${this.secure ? "s" : ""}://${this.host}:${this.port}`;
+            this.socketURL = `ws${this.secure ? "s" : ""}://${this.host}:${this.port}`;
         }
 
-        this.restUrl = `http${this.secure ? "s" : ""}://${this.host}:${this.port}`;
+        this.restURL = `http${this.secure ? "s" : ""}://${this.host}:${this.port}`;
         this.ws = null;
         this.send = options.send;
-        this.region = node.region || null;
+        this.regions = null;
         this.stats = {
             players: 0,
             playingPlayers: 0,
@@ -44,6 +122,7 @@ class Node {
                 deficit: 0,
             },
         };
+
         this.connected = false;
 
         this.resumeKey = options.resumeKey || null;
@@ -51,17 +130,39 @@ class Node {
         this.autoResume = options.autoResume || false;
 
         this.reconnectTimeout = options.reconnectTimeout || 5000
-        this.reconnectTries = options.reconnectTries || 3;
+        this.reconnectTries = options.reconnectTries || 5;
         this.reconnectAttempt = null;
         this.reconnectAttempted = 1;
     }
 
-    connect() {
+    get penalties(): number {
+        let penalties = 0;
+        if (!this.connected) return penalties;
+        if (this.stats.players) {
+            penalties += this.stats.players;
+        }
+        if (this.stats.cpu && this.stats.cpu.systemLoad) {
+            penalties += Math.round(Math.pow(1.05, 100 * this.stats.cpu.systemLoad) * 10 - 10);
+        }
+        if (this.stats.frameStats) {
+            if (this.stats.frameStats.deficit) {
+                penalties += this.stats.frameStats.deficit;
+            }
+            if (this.stats.frameStats.nulled) {
+                penalties += this.stats.frameStats.nulled * 2;
+            }
+        }
+
+        return penalties;
+    }
+
+    public connect() {
         if (this.ws) this.ws.close();
-        const headers = {
-            "Authorization": this.password,
+
+        const headers: any = {
+            Authorization: this.password,
             "User-Id": this.riffy.clientId,
-            "Client-Name": "Riffy",
+            "Client-Name": "Riffy"
         };
 
         if (this.restVersion === "v4") {
@@ -70,63 +171,20 @@ class Node {
             if (this.resumeKey) headers["Resume-Key"] = this.resumeKey;
         }
 
-        this.ws = new Websocket(this.wsUrl, { headers });
+        this.ws = new Websocket(`${this.socketURL}`, { headers });
+
         this.ws.on("open", this.open.bind(this));
         this.ws.on("error", this.error.bind(this));
         this.ws.on("message", this.message.bind(this));
         this.ws.on("close", this.close.bind(this));
     }
 
-    open() {
+    public open() {
         if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
 
         this.riffy.emit("nodeConnect", this);
         this.connected = true;
-        this.riffy.emit('debug', this.name, `Connection with Lavalink established on ${this.wsUrl}`);
-
-        /** @todo Add Version Checking of Node */
-
-        // this.riffy.emit('debug', this.name, `Checking Node Version`)
-        
-        // (async () => {
-        //     const requestOpts = (version = this.restVersion) => { 
-        //         return {
-        //           method: "GET",
-        //           endpoint: `/${version}/stats`,
-        //         };
-        //     }
-            
-        //     await Promise.all([this.rest.makeRequest(requestOpts), this.rest.makeRequest(requestOpts(this.restVersion == "v3" ? "v4" : "v3"))]).then((restVersionRequest, flippedRestRequest) => {
-
-        //         if(restVersionRequest == null) this.riffy.emit(
-        //           "debug",
-        //           `[Node (${this.name}) - Version Check] ${
-        //             this.restVersion
-        //           } set By User/Defaulted Version Check Failed, attempted ${
-        //             this.restVersion == "v3" ? "v4" : "v3"
-        //           } For version Checking`
-        //         );
-
-        //         if(flippedRestRequest == null && restVersionRequest == null) {
-        //             this.riffy.emit("debug", `[Node (${this.name}) - Version Check] Both Version Checks failed, Disconnecting Gracefully & Throwing Error`)
-
-        //             // Disconnect Websocket & Destroy the players(if any created - Just incase)
-        //             this.destroy()
-                    
-        //             throw new Error(`${this.name}(${this.host}) is using unsupported Lavalink Version, Supported Lavalink Versions are v3 and v4.`)
-        //         }
-
-        //         if(restVersionRequest !== null || flippedRestRequest !== null) {
-        //             this.riffy.emit(
-        //               "debug",
-        //               `[Node (${this.name}) - Version Check] Check ${restVersionRequest == null ? "Un" : ""}successful Lavalink Server uses ${(restVersionRequest || flippedRestRequest).version.string} ${restVersionRequest == null && this.restVersion !== `v${restVersionRequest.version.major}` ? `Doesn't match with restVersion: ${this.restVersion}, Provided in Riffy Options` : ""}`
-        //             );
-                    
-        //         }
-
-        //     })
-
-        // })()
+        this.riffy.emit('debug', this.name, `Connection with Lavalink established on ${this.socketURL}`);
 
         if (this.autoResume) {
             for (const player of this.riffy.players.values()) {
@@ -137,19 +195,20 @@ class Node {
         }
     }
 
-    error(event) {
+    public error(event: any) {
         if (!event) return;
         this.riffy.emit("nodeError", this, event);
     }
 
-    message(msg) {
+    public message(msg: Buffer) {
         if (Array.isArray(msg)) msg = Buffer.concat(msg);
         else if (msg instanceof ArrayBuffer) msg = Buffer.from(msg);
 
         const payload = JSON.parse(msg.toString());
+
         if (!payload.op) return;
 
-        this.riffy.emit("raw", "Node", payload);
+        this.riffy.emit("riffyRaw", payload);
         this.riffy.emit("debug", this.name, `Lavalink Node Update : ${JSON.stringify(payload)}`);
 
         if (payload.op === "stats") {
@@ -181,7 +240,7 @@ class Node {
         if (payload.guildId && player) player.emit(payload.op, payload);
     }
 
-    close(event, reason) {
+    public close(event: any, reason: string) {
         this.riffy.emit("nodeDisconnect", this, { event, reason });
         this.riffy.emit("debug", `Connection with Lavalink closed with Error code : ${event || "Unknown code"}`);
 
@@ -189,7 +248,7 @@ class Node {
         this.reconnect();
     }
 
-    reconnect() {
+    public reconnect() {
         this.reconnectAttempt = setTimeout(() => {
             if (this.reconnectAttempted >= this.reconnectTries) {
                 const error = new Error(`Unable to connect with ${this.name} node after ${this.reconnectTries} attempts.`);
@@ -206,11 +265,11 @@ class Node {
         }, this.reconnectTimeout);
     }
 
-    destroy() {
+    public destroy() {
         if (!this.connected) return;
 
-        const player = this.riffy.players.filter((player) => player.node === this);
-        if (player.size) player.forEach((player) => player.destroy());
+        const player = this.riffy.players.filter((player: Player) => player.node === this);
+        if (player.size) player.forEach((player: Player) => player.destroy());
 
         if (this.ws) this.ws.close(1000, "destroy");
         this.ws.removeAllListeners();
@@ -226,44 +285,26 @@ class Node {
         this.connected = false;
     }
 
-    send(payload) {
+    public send(payload: any) {
         const data = JSON.stringify(payload);
-        this.ws.send(data, (error) => {
+        this.ws.send(data, (error: any) => {
             if (error) return error;
             return null;
         });
     }
 
-    disconnect() {
+    public disconnect() {
         if (!this.connected) return;
-        this.riffy.players.forEach((player) => { if (player.node == this) { player.move() } });
+        this.riffy.players.forEach((player: Player) => {
+            if (player.node == this) {
+                player.destroy(); // destroy player
+            }
+        });
         this.ws.close(1000, "destroy");
         this.ws?.removeAllListeners();
         this.ws = null;
-        this.riffy.nodes.delete(this.name);
+        this.riffy.players.delete(this.name);
         this.riffy.emit("nodeDisconnect", this);
         this.connected = false;
     }
-
-    get penalties() {
-        let penalties = 0;
-        if (!this.connected) return penalties;
-        if (this.stats.players) {
-            penalties += this.stats.players;
-        }
-        if (this.stats.cpu && this.stats.cpu.systemLoad) {
-            penalties += Math.round(Math.pow(1.05, 100 * this.stats.cpu.systemLoad) * 10 - 10);
-        }
-        if (this.stats.frameStats) {
-            if (this.stats.frameStats.deficit) {
-                penalties += this.stats.frameStats.deficit;
-            }
-            if (this.stats.frameStats.nulled) {
-                penalties += this.stats.frameStats.nulled * 2;
-            }
-        }
-        return penalties;
-    }
 }
-
-module.exports = { Node };

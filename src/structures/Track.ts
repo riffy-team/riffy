@@ -1,8 +1,45 @@
-const { getImageUrl } = require("../functions/fetchImage");
-const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+import { Node, Riffy } from "..";
+import { getImageUrl } from "../functions/fetchImage"
 
-class Track {
-    constructor(data, requester, node) {
+const escapeRegExp = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+export interface TrackData {
+    encoded: string;
+    info: {
+        identifier: string;
+        isSeekable: boolean;
+        author: string;
+        length: number;
+        isStream: boolean;
+        position: number;
+        title: string;
+        uri: string;
+        requester: string;
+        sourceName: string;
+        isrc?: string;
+        thumbnail?: string;
+    }
+}
+
+export class Track {
+    [x: string]: any;
+    track: string;
+    info: {
+        identifier: string;
+        seekable: boolean;
+        author: string;
+        length: number;
+        stream: boolean;
+        position: number;
+        title: string;
+        uri: string;
+        requester: string | null,
+        sourceName: string;
+        isrc?: string | any;
+        thumbnail?: string | any;
+    }
+
+    constructor(data: TrackData, requester?: string) {
         this.track = data.encoded
         this.info = {
             identifier: data.info.identifier,
@@ -13,26 +50,14 @@ class Track {
             position: data.info.position,
             title: data.info.title,
             uri: data.info.uri,
-            requester,
+            requester: requester ? requester : null,
             sourceName: data.info.sourceName,
+            thumbnail: data.info.thumbnail ? data.info.thumbnail : getImageUrl(data.info),
+            isrc: data.info.isrc ? data.info.isrc : null
         };
-
-        if (node.rest.version === "v4") {
-            this.info.isrc = data.info.isrc
-
-            if (data.info.thumbnail) {
-                this.info.thumbnail = data.info.thumbnail
-            } else if (data.info.artworkUrl) {
-                this.info.thumbnail = data.info.artworkUrl
-            } else {
-                this.info.thumbnail = getImageUrl(this.info)
-            }
-        } else {
-            this.info.thumbnail = getImageUrl(this.info)
-        }
     }
 
-    async resolve(riffy) {
+    async resolve(riffy: Riffy) {
         const query = [this.info.author, this.info.title].filter((x) => !!x).join(" - ");
         const result = await riffy.resolve({ query, source: riffy.options.defaultSearchPlatform, requester: this.info.requester });
 
@@ -40,7 +65,7 @@ class Track {
             return;
         }
 
-        const officialAudio = result.tracks.find((track) => {
+        const officialAudio = result.tracks.find((track: this) => {
             const author = [this.info.author, `${this.info.author} - Topic`];
             return author.some((name) => new RegExp(`^${escapeRegExp(name)}$`, "i").test(track.info.author)) ||
                 new RegExp(`^${escapeRegExp(this.info.title)}$`, "i").test(track.info.title);
@@ -53,7 +78,7 @@ class Track {
         }
 
         if (this.info.length) {
-            const sameDuration = result.tracks.find((track) => track.info.length >= (this.info.length ? this.info.length : 0) - 2000 &&
+            const sameDuration = result.tracks.find((track: this) => track.info.length >= (this.info.length ? this.info.length : 0) - 2000 &&
                 track.info.length <= (this.info.length ? this.info.length : 0) + 2000);
 
             if (sameDuration) {
@@ -62,7 +87,7 @@ class Track {
                 return this;
             }
 
-            const sameDurationAndTitle = result.tracks.find((track) => track.info.title === this.info.title && track.info.length >= (this.info.length ? this.info.length : 0) - 2000 && track.info.length <= (this.info.length ? this.info.length : 0) + 2000);
+            const sameDurationAndTitle = result.tracks.find((track: this) => track.info.title === this.info.title && track.info.length >= (this.info.length ? this.info.length : 0) - 2000 && track.info.length <= (this.info.length ? this.info.length : 0) + 2000);
 
             if (sameDurationAndTitle) {
                 this.info.identifier = sameDurationAndTitle.info.identifier;
@@ -76,5 +101,3 @@ class Track {
         return this;
     }
 }
-
-module.exports = { Track };

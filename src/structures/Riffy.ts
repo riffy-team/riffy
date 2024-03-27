@@ -1,14 +1,33 @@
-const { EventEmitter } = require("events");
-const { Node } = require("./Node");
-const { Plugin } = require("./Plugins");
-const { Player } = require("./Player");
-const { Track } = require("./Track");
-const { Collection } = require("@discordjs/collection");
+import { EventEmitter } from "events"
+import { Track, Player, Node, Plugin } from ".."
 
 const versions = ["v3", "v4"];
 
-class Riffy extends EventEmitter {
-    constructor(client, nodes, options) {
+export interface RiffyOptions {
+    send: Function;
+    defaultSearchPlatform?: string;
+    restVersion?: string;
+    plugins?: any[];
+}
+
+export class Riffy extends EventEmitter {
+    public client: any;
+    public nodes: Node;
+    public nodeMap: Map<string, Node> | any;
+    public players: Map<string, Player> | any;
+    public options: RiffyOptions | any;
+    public clientId: string | null;
+    public initiated: boolean;
+    public send: Function;
+    public defaultSearchPlatform: string;
+    public restVersion: string;
+    public tracks: Track | any;
+    public loadType: string | any;
+    public playlistInfo: any;
+    public pluginInfo: any;
+    public plugins: Plugin | any;
+
+    constructor(client: any, nodes: Node, options: RiffyOptions | any) {
         super();
         if (!client) throw new Error("Client is required to initialize Riffy");
         if (!nodes) throw new Error("Nodes are required to initialize Riffy");
@@ -16,16 +35,15 @@ class Riffy extends EventEmitter {
 
         this.client = client;
         this.nodes = nodes;
-        this.nodeMap = new Collection();
-        this.nodeByRegion = null;
-        this.players = new Collection();
+        this.nodeMap = new Map();
+        this.players = new Map();
         this.options = options;
         this.clientId = null;
         this.initiated = false;
         this.send = options.send || null;
         this.defaultSearchPlatform = options.defaultSearchPlatform || "ytmsearch";
         this.restVersion = options.restVersion || "v3";
-        this.tracks = [];
+        this.tracks = [] as Track[] | any;
         this.loadType = null;
         this.playlistInfo = null;
         this.pluginInfo = null;
@@ -34,26 +52,28 @@ class Riffy extends EventEmitter {
         if (this.restVersion && !versions.includes(this.restVersion)) throw new RangeError(`${this.restVersion} is not a valid version`);
     }
 
-    get leastUsedNodes() {
+    get leastUsedNodes(): Node[] {
         return [...this.nodeMap.values()]
             .filter((node) => node.connected)
             .sort((a, b) => b.rest.calls - a.rest.calls);
     }
 
-    init(clientId) {
+    public init(clientId: string) {
         if (this.initiated) return this;
         this.clientId = clientId;
-        this.nodes.forEach((node) => this.createNode(node));
+        this.nodes.forEach((node: Node) => {
+            this.createNode(node)
+        });
         this.initiated = true;
 
         if (this.plugins) {
-            this.plugins.forEach((plugin) => {
+            this.plugins.forEach((plugin: Plugin) => {
                 plugin.load(this);
             });
         }
     }
 
-    createNode(options) {
+    public createNode(options: any) {
         const node = new Node(this, options, this.options);
         this.nodeMap.set(options.name || options.host, node);
         node.connect();
@@ -62,7 +82,7 @@ class Riffy extends EventEmitter {
         return node;
     }
 
-    destroyNode(identifier) {
+    public destroyNode(identifier: string) {
         const node = this.nodeMap.get(identifier);
         if (!node) return;
         node.disconnect();
@@ -70,7 +90,7 @@ class Riffy extends EventEmitter {
         this.emit("nodeDestroy", node);
     }
 
-    updateVoiceState(packet) {
+    public updateVoiceState(packet: any) {
         if (!["VOICE_STATE_UPDATE", "VOICE_SERVER_UPDATE"].includes(packet.t)) return;
         const player = this.players.get(packet.d.guild_id);
         if (!player) return;
@@ -83,15 +103,23 @@ class Riffy extends EventEmitter {
         }
     }
 
-    fetchRegion(region) {
+    public fetchRegion(region: string) {
         const nodesByRegion = [...this.nodeMap.values()]
-            .filter((node) => node.connected && node.regions == region?.toLowerCase())
-            .sort((a, b) => b.rest.calls - a.rest.calls);
+            .filter((node) => node.connected && node.region?.includes(region?.toLowerCase()))
+            .sort((a, b) => {
+                const aLoad = a.stats.cpu
+                    ? (a.stats.cpu.systemLoad / a.stats.cpu.cores) * 100
+                    : 0;
+                const bLoad = b.stats.cpu
+                    ? (b.stats.cpu.systemLoad / b.stats.cpu.cores) * 100
+                    : 0;
+                return aLoad - bLoad;
+            });
 
         return nodesByRegion;
     }
 
-    createConnection(options) {
+    public createConnection(options: any) {
         if (!this.initiated) throw new Error("You have to initialize Riffy in your ready event");
 
         const player = this.players.get(options.guildId);
@@ -101,10 +129,8 @@ class Riffy extends EventEmitter {
 
         let node;
         if (options.region) {
-            let node = this.fetchRegion(options.region)[0];
-            if (!node) throw new Error("No nodes are available in the specified region.");
-
-            this.nodeByRegion = node;
+            const region = this.fetchRegion(options.region)[0];
+            node = this.nodeMap.get(region.name || this.leastUsedNodes[0].name);
         } else {
             node = this.nodeMap.get(this.leastUsedNodes[0].name);
         }
@@ -114,7 +140,7 @@ class Riffy extends EventEmitter {
         return this.createPlayer(node, options);
     }
 
-    createPlayer(node, options) {
+    public createPlayer(node: Node, options: any) {
         const player = new Player(this, node, options);
         this.players.set(options.guildId, player);
 
@@ -124,7 +150,7 @@ class Riffy extends EventEmitter {
         return player;
     }
 
-    destroyPlayer(guildId) {
+    public destroyPlayer(guildId: string) {
         const player = this.players.get(guildId);
         if (!player) return;
         player.destroy();
@@ -133,18 +159,18 @@ class Riffy extends EventEmitter {
         this.emit("playerDestroy", player);
     }
 
-    removeConnection(guildId) {
+    public removeConnection(guildId: string) {
         this.players.get(guildId)?.destroy();
         this.players.delete(guildId);
     }
 
-    async resolve({ query, source, requester }) {
+    public async resolve({ query, source, requester }: any) {
         try {
             if (!this.initiated) throw new Error("You have to initialize Riffy in your ready event");
 
             const sources = source || this.defaultSearchPlatform;
 
-            const node = this.nodeByRegion || this.leastUsedNodes[0];
+            const node = this.leastUsedNodes[0]
             if (!node) throw new Error("No nodes are available.");
 
             const regex = /^https?:\/\//;
@@ -152,7 +178,6 @@ class Riffy extends EventEmitter {
 
             let response = await node.rest.makeRequest(`GET`, `/${node.rest.version}/loadtracks?identifier=${encodeURIComponent(identifier)}`);
 
-            // for resolving identifiers - Only works in Spotify and Youtube
             if (response.loadType === "empty" || response.loadType === "NO_MATCHES") {
                 response = await node.rest.makeRequest(`GET`, `/${node.rest.version}/loadtracks?identifier=https://open.spotify.com/track/${query}`);
                 if (response.loadType === "empty" || response.loadType === "NO_MATCHES") {
@@ -162,39 +187,34 @@ class Riffy extends EventEmitter {
 
             if (node.rest.version === "v4") {
                 if (response.loadType === "track") {
-                    this.tracks = response.data ? [new Track(response.data, requester, node)] : [];
+                    this.tracks = [new Track(response.data, requester)];
                 } else if (response.loadType === "playlist") {
-                    this.tracks = response.data?.tracks ? response.data.tracks.map((track) => new Track(track, requester, node)) : [];
+                    this.tracks = response.data.tracks.map((track: Track | any) => new Track(track, requester));
                 } else {
-                    this.tracks = response.data ? response.data.map((track) => new Track(track, requester, node)) : [];
+                    this.tracks = response.data.map((track: Track | any) => new Track(track, requester));
                 }
             } else {
-                this.tracks = response.data?.tracks ? response.tracks.map((track) => new Track(track, requester, node)) : [];
+                this.tracks = response.tracks.map((track: Track | any) => new Track(track, requester));
             }
 
-            if (
-              node.rest.version === "v4" &&
-              this.loadType === "PLAYLIST_LOADED"
-            ) {
-              this.playlistInfo = response.data?.info ?? null;
+            if (node.rest.version === "v4") {
+                this.playlistInfo = response.data.info
             } else {
-              this.playlistInfo = response.playlistInfo ?? null;
+                this.playlistInfo = response.playlistInfo
             }
 
-            this.loadType = response.loadType ?? null
-            this.pluginInfo = response.pluginInfo ?? null;
+            this.loadType = response.loadType
+            this.pluginInfo = response.pluginInfo;
 
             return this;
-        } catch (error) {
+        } catch (error: any) {
             throw new Error(error);
         }
     }
 
-    get(guildId) {
+    public get(guildId: string) {
         const player = this.players.get(guildId);
         if (!player) throw new Error(`Player not found for ${guildId} guildId`);
         return player;
     }
-}
-
-module.exports = { Riffy };
+}   

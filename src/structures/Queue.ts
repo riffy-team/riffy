@@ -1,4 +1,6 @@
-class Queue extends Array {
+import { Track } from "..";
+
+export class Queue extends Array {
     get size() {
         return this.length;
     }
@@ -7,12 +9,12 @@ class Queue extends Array {
         return this.length ? this[0] : null;
     }
 
-    add(track) {
+    add(track: Track) {
         this.push(track);
         return this;
     }
 
-    remove(index) {
+    remove(index: number) {
         if (index >= 0 && index < this.length) {
             return this.splice(index, 1)[0];
         } else {
@@ -31,5 +33,3 @@ class Queue extends Array {
         }
     }
 }
-
-module.exports = { Queue };
