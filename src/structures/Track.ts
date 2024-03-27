@@ -14,6 +14,7 @@ export interface TrackData {
         position: number;
         title: string;
         uri: string;
+        artworkUrl: string;
         requester: string;
         sourceName: string;
         isrc?: string;
@@ -36,6 +37,7 @@ export class Track {
         requester: string | null,
         sourceName: string;
         isrc?: string | any;
+        _cachedThumbnail: Awaited<string | null>;
         thumbnail?: string | any;
     }
 
@@ -52,9 +54,20 @@ export class Track {
             uri: data.info.uri,
             requester: requester ? requester : null,
             sourceName: data.info.sourceName,
-            thumbnail: data.info.thumbnail ? data.info.thumbnail : getImageUrl(data.info),
-            isrc: data.info.isrc ? data.info.isrc : null
-        };
+            _cachedThumbnail: data.info.thumbnail ?? null,
+            get thumbnail() {
+                if (data.info.thumbnail) return data.info.thumbnail;
+
+                    if (data.info.artworkUrl) {
+                      this._cachedThumbnail = data.info.artworkUrl;
+                      return data.info.artworkUrl
+                   } else {
+                    return !this._cachedThumbnail
+                    ? (this._cachedThumbnail = getImageUrl(this) as unknown as string | null)
+                    : this._cachedThumbnail ?? null;
+                   }
+                }
+        }
     }
 
     async resolve(riffy: Riffy) {
@@ -65,7 +78,7 @@ export class Track {
             return;
         }
 
-        const officialAudio = result.tracks.find((track: this) => {
+        const officialAudio = result.tracks.find((track) => {
             const author = [this.info.author, `${this.info.author} - Topic`];
             return author.some((name) => new RegExp(`^${escapeRegExp(name)}$`, "i").test(track.info.author)) ||
                 new RegExp(`^${escapeRegExp(this.info.title)}$`, "i").test(track.info.title);
@@ -78,7 +91,7 @@ export class Track {
         }
 
         if (this.info.length) {
-            const sameDuration = result.tracks.find((track: this) => track.info.length >= (this.info.length ? this.info.length : 0) - 2000 &&
+            const sameDuration = result.tracks.find((track) => track.info.length >= (this.info.length ? this.info.length : 0) - 2000 &&
                 track.info.length <= (this.info.length ? this.info.length : 0) + 2000);
 
             if (sameDuration) {
@@ -87,7 +100,7 @@ export class Track {
                 return this;
             }
 
-            const sameDurationAndTitle = result.tracks.find((track: this) => track.info.title === this.info.title && track.info.length >= (this.info.length ? this.info.length : 0) - 2000 && track.info.length <= (this.info.length ? this.info.length : 0) + 2000);
+            const sameDurationAndTitle = result.tracks.find((track) => track.info.title === this.info.title && track.info.length >= (this.info.length ? this.info.length : 0) - 2000 && track.info.length <= (this.info.length ? this.info.length : 0) + 2000);
 
             if (sameDurationAndTitle) {
                 this.info.identifier = sameDurationAndTitle.info.identifier;

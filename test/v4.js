@@ -2,6 +2,9 @@ const { Client, GatewayDispatchEvents, AttachmentBuilder } = require("discord.js
 const { Riffy } = require("../dist/index");
 const { inspect } = require(`util`);
 
+/**
+ * @type {Client<boolean> & { riffy: Riffy }}
+ */
 const client = new Client({
   intents: [
     "Guilds",
@@ -16,8 +19,8 @@ const client = new Client({
 const nodes = [
   {
     host: "localhost",
-    password: "unburn.tech",
-    port: 7860,
+    password: "youshallnotpass",
+    port: 2333,
     secure: false,
   },
 ];
@@ -126,7 +129,6 @@ client.on("messageCreate", async (message) => {
   if (command === "queue") {
     const player = client.riffy.players.get(message.guild.id);
     if (!player) return message.channel.send("No player found.");
-
     const queue = player.queue;
     if (!queue.length) return message.channel.send("No songs in queue.");
 
@@ -349,7 +351,7 @@ client.riffy.on("nodeConnect", (node) => {
 });
 
 client.riffy.on("nodeError", (node, error) => {
-  console.log(`Node "${node.name}" encountered an error: ${error}`);
+  console.log(`Node "${node.name}" encountered an error: ${error.stack}`);
 });
 
 client.riffy.on("nodeReconnect", (node) => {
@@ -382,9 +384,11 @@ process.on("uncaughtException", (err, origin) =>
 );
 process.on("unhandledRejection", (err, _) =>
   console.log(
-    `[unhandled ERRORS Reporting - Rejection] >> ${err}, Promise: ignored/not included`
+    `[unhandled ERRORS Reporting - Rejection] >> ${err.stack}, Promise: ignored/not included`
   )
 );
+
+client.riffy.on("raw", console.log)
 
 client.on("raw", (d) => {
   if (
