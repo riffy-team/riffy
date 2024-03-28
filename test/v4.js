@@ -5,6 +5,7 @@ const { inspect } = require(`util`);
 /**
  * @type {Client<boolean> & { riffy: Riffy }}
  */
+
 const client = new Client({
   intents: [
     "Guilds",
@@ -60,6 +61,7 @@ client.on("messageCreate", async (message) => {
       requester: message.author,
       node: player.node
     });
+
     const { loadType, tracks, playlistInfo } = resolve;
 
     if (loadType === "playlist") {
@@ -267,8 +269,6 @@ client.on("messageCreate", async (message) => {
     } else {
       message.channel.send("Please provide a valid filter option.");
     }
-
-    // console.log(player.filters);
   }
 
   if (command === "dfilter") {
@@ -318,8 +318,6 @@ client.on("messageCreate", async (message) => {
     } else {
       message.channel.send("Please provide a valid filter option.");
     }
-
-    // console.log(player.filters);
   }
 
   if (command === "eval" && args[0]) {
@@ -344,10 +342,8 @@ client.on("messageCreate", async (message) => {
   }
 });
 
-client.riffy.on("nodeConnect", (node) => {
-  console.log(
-    `Node "${node.name}" connected, with sessionId ${node.sessionId}`
-  );
+client.riffy.on("nodeConnect", async (node) => {
+  console.log(`Node "${node.name}" connected, with sessionId ${node.sessionId}`);
 });
 
 client.riffy.on("nodeError", (node, error) => {
@@ -378,17 +374,11 @@ client.riffy.on("queueEnd", async (player) => {
 });
 
 process.on("uncaughtException", (err, origin) =>
-  console.log(
-    `[UNCAUGHT ERRORS Reporting - Exception] >> origin: ${origin} | Error: ${err.stack ?? err}`
-  )
+  console.log(`[UNCAUGHT ERRORS Reporting - Exception] >> origin: ${origin} | Error: ${err.stack ?? err}`)
 );
 process.on("unhandledRejection", (err, _) =>
-  console.log(
-    `[unhandled ERRORS Reporting - Rejection] >> ${err.stack}, Promise: ignored/not included`
-  )
+  console.log(`[unhandled ERRORS Reporting - Rejection] >> ${err.stack}, Promise: ignored/not included`)
 );
-
-client.riffy.on("raw", console.log)
 
 client.on("raw", (d) => {
   if (
@@ -401,4 +391,4 @@ client.on("raw", (d) => {
   client.riffy.updateVoiceState(d);
 });
 
-client.login("Your Discord Bot Token");
+client.login("");

@@ -1,24 +1,16 @@
-import { Node, Riffy, Track } from ".."
-
-export interface RestOptions {
-    host: string;
-    port: number;
-    secure: boolean;
-    sessionId: string;
-    password: string;
-    restVersion: string;
-}
+import { Node, Riffy, Track } from "..";
+import { RestOptions } from "./Riffy";
 
 export class Rest {
     public riffy: Riffy;
     public url: string;
-    public sessionId: string;
+    public sessionId?: string;
     public password: string;
-    public version: string;
+    public version?: string;
     public calls: number;
-    public leastUsedNodes: Node[] | any = [];
+    public leastUsedNodes: Node[] = [];
 
-    constructor(riffy: Riffy, options: RestOptions | any) {
+    constructor(riffy: Riffy, options: RestOptions) {
         this.riffy = riffy;
         this.url = `http${options.secure ? "s" : ""}://${options.host}:${options.port}`;
         this.sessionId = options.sessionId;
@@ -43,18 +35,18 @@ export class Rest {
             body: body ? JSON.stringify(body) : null,
         };
 
-        const response = await fetch(this.url + endpoint, requestOptions);
-
-        this.calls++
-
-        if (response.status === 204) {
-            return null;
-        }
-
         try {
+            const response = await fetch(this.url + endpoint, requestOptions);
+            this.calls++;
+
+            if (response.status === 204) {
+                return null;
+            }
+
             const data = await response.json();
             return data;
-        } catch (e) {
+        } catch (error) {
+            console.error("Error making request:", error);
             return null;
         }
     }
@@ -63,13 +55,10 @@ export class Rest {
         return this.makeRequest("GET", `/${this.version}/sessions/${this.sessionId}/players`);
     }
 
-    async updatePlayer(options: {
-        guildId: string;
-        data: object | any;
-    }) {
-        return this.makeRequest("PATCH", `/${this.version}/sessions/${this.sessionId}/players/${options.guildId}?noReplace=false`, options.data).then((res) => {
-            this.riffy.emit("res", options.guildId, res);
-        })
+    async updatePlayer(options: { guildId: string; data: object | any }) {
+        const res = await this.makeRequest("PATCH", `/${this.version}/sessions/${this.sessionId}/players/${options.guildId}?noReplace=false`, options.data);
+        this.riffy.emit("res", options.guildId, res);
+        return res;
     }
 
     async destroyPlayer(guildId: string) {
@@ -77,9 +66,7 @@ export class Rest {
     }
 
     async getTracks(identifier: string) {
-        return this.makeRequest("GET", `/${this.version}/loadtracks?identifier=${encodeURIComponent(identifier)}`).then((res) => {
-            this.riffy.emit("res", identifier, res);
-        })
+        return this.makeRequest("GET", `/${this.version}/loadtracks?identifier=${encodeURIComponent(identifier)}`);
     }
 
     async decodeTrack(track: any, node: Node) {
@@ -102,16 +89,17 @@ export class Rest {
     async getRoutePlannerStatus() {
         return await this.makeRequest(`GET`, `/${this.version}/routeplanner/status`);
     }
+
     async getRoutePlannerAddress(address: string | any) {
         return this.makeRequest(`POST`, `/${this.version}/routeplanner/free/address`, { address });
     }
 
     async parseResponse(req: Request) {
         try {
-            this.riffy.emit("riffyRaw", "Rest", await req.json());
+            this.riffy.emit("raw", "Rest", await req.json());
             return await req.json();
-        }
-        catch (e) {
+        } catch (error) {
+            console.error("Error parsing response:", error);
             return null;
         }
     }

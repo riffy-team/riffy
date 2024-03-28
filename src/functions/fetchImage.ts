@@ -2,7 +2,7 @@ async function getImageUrl(info: {
     sourceName: string;
     uri: string;
     identifier: string;
-}) {
+} | any): Promise<string | null> {
     if (info.sourceName === "spotify") {
         try {
             const match = info.uri.match(/track\/([a-zA-Z0-9]+)/);

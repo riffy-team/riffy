@@ -20,7 +20,7 @@ export class Player extends EventEmitter {
     public connection: Connection;
     public filters: Filters;
     public queue: Queue;
-    public options: any;
+    public options: PlayerOptions;
     public guildId: string;
     public textChannel: string;
     public voiceChannel: string | null;
@@ -30,8 +30,8 @@ export class Player extends EventEmitter {
     public loop: Loop;
     public data: any;
     public position: number;
-    public current: Track | any;
-    public previous: Track | any;
+    public current: Track | null;
+    public previous: Track | null;
     public playing: boolean;
     public paused: boolean;
     public connected: boolean;
@@ -65,7 +65,14 @@ export class Player extends EventEmitter {
         this.ping = 0;
         this.isAutoplay = false;
 
-        this.on("playerUpdate", (packet) => {
+        this.on("playerUpdate", (packet: {
+            state: {
+                connected: boolean;
+                position: number;
+                ping: number;
+                time: number;
+            };
+        }) => {
             (this.connected = packet.state.connected),
                 (this.position = packet.state.position),
                 (this.ping = packet.state.ping);
@@ -85,14 +92,18 @@ export class Player extends EventEmitter {
 
         this.current = this.queue.shift();
 
-        if (!this.current?.track) {
-            this.current = await this.current?.resolve(this.riffy);
+        if (this.current === null || this.current?.track === undefined) {
+            const resolvedTrack = await this.current?.resolve(this.riffy);
+            if (resolvedTrack !== undefined) {
+                this.current = resolvedTrack;
+            }
         }
+
 
         this.playing = true;
         this.position = 0;
 
-        const { track } = this.current;
+        const { track } = this.current!;
 
         this.node.rest.updatePlayer({
             guildId: this.guildId,
@@ -142,7 +153,7 @@ export class Player extends EventEmitter {
                     Soundcloud(player.previous.info.uri).then(async (data) => {
                         if (data.status !== 200) return this.stop();
 
-                        const response = await this.riffy.resolve({ query: data.songs, source: "scsearch", requester: player.previous.info.requester });
+                        const response = await this.riffy.resolve({ query: data.songs, source: "scsearch", requester: player.previous?.info.requester });
 
                         if (this.node.rest.version === "v4") {
                             if (!response || !response.tracks || ["error", "empty"].includes(response.loadType)) return this.stop();
@@ -164,7 +175,7 @@ export class Player extends EventEmitter {
                     Spotify(player.previous.info.identifier).then(async (data) => {
                         if (data.status !== 200) return this.stop();
 
-                        const response = await this.riffy.resolve({ query: `https://open.spotify.com/track/${data.songs}`, requester: player.previous.info.requester });
+                        const response = await this.riffy.resolve({ query: `https://open.spotify.com/track/${data.songs}`, requester: player.previous?.info.requester });
 
                         if (this.node.rest.version === "v4") {
                             if (!response || !response.tracks || ["error", "empty"].includes(response.loadType)) return this.stop();
@@ -227,7 +238,7 @@ export class Player extends EventEmitter {
     }
 
     public seek(position: number) {
-        const trackLength = this.current.info.length;
+        const trackLength = this.current?.info.length ?? 0;
         this.position = Math.max(0, Math.min(trackLength, position));
 
         this.node.rest.updatePlayer({ guildId: this.guildId, data: { position } });
@@ -305,8 +316,8 @@ export class Player extends EventEmitter {
     }
 
     public async restart() {
-        if (!this.current.track && !this.queue.length) return;
-        if (!this.current.track) return await this.play();
+        if (!this.current?.track && !this.queue.length) return;
+        if (!this.current?.track) return await this.play();
 
         await this.node.rest.updatePlayer({
             guildId: this.guildId,
@@ -330,7 +341,7 @@ export class Player extends EventEmitter {
         const player = this.riffy.players.get(payload.guildId);
         if (!player) return;
 
-        const track = this.current;
+        const track = this.current!;
 
         switch (payload.type) {
             case "TrackStartEvent":

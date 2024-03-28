@@ -1,5 +1,10 @@
 const { Client, GatewayDispatchEvents } = require("discord.js");
 const { Riffy } = require("../dist/index");
+const { inspect } = require(`util`);
+
+/**
+ * @type {Client<boolean> & { riffy: Riffy }}
+ */
 
 const client = new Client({
     intents: [
@@ -14,11 +19,11 @@ const client = new Client({
 
 const nodes = [
     {
-        "host": "localhost",
-        "port": 7860,
-        "secure": false,
-        "password": "unburn.tech"
-    }
+        host: "localhost",
+        password: "youshallnotpass",
+        port: 2333,
+        secure: false,
+    },
 ];
 
 client.riffy = new Riffy(client, nodes, {
@@ -238,8 +243,6 @@ client.on("messageCreate", async (message) => {
         } else {
             message.channel.send("Please provide a valid filter option.");
         }
-
-        // console.log(player.filters);
     }
 
     if (command === "dfilter") {
@@ -265,14 +268,13 @@ client.on("messageCreate", async (message) => {
         };
 
         const action = filterActions[filter];
+
         if (action) {
             player.filters[action.method](false);
             message.channel.send(action.message);
         } else {
             message.channel.send("Please provide a valid filter option.");
         }
-
-        // console.log(player.filters);
     }
 
     if (command === "eval" && args[0]) {
@@ -284,7 +286,9 @@ client.on("messageCreate", async (message) => {
                 return message.reply("No token grabbing.");
 
             if (string.length > 2000) {
-                let output = new AttachmentBuilder(Buffer.from(string), { name: "result.js" });
+                let output = new AttachmentBuilder(Buffer.from(string), {
+                    name: "result.js",
+                });
                 return message.channel.send({ files: [output] });
             }
 
@@ -295,7 +299,7 @@ client.on("messageCreate", async (message) => {
     }
 })
 
-client.riffy.on("nodeConnect", node => {
+client.riffy.on("nodeConnect", (node) => {
     console.log(`Node "${node.name}" connected.`)
 })
 
@@ -340,4 +344,4 @@ client.riffy.on("raw", (...m) => {
 });
 
 
-client.login("Your Discord Bot Token");
+client.login("");

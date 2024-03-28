@@ -3,33 +3,94 @@ import { Track, Player, Node, Plugin } from ".."
 
 const versions = ["v3", "v4"] as const;
 
-type restVersion = "v3" | "v4";
+export type RestVersion = "v3" | "v4";
+export type SearchPlatform = "ytsearch" | "ytmsearch" | "scsearch" | "spsearch" | "amsearch" | "dzsearch" | "ymsearch";
 
-export interface RiffyOptions {
-    send: Function;
-    defaultSearchPlatform?: string;
-    restVersion?: restVersion;
+export interface NodeOptions {
+    restVersion?: RestVersion;
+    send: (payload: {
+        op: number;
+        d: {
+            guild_id: string;
+            channel_id: string;
+            self_deaf: boolean;
+            self_mute: boolean;
+        }
+    }) => void;
+    defaultSearchPlatform?: SearchPlatform;
+    resumeKey?: string;
+    sessionId?: string;
+    resumeTimeout?: number;
+    autoResume?: boolean;
+    reconnectTimeout?: number;
+    reconnectTries?: number;
     plugins?: Plugin[];
+}
+
+export interface RestOptions {
+    name?: string;
+    host: string;
+    port: number;
+    secure: boolean;
+    sessionId?: string;
+    password: string;
+    restVersion?: string;
+}
+
+export interface payloadOption {
+    encodedTrack?: string;
+    track?: string;
+    guildId?: string;
+    op?: string;
+    type?: string;
+}
+
+export interface RiffyEvents {
+    nodeConnect: (node: Node) => void;
+    nodeDisconnect: (node: Node, reason: string) => void;
+    nodeReconnect: (node: Node) => void;
+    nodeError: (node: Node, error: string) => void;
+    trackStart: (player: Player, track: Track, payload: payloadOption) => void;
+    trackEnd: (player: Player, track: Track, payload: payloadOption) => void;
+    trackError: (player: Player, track: Track, payload: payloadOption) => void;
+    trackStuck: (player: Player, track: Track, payload: payloadOption) => void;
+    socketClosed: (player: Player, payload: payloadOption) => void;
+    playerCreate: (player: Player) => void;
+    playerDisconnect: (player: Player) => void;
+    playerMove: (player: Player) => void;
+    playerUpdate: (player: Player, payload: {
+        state: {
+            connected: boolean;
+            position: number;
+            ping: number;
+            time: number;
+        };
+    }) => void;
+    queueEnd: (player: Player) => void
+}
+
+export declare interface Riffy {
+    on<K extends keyof RiffyEvents>(event: K, listener: RiffyEvents[K]): this;
 }
 
 export class Riffy extends EventEmitter {
     public client: any;
-    public nodes: Node;
+    public nodes: RestOptions;
     public nodeMap: Map<string, Node>;
     public players: Map<string, Player>;
-    public options: RiffyOptions | any;
+    public options: NodeOptions;
     public clientId: string | null;
     public initiated: boolean;
     public send: Function;
     public defaultSearchPlatform: string;
-    public restVersion: restVersion;
+    public restVersion: RestVersion;
     public tracks: Track[];
     public loadType: string | any;
     public playlistInfo: any;
     public pluginInfo: any;
     public plugins: Plugin[];
 
-    constructor(client: any, nodes: Node, options: RiffyOptions) {
+    constructor(client: any, nodes: RestOptions, options: NodeOptions) {
         super();
         if (!client) throw new Error("Client is required to initialize Riffy");
         if (!nodes) throw new Error("Nodes are required to initialize Riffy");
@@ -45,7 +106,7 @@ export class Riffy extends EventEmitter {
         this.send = options.send || null;
         this.defaultSearchPlatform = options.defaultSearchPlatform || "ytmsearch";
         this.restVersion = options.restVersion || "v3";
-        this.tracks = [] as Track[] | any;
+        this.tracks = [] as Track[];
         this.loadType = null;
         this.playlistInfo = null;
         this.pluginInfo = null;
@@ -63,9 +124,11 @@ export class Riffy extends EventEmitter {
     public init(clientId: string) {
         if (this.initiated) return this;
         this.clientId = clientId;
-        this.nodes.forEach((node: Node) => {
-            this.createNode(node)
+
+        (Object.values(this.nodes) as RestOptions[]).forEach((node: RestOptions) => {
+            this.createNode(node);
         });
+
         this.initiated = true;
 
         if (this.plugins) {
@@ -75,7 +138,7 @@ export class Riffy extends EventEmitter {
         }
     }
 
-    public createNode(options: any) {
+    public createNode(options: RestOptions) {
         const node = new Node(this, options, this.options);
         this.nodeMap.set(options.name || options.host, node);
         node.connect();
