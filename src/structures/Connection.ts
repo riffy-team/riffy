@@ -35,8 +35,8 @@ export class Connection {
     public sessionId: string | null;
     public region: string | null;
     public voice: VoiceData;
-    public selfMute: boolean;
-    public selfDeaf: boolean;
+    public self_mute: boolean;
+    public self_deaf: boolean;
 
     constructor(player: Player) {
         this.player = player;
@@ -47,8 +47,8 @@ export class Connection {
             endpoint: null
         };
         this.region = null;
-        this.selfDeaf = false;
-        this.selfMute = false;
+        this.self_deaf = false;
+        this.self_mute = false;
     }
 
     public setServerUpdate(data: { guild_id: string; endpoint: string; token: string }): void {
@@ -100,8 +100,8 @@ export class Connection {
             this.player.voiceChannel = channel_id;
         }
 
-        this.selfDeaf = self_deaf;
-        this.selfMute = self_mute;
+        this.self_deaf = self_deaf;
+        this.self_mute = self_mute;
         this.voice.sessionId = session_id || null;
     }
 
