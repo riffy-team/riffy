@@ -268,20 +268,29 @@ export class Node {
     public destroy() {
         if (!this.connected) return;
 
-        const player = this.riffy.players.filter((player: Player) => player.node === this);
-        if (player.size) player.forEach((player: Player) => player.destroy());
+        const players = Array.from(this.riffy.players.values()).filter((player: Player) => player.node === this);
+        if (players.length > 0) {
+            players.forEach((player: Player) => player.destroy());
+        }
 
-        if (this.ws) this.ws.close(1000, "destroy");
-        this.ws.removeAllListeners();
-        this.ws = null;
+        if (this.ws) {
+            this.ws.close(1000, "destroy");
+            this.ws.removeAllListeners();
+            this.ws = null;
+        }
 
         this.reconnectAttempted = 1;
         clearTimeout(this.reconnectAttempt);
 
         this.riffy.emit("nodeDestroy", this);
-        this.riffy.destroyPlayer(player.guildId)
 
-        this.riffy.nodeMap.delete(this.name);
+        players.forEach((player: Player) => {
+            this.riffy.destroyPlayer(player.guildId);
+        });
+
+        if (this.name !== null) {
+            this.riffy.nodeMap.delete(this.name);
+        }
         this.connected = false;
     }
 
@@ -303,7 +312,9 @@ export class Node {
         this.ws.close(1000, "destroy");
         this.ws?.removeAllListeners();
         this.ws = null;
-        this.riffy.players.delete(this.name);
+        if (this.name !== null) {
+            this.riffy.players.delete(this.name);
+        }
         this.riffy.emit("nodeDisconnect", this);
         this.connected = false;
     }
