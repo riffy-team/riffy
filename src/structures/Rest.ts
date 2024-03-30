@@ -12,7 +12,7 @@ export class Rest {
 
     constructor(riffy: Riffy, options: RestOptions) {
         this.riffy = riffy;
-        this.url = `http${options.secure ? "s" : ""}://${options.host}:${options.port}`;
+        this.url = `http${options.secure ? "s" : ""}://${options.host}${options.port ? `:${options.port}` : ""}`;
         this.sessionId = options.sessionId;
         this.password = options.password;
         this.version = options.restVersion;
