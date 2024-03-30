@@ -214,15 +214,13 @@ export class Player extends EventEmitter {
         this.riffy.emit("debug", this.guildId, "Player has been connected");
     }
 
-    public stop() {
+    public stop(): void {
         this.position = 0;
         this.playing = false;
         this.node.rest.updatePlayer({
             guildId: this.guildId,
             data: { encodedTrack: null },
         });
-
-        return this;
     }
 
     public pause(toggle = true) {
@@ -330,7 +328,7 @@ export class Player extends EventEmitter {
         return this;
     };
 
-    public destroy() {
+    public destroy(): void {
         this.disconnect();
         this.node.rest.destroyPlayer(this.guildId);
         this.riffy.emit("playerDisconnect", this);

@@ -251,7 +251,10 @@ export class Riffy extends EventEmitter {
             }
 
             if (node.rest.version === "v4") {
-                if (response.loadType === "track") {
+                if (response.loadType === "error") {
+                    this.emit("nodeError", node, new Error(response.data.message))
+                    return this;
+                } else if (response.loadType === "track") {
                     this.tracks = [new Track(response.data, requester)];
                 } else if (response.loadType === "playlist") {
                     this.tracks = response.data.tracks.map((track: Track | any) => new Track(track, requester));
