@@ -56,15 +56,15 @@ export class Node {
         this.riffy = riffy;
         this.name = node.name || node.host;
         this.host = node.host || "localhost";
-        this.port = node.port;
+        this.port = node.port || 2333;;
         this.password = node.password || "youshallnotpass";
         this.restVersion = options.restVersion || "v3";
         this.secure = node.secure || false;
         this.sessionId = node.sessionId;
         this.rest = new Rest(riffy, this);
 
-        this.socketURL = `${this.secure ? "wss" : "ws"}://${this.host}${this.port ? `:${this.port}` : ""}${this.restVersion === "v4" ? "/v4/websocket" : ""}`;
-        this.restURL = `${this.secure ? "https" : "http"}://${this.host}${this.port ? `:${this.port}` : ""}`;
+        this.socketURL = `${this.secure ? "wss" : "ws"}://${this.host}:${this.port}${this.restVersion === "v4" ? "/v4/websocket" : ""}`;
+        this.restURL = `${this.secure ? "https" : "http"}://${this.host}:${this.port}`;
 
         this.ws = null;
         this.regions = null;

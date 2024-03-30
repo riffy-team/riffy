@@ -1,3 +1,5 @@
+import undici from "undici"
+
 export interface Song {
     status: number;
     songs?: string;
@@ -7,7 +9,7 @@ export interface Song {
 // soundcloud.ts
 async function Soundcloud(url: string): Promise<Song> {
     try {
-        const res = await fetch(`${url}/recommended`);
+        const res = await undici.fetch(`${url}/recommended`);
 
         if (res.status !== 200) {
             return Response.json(`Failed to fetch URL. Status code: ${res.status}`)
@@ -32,20 +34,17 @@ async function Soundcloud(url: string): Promise<Song> {
         return { status: 200, songs: hrefs[0] }
 
     } catch (error) {
-        return Response.json({
-            status: 400,
-            error: "Something went wrong. Please check the URL and try again."
-        })
+        return { status: 400, error: "Something went wrong. Please check the URL and try again." }
     }
 }
 
 // spotify.ts
 async function Spotify(track_id: string): Promise<Song> {
     try {
-        const data = await fetch("https://open.spotify.com/get_access_token?reason=transport&productType=embed");
-        const body = await data.json();
+        const data = await undici.fetch("https://open.spotify.com/get_access_token?reason=transport&productType=embed");
+        const body: any = await data.json();
 
-        const res = await fetch(`https://api.spotify.com/v1/recommendations?limit=2&seed_tracks=${track_id}`, {
+        const res: any = await undici.fetch(`https://api.spotify.com/v1/recommendations?limit=2&seed_tracks=${track_id}`, {
             headers: {
                 Authorization: `Bearer ${body.accessToken}`,
                 'Content-Type': 'application/json'
@@ -56,10 +55,7 @@ async function Spotify(track_id: string): Promise<Song> {
 
         return { status: 200, songs: json.tracks[Math.floor(Math.random() * json.tracks.length)].id }
     } catch (error) {
-        return Response.json({
-            status: 400,
-            error: "Something went wrong. Please check the URL and try again."
-        })
+        return { status: 400, error: "Something went wrong. Please check the URL and try again." }
     }
 }
 

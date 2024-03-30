@@ -1,5 +1,6 @@
 import { Node, Riffy, Track } from "..";
 import { RestOptions } from "./Riffy";
+import undici from "undici";
 
 export class Rest {
     public riffy: Riffy;
@@ -12,7 +13,7 @@ export class Rest {
 
     constructor(riffy: Riffy, options: RestOptions) {
         this.riffy = riffy;
-        this.url = `http${options.secure ? "s" : ""}://${options.host}${options.port ? `:${options.port}` : ""}`;
+        this.url = `http${options.secure ? "s" : ""}://${options.host}:${options.port}`;
         this.sessionId = options.sessionId;
         this.password = options.password;
         this.version = options.restVersion;
@@ -36,7 +37,7 @@ export class Rest {
         };
 
         try {
-            const response = await fetch(this.url + endpoint, requestOptions);
+            const response = await undici.fetch(this.url + endpoint, requestOptions);
             this.calls++;
 
             if (response.status === 204) {
