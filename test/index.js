@@ -1,3 +1,11 @@
+const version = "v4";
+
+const load_type = {
+  track: version === "v3" ? "TRACK_LOADED" : "track",
+  search: version === "v3" ? "SEARCH_RESULT" : "search",
+  playlist: version === "v3" ? "PLAYLIST_LOADED" : "playlist"
+}
+
 const { Client, GatewayDispatchEvents, AttachmentBuilder } = require("discord.js");
 const { Riffy } = require("../dist/index");
 const { inspect } = require(`util`);
@@ -32,7 +40,7 @@ client.riffy = new Riffy(client, nodes, {
     if (guild) guild.shard.send(payload);
   },
   defaultSearchPlatform: "ytmsearch",
-  restVersion: "v4",
+  restVersion: version,
 });
 
 client.on("ready", () => {
@@ -64,7 +72,7 @@ client.on("messageCreate", async (message) => {
 
     const { loadType, tracks, playlistInfo } = resolve;
 
-    if (loadType === "playlist") {
+    if (loadType === load_type.playlist) {
       for (const track of resolve.tracks) {
         track.info.requester = message.author;
         player.queue.add(track);
@@ -72,9 +80,11 @@ client.on("messageCreate", async (message) => {
 
       message.channel.send(`Added: \`${tracks.length} tracks\` from \`${playlistInfo.name}\``);
       if (!player.playing && !player.paused) return player.play();
-    } else if (loadType === "search" || loadType === "track") {
+    } else if (loadType === load_type.search || loadType === load_type.track) {
       const track = tracks.shift();
       track.info.requester = message.author;
+
+      console.log(await track)
 
       player.queue.add(track);
       message.channel.send(`Added: \`${track.info.title}\``);
@@ -391,4 +401,4 @@ client.on("raw", (d) => {
   client.riffy.updateVoiceState(d);
 });
 
-client.login("");
+client.login("DISCORD_TOKEN");

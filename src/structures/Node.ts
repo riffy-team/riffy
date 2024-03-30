@@ -108,7 +108,7 @@ export class Node {
         const headers: any = {
             Authorization: this.password,
             "User-Id": this.riffy.clientId,
-            "Client-Name": "Riffy"
+            "Client-Name": `Riffy/${this.riffy.version}`
         };
 
         if (this.restVersion === "v4" && this.sessionId) {

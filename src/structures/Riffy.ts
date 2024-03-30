@@ -2,6 +2,7 @@ import { EventEmitter } from "events"
 import { Track, Player, Node, Plugin } from ".."
 
 const versions = ["v3", "v4"] as const;
+const { version: pkgVersion } = require("../../package.json")
 
 export type RestVersion = "v3" | "v4";
 export type SearchPlatform = "ytsearch" | "ytmsearch" | "scsearch" | "spsearch" | "amsearch" | "dzsearch" | "ymsearch";
@@ -89,6 +90,7 @@ export class Riffy extends EventEmitter {
     public playlistInfo: any;
     public pluginInfo: any;
     public plugins: Plugin[];
+    public version: string;
 
     constructor(client: any, nodes: RestOptions, options: NodeOptions) {
         super();
@@ -111,6 +113,7 @@ export class Riffy extends EventEmitter {
         this.playlistInfo = null;
         this.pluginInfo = null;
         this.plugins = options.plugins = [];
+        this.version = pkgVersion;
 
         if (this.restVersion && !versions.includes(this.restVersion)) throw new RangeError(`${this.restVersion} is not a valid version`);
     }
