@@ -8,6 +8,9 @@ dependencies:
   discord.js:
     specifier: ^14.14.1
     version: 14.14.1
+  undici:
+    specifier: '>=6.6.1'
+    version: 6.17.0
   ws:
     specifier: ^8.16.0
     version: 8.16.0
@@ -1280,6 +1283,11 @@ packages:
     engines: {node: '>=14.0'}
     dependencies:
       '@fastify/busboy': 2.1.1
+    dev: false
+
+  /undici@6.17.0:
+    resolution: {integrity: sha512-fs13QiDjPIzJ7gFAOal9CSG0c92rT2xw6MuMUJ4H30Eg5GCauLWYCCZA1tInjd6M4y+JZjVCCFr9pFpbhcC64w==}
+    engines: {node: '>=18.17'}
     dev: false
 
   /webidl-conversions@4.0.2:

@@ -1,5 +1,6 @@
 import { EventEmitter } from "events"
 import { Track, Player, Node, Plugin } from ".."
+import type { TrackData } from "./Track";
 
 const versions = ["v3", "v4"] as const;
 const { version: pkgVersion } = require("../../package.json")
@@ -253,36 +254,43 @@ export class Riffy extends EventEmitter {
                 }
             }
 
-            if (node.rest.version === "v4") {
-                if (response.loadType === "error") {
-                    this.emit("nodeError", node, new Error(response.data.message))
-                    return this;
-                } else if (response.loadType === "track") {
-                    this.tracks = [new Track(response.data, requester)];
-                } else if (response.loadType === "playlist") {
-                    this.tracks = response.data.tracks.map((track: Track | any) => new Track(track, requester));
-                } else {
-                    this.tracks = response.data.map((track: Track | any) => new Track(track, requester));
-                }
-            } else {
-                if (response.loadType === "error") {
-                    this.emit("nodeError", node, new Error(response.data.message))
-                    return this;
-                }
+            // To shorten the code, We're using Conditional (ternary) operator to switch loadTypes depending on the node's version(v3, v4) & optional chaining.
+            switch (response.loadType) {
+                case node.rest.version === "v4" ? "playlist" : "PLAYLIST_LOADED": {
 
-                this.tracks = response.tracks.map((track: Track | any) => new Track(track, requester));
-            }
+                    this.tracks = (response?.data?.tracks?.map((track: TrackData) => new Track(track, requester)))
+                    ?? (response?.tracks?.map((track: TrackData) => new Track(track, requester))) 
+                    ?? [];
+                    this.playlistInfo = response.data?.info ?? response?.playlistInfo ?? null;
 
-            if (node.rest.version === "v4" && response.loadType === "playlist") {
-                this.playlistInfo = response.data.info
-            } else {
-                this.playlistInfo = response.playlistInfo
+                } break;
+
+                case node.rest.version === "v4" ? "search" : "SEARCH_RESULT": {
+
+                    this.tracks = (response?.data?.map((track: TrackData) => new Track(track, requester))
+                    ?? response?.tracks?.map((track: TrackData) => new Track(track, requester)))
+                    ?? [];
+
+                } break;
+
+                case node.rest.version === "v4" ? "track" : "TRACK": {
+
+                    this.tracks = response?.data ? [new Track(response.data, requester)] : response?.tracks?.map((track: TrackData) => new Track(track, requester)) ?? [];
+                } break;
+                default:
+                    break;
             }
 
             this.loadType = response.loadType
-            this.pluginInfo = response.pluginInfo;
+            this.pluginInfo = response?.data?.pluginInfo ? response.data.pluginInfo : response?.pluginInfo ?? null;
 
-            return this;
+            return {
+                loadType: this.loadType,
+                exception: this.loadType == "error" ? response.data : this.loadType == "LOAD_FAILED" ? response.exception : null,
+                playlistInfo: this.playlistInfo,
+                pluginInfo: this.pluginInfo,
+                tracks: this.tracks,
+            };
         } catch (error: any) {
             throw new Error(error);
         }
