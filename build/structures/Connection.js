@@ -42,11 +42,11 @@ class Connection {
         // If player is manually disconnected from VC
         if(channel_id == null) {
             this.player.destroy();
-            this.player.emit("playerDestroy", this.player);
+            this.player.riffy.emit("playerDestroy", this.player);
         }
 
         if (this.player.voiceChannel && channel_id && this.player.voiceChannel !== channel_id) {
-            this.player.emit("playerMove", this.player.voiceChannel, channel_id)
+            this.player.riffy.emit("playerMove", this.player.voiceChannel, channel_id)
             this.player.voiceChannel = channel_id;
             this.voiceChannel = channel_id
         }
