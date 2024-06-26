@@ -54,6 +54,8 @@ class Node {
         this.reconnectTries = options.reconnectTries || 3;
         this.reconnectAttempt = null;
         this.reconnectAttempted = 1;
+
+        this.lastStats = Date.now();
     }
 
     connect() {
@@ -75,6 +77,14 @@ class Node {
         this.ws.on("error", this.error.bind(this));
         this.ws.on("message", this.message.bind(this));
         this.ws.on("close", this.close.bind(this));
+
+
+        setInterval(() => {
+            if(Date.now() - this.lastStats > 5 * 60 * 1000) {
+                this.riffy.emit("debug", this.name, `Reconnecting to Lavalink due to inactivity (in sending stats) for 5 minutes.`);
+                this.reconnect();
+            }
+        }, 5 * 60 * 1000)
     }
 
     open() {
@@ -154,6 +164,7 @@ class Node {
 
         if (payload.op === "stats") {
             this.stats = { ...payload };
+            this.lastStats = Date.now();
         }
 
         if (payload.op === "ready") {
