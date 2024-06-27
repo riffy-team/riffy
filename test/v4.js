@@ -1,5 +1,6 @@
-const { Client, GatewayDispatchEvents } = require("discord.js");
+const { Client, GatewayDispatchEvents, AttachmentBuilder } = require("discord.js");
 const { Riffy } = require("../build/index.js");
+const { inspect } = require("node:util")
 
 const client = new Client({
     intents: [
@@ -36,7 +37,7 @@ client.on("ready", () => {
 });
 
 client.on("messageCreate", async (message) => {
-    if (!message.content.startsWith('!') || message.author.bot) return;
+    if (!message.content.startsWith('.') || message.author.bot) return;
 
     const args = message.content.slice(1).trim().split(" ");
     const command = args.shift().toLowerCase();
@@ -309,6 +310,27 @@ client.on("messageCreate", async (message) => {
 
         console.log(player.filters)
     }
+
+    if (command === "eval" && args[0]) {
+        try {
+          let evaled = await eval(args.join(" "));
+          let string = inspect(evaled);
+    
+          if (string.includes(client.token))
+            return message.reply("No token grabbing.");
+    
+          if (string.length > 2000) {
+            let output = new AttachmentBuilder(Buffer.from(string), {
+              name: "result.js",
+            });
+            return message.channel.send({ files: [output] });
+          }
+    
+          message.channel.send(`\`\`\`js\n${string}\n\`\`\``);
+        } catch (error) {
+          message.reply(`\`\`\`js\n${error}\n\`\`\``);
+        }
+      }
 })
 
 client.riffy.on("nodeConnect", node => {
@@ -347,4 +369,4 @@ client.on("raw", (d) => {
     client.riffy.updateVoiceState(d);
 });
 
-client.login("Discord-Token");
+client.login("<DISCORD TOKEN>");

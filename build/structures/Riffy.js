@@ -184,7 +184,13 @@ class Riffy extends EventEmitter {
             this.loadType = response.loadType ?? null
             this.pluginInfo = response.pluginInfo ?? null;
 
-            return this;
+            return {
+                loadType: this.loadType,
+                exception: this.loadType == "error" ? response.data : this.loadType == "LOAD_FAILED" ? response?.exception : null,
+                playlistInfo: this.playlistInfo,
+                pluginInfo: this.pluginInfo,
+                tracks: this.tracks,
+              };
         } catch (error) {
             throw new Error(error);
         }

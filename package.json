@@ -37,5 +37,8 @@
   "bugs": {
     "url": "https://github.com/riffy-team/riffy.js/issues"
   },
-  "homepage": "https://riffy.js.org/"
+  "homepage": "https://riffy.js.org/",
+  "devDependencies": {
+    "discord.js": "^14.15.3"
+  }
 }
