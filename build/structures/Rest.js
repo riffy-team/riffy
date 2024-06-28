@@ -1,6 +1,6 @@
 // destructured, named undiciFetch for Better readability
 const { fetch: undiciFetch, Response } = require("undici");
-const util = require("node:util");
+const nodeUtil = require("node:util")
 
 class Rest {
   constructor(riffy, options) {
@@ -51,12 +51,9 @@ class Rest {
         endpoint.startsWith("/") ? endpoint : `/${endpoint}`
       } ${body ? `body: ${JSON.stringify(body)}` : ""} -> \n Status Code: ${
         response.status
-      }(${response.statusText}) \n Response(body): ${util.inspect(
-        await data,
-        false,
-        3,
-        true
-      )} \n Headers: ${JSON.stringify(headersJson, null, 2)}`
+      }(${response.statusText}) \n Response(body): ${JSON.stringify(await data)} \n Headers: ${
+        nodeUtil.inspect(response.headers)
+      }`
     );
 
     return Object.assign(data, includeHeaders ? { headers: response.headers } : {});

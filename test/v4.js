@@ -1,11 +1,6 @@
-const {
-  Client,
-  GatewayDispatchEvents,
-  codeBlock,
-  AttachmentBuilder,
-} = require("discord.js");
+const { Client, GatewayDispatchEvents, AttachmentBuilder } = require("discord.js");
 const { Riffy } = require("../build/index.js");
-const { inspect } = require(`util`);
+const { inspect } = require("node:util")
 
 const client = new Client({
   intents: [
@@ -42,47 +37,119 @@ client.on("ready", () => {
 });
 
 client.on("messageCreate", async (message) => {
-  if (!message.content.startsWith("!") || message.author.bot) return;
+    if (!message.content.startsWith('.') || message.author.bot) return;
 
-  const args = message.content.slice(1).trim().split(" ");
-  const command = args.shift().toLowerCase();
+    const args = message.content.slice(1).trim().split(" ");
+    const command = args.shift().toLowerCase();
 
-  if (command === "play") {
-    const query = args.join(" ");
+    if (command === "play") {
+        const query = args.join(" ");
 
-    const player = client.riffy.createConnection({
-      guildId: message.guild.id,
-      voiceChannel: message.member.voice.channel.id,
-      textChannel: message.channel.id,
-      deaf: true,
-    });
+        const player = client.riffy.createConnection({
+            guildId: message.guild.id,
+            voiceChannel: message.member.voice.channel.id,
+            textChannel: message.channel.id,
+            deaf: true
+        });
 
-    const resolve = await client.riffy.resolve({
-      query: query,
-      requester: message.author,
-      node: player.node
-    });
-    const { loadType, tracks, playlistInfo } = resolve;
+        const resolve = await client.riffy.resolve({ query: query, requester: message.author });
+        const { loadType, tracks, playlistInfo } = resolve;
 
-    if (loadType === "playlist") {
-      for (const track of resolve.tracks) {
-        track.info.requester = message.author;
-        player.queue.add(track);
-      }
+        if (loadType === 'playlist') {
+            for (const track of resolve.tracks) {
+                track.info.requester = message.author;
+                player.queue.add(track);
+            }
 
-      message.channel.send(
-        `Added: \`${tracks.length} tracks\` from \`${playlistInfo.name}\``
-      );
-      if (!player.playing && !player.paused) return player.play();
-    } else if (loadType === "search" || loadType === "track") {
-      const track = tracks.shift();
-      track.info.requester = message.author;
+            message.channel.send(`Added: \`${tracks.length} tracks\` from \`${playlistInfo.name}\``,);
+            if (!player.playing && !player.paused) return player.play();
+        } else if (loadType === 'search' || loadType === 'track') {
+            const track = tracks.shift();
+            track.info.requester = message.author;
 
-      player.queue.add(track);
-      message.channel.send(`Added: \`${track.info.title}\``);
-      if (!player.playing && !player.paused) return player.play();
-    } else {
-      return message.channel.send("There are no results found.");
+            player.queue.add(track);
+            message.channel.send(`Added: \`${track.info.title}\``);
+            if (!player.playing && !player.paused) return player.play();
+        } else {
+            return message.channel.send('There are no results found.');
+        }
+    }
+
+    if (command === "skip") {
+        const player = client.riffy.players.get(message.guild.id);
+        if (!player) return message.channel.send("No player found.");
+
+        player.stop();
+        message.channel.send("Skipped the current song.");
+    }
+
+    if (command === "stop") {
+        const player = client.riffy.players.get(message.guild.id);
+        if (!player) return message.channel.send("No player found.");
+
+        player.destroy();
+        message.channel.send("Stopped the player.");
+    }
+
+    if (command === "pause") {
+        const player = client.riffy.players.get(message.guild.id);
+        if (!player) return message.channel.send("No player found.");
+
+        player.pause(true);
+        message.channel.send("Paused the player.");
+    }
+
+    if (command === "resume") {
+        const player = client.riffy.players.get(message.guild.id);
+        if (!player) return message.channel.send("No player found.");
+
+        player.pause(false);
+        message.channel.send("Resumed the player.");
+    }
+
+    if (command === "volume") {
+        const player = client.riffy.players.get(message.guild.id);
+        if (!player) return message.channel.send("No player found.");
+
+        const volume = parseInt(args[0]);
+        if (!volume || isNaN(volume)) return message.channel.send("Please provide a valid number.");
+
+        player.setVolume(volume);
+        message.channel.send(`Set the player volume to: \`${volume}\`.`);
+    }
+
+    if (command === "queue") {
+        const player = client.riffy.players.get(message.guild.id);
+        if (!player) return message.channel.send("No player found.");
+
+        const queue = player.queue;
+        if (!queue.length) return message.channel.send("No songs in queue.");
+
+        const embed = {
+            title: "Queue",
+            description: queue.map((track, i) => {
+                return `${i + 1}) ${track.info.title} | ${track.info.author}`;
+            }).join("\n")
+        };
+
+        message.channel.send({ embeds: [embed] });
+    }
+
+    if (command === "nowplaying") {
+        const player = client.riffy.players.get(message.guild.id);
+        if (!player) return message.channel.send("No player found.");
+
+        console.log(player)
+        const track = player.current;
+
+        if (!track) return message.channel.send("No song currently playing.");
+
+        const embed = {
+            title: "Now Playing",
+            description: `${track.info.title} | ${track.info.author}`
+        };
+
+        message.channel.send({ embeds: [embed] });
     }
   }
 
@@ -319,27 +386,27 @@ client.on("messageCreate", async (message) => {
     // console.log(player.filters);
   }
 
-  if (command === "eval" && args[0]) {
-    try {
-      let evaled = await eval(args.join(" "));
-      let string = inspect(evaled);
-
-      if (string.includes(client.token))
-        return message.reply("No token grabbing.");
-
-      if (string.length > 2000) {
-        let output = new AttachmentBuilder(Buffer.from(string), {
-          name: "result.js",
-        });
-        return message.channel.send({ files: [output] });
+    if (command === "eval" && args[0]) {
+        try {
+          let evaled = await eval(args.join(" "));
+          let string = inspect(evaled);
+    
+          if (string.includes(client.token))
+            return message.reply("No token grabbing.");
+    
+          if (string.length > 2000) {
+            let output = new AttachmentBuilder(Buffer.from(string), {
+              name: "result.js",
+            });
+            return message.channel.send({ files: [output] });
+          }
+    
+          message.channel.send(`\`\`\`js\n${string}\n\`\`\``);
+        } catch (error) {
+          message.reply(`\`\`\`js\n${error}\n\`\`\``);
+        }
       }
-
-      message.channel.send(`\`\`\`js\n${string}\n\`\`\``);
-    } catch (error) {
-      message.reply(`\`\`\`js\n${error}\n\`\`\``);
-    }
-  }
-});
+})
 
 client.riffy.on("nodeConnect", (node) => {
   console.log(
@@ -406,4 +473,4 @@ client.riffy.on("debug", (...m) => {
   console.log(`[DEBUG - RIFFY]`, ...m);
 });
 
-client.login("Discord-Token")
+client.login("<DISCORD TOKEN>");

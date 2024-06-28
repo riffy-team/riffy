@@ -121,6 +121,14 @@ class Riffy extends EventEmitter {
 
     return this.createPlayer(node, options);
   }
+    
+  fetchRegion(region) {
+     const nodesByRegion = [...this.nodeMap.values()]
+       .filter((node) => node.connected && node.regions == region?.toLowerCase())
+       .sort((a, b) => b.rest.calls - a.rest.calls);
+    
+     return nodesByRegion;
+  }
 
   createPlayer(node, options) {
     const player = new Player(this, node, options);
@@ -151,7 +159,7 @@ class Riffy extends EventEmitter {
    * @param {string} param0.query used for searching as a search Query  
    * @param {*} param0.source  A source to search the query on example:ytmsearch for youtube music
    * @param {*} param0.requester the requester who's requesting 
-   * @param {string | Node} param0.node  the node to request the query on either use node identifier/name or the node class itself
+   * @param {string? | Node?} param0.node  the node to request the query on either use node identifier/name or the node class itself
    * @returns -- returned properties values are nullable if lavlink doesn't  give them
    * */
   async resolve({ query, source, requester, node }) {

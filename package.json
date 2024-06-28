@@ -1,14 +1,14 @@
 {
   "name": "riffy",
   "description": "Riffy is a pro lavalink client. It is designed to be simple and easy to use, with a focus on stability and more features.",
-  "version": "1.0.4",
+  "version": "1.0.6",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "files": [
     "build"
   ],
   "dependencies": {
-    "undici": "^6.9.0",
+    "undici": ">=6.11.1",
     "ws": "^8.16.0"
   },
   "license": "MIT",
@@ -37,6 +37,6 @@
   },
   "homepage": "https://riffy.js.org/",
   "devDependencies": {
-    "discord.js": "^14.14.1"
+    "discord.js": "^14.15.3"
   }
 }
