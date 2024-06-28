@@ -1,7 +1,6 @@
-// destructured, named undiciFetch for Better readability 
+// destructured, named undiciFetch for Better readability
 const { fetch: undiciFetch, Response } = require("undici");
 const nodeUtil = require("node:util")
-
 
 class Rest {
   constructor(riffy, options) {
@@ -19,7 +18,7 @@ class Rest {
     this.sessionId = sessionId;
   }
 
-  async makeRequest(method, endpoint, body = null) {
+  async makeRequest(method, endpoint, body = null, includeHeaders = false) {
     const headers = {
       "Content-Type": "application/json",
       Authorization: this.password,
@@ -38,8 +37,13 @@ class Rest {
     // Parses The Request
     const data = await this.parseResponse(response);
 
-    // Emit apiResponse event with important data and Response 
+    // Emit apiResponse event with important data and Response
     this.riffy.emit("apiResponse", endpoint, response);
+
+    const headersJson = {};
+    for (const [name, value] of response.headers) {
+      headersJson[name] = value;
+    }
 
     this.riffy.emit(
       "debug",
@@ -52,7 +56,7 @@ class Rest {
       }`
     );
 
-    return data;
+    return Object.assign(data, includeHeaders ? { headers: response.headers } : {});
   }
 
   async getPlayers() {
@@ -64,49 +68,59 @@ class Rest {
 
   async updatePlayer(options) {
     // destructure data as requestBody for ease of use.
-    const { data: requestBody } = options
+    const { data: requestBody } = options;
 
-    if((typeof requestBody.track !== "undefined" && requestBody.track.encoded && requestBody.track.identifier) || requestBody.encodedTrack && requestBody.identifier) throw new Error(
-      `${
-        typeof requestBody.track !== "undefined"
-          ? `encoded And identifier`
-          : `encodedTrack And identifier`
-      } are mutually exclusive (Can't be provided together) in Update Player Endpoint`
-    );
+    if (
+      (typeof requestBody.track !== "undefined" &&
+        requestBody.track.encoded &&
+        requestBody.track.identifier) ||
+      (requestBody.encodedTrack && requestBody.identifier)
+    )
+      throw new Error(
+        `${
+          typeof requestBody.track !== "undefined"
+            ? `encoded And identifier`
+            : `encodedTrack And identifier`
+        } are mutually exclusive (Can't be provided together) in Update Player Endpoint`
+      );
 
-    if(this.version === "v3" && options.data?.track) {
+    if (this.version === "v3" && options.data?.track) {
+      const { track, ...otherRequestData } = requestBody;
 
-      const { track, ...otherRequestData } = requestBody
+      requestBody = { ...otherRequestData };
 
-      requestBody = { ...otherRequestData }
-
-      Object.assign(options.data, typeof options.data.track.encoded !== "undefined" ? { encodedTrack: requestBody.track.encoded} : { identifier: requestBody.track.identifier})
+      Object.assign(
+        options.data,
+        typeof options.data.track.encoded !== "undefined"
+          ? { encodedTrack: requestBody.track.encoded }
+          : { identifier: requestBody.track.identifier }
+      );
     }
 
-    return this.makeRequest(
+    return await this.makeRequest(
       "PATCH",
       `/${this.version}/sessions/${this.sessionId}/players/${options.guildId}?noReplace=false`,
       options.data
-    )
+    );
   }
 
   async destroyPlayer(guildId) {
-    return this.makeRequest(
+    return await this.makeRequest(
       "DELETE",
       `/${this.version}/sessions/${this.sessionId}/players/${guildId}`
     );
   }
 
   async getTracks(identifier) {
-    return this.makeRequest(
+    return await this.makeRequest(
       "GET",
       `/${this.version}/loadtracks?identifier=${encodeURIComponent(identifier)}`
-    )
+    );
   }
 
   async decodeTrack(track, node) {
     if (!node) node = this.leastUsedNodes[0];
-    return this.makeRequest(
+    return await this.makeRequest(
       `GET`,
       `/${this.version}/decodetrack?encodedTrack=${encodeURIComponent(track)}`
     );
@@ -121,11 +135,11 @@ class Rest {
   }
 
   async getStats() {
-    return this.makeRequest("GET", `/${this.version}/stats`);
+    return await this.makeRequest("GET", `/${this.version}/stats`);
   }
 
   async getInfo() {
-    return this.makeRequest("GET", `/${this.version}/info`);
+    return await this.makeRequest("GET", `/${this.version}/info`);
   }
 
   async getRoutePlannerStatus() {
@@ -135,7 +149,7 @@ class Rest {
     );
   }
   async getRoutePlannerAddress(address) {
-    return this.makeRequest(
+    return await this.makeRequest(
       `POST`,
       `/${this.version}/routeplanner/free/address`,
       { address }
@@ -155,7 +169,12 @@ class Rest {
     try {
       return await req.json();
     } catch (e) {
-      this.riffy.emit("debug", `[Rest - Error] There was an Error for ${new URL(req.url).pathname} ${e}`)
+      this.riffy.emit(
+        "debug",
+        `[Rest - Error] There was an Error for ${
+          new URL(req.url).pathname
+        } ${e}`
+      );
       return null;
     }
   }

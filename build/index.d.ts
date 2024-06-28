@@ -1,5 +1,4 @@
 import { EventEmitter } from "events";
-import { Collection } from "@discordjs/collection";
 
 export declare class Track {
     constructor(data: any, requester: any, node: Node);
@@ -63,12 +62,12 @@ export declare class Rest extends EventEmitter {
     public parseResponse(req: any): Promise<RestResponse | null>;
 }
 
-export declare class Queue<T> extends Array<T>{
+export declare class Queue extends Array<Track>{
     get size(): Number;
-    get first(): T | null;
+    get first(): Track | null;
 
-    add(track: T): this;
-    remove(index: Number): T;
+    add(track: Track): this;
+    remove(index: Number): Track;
     clear(): void;
     shuffle(): void;
 }
@@ -107,7 +106,7 @@ export declare class Player extends EventEmitter {
     public loop: String;
     public filters: Filters;
     public data: {};
-    public queue: Queue<Track>;
+    public queue: Queue;
     public position: Number;
     public current: Track;
     public previous: Track | null;
@@ -153,8 +152,14 @@ export declare class Player extends EventEmitter {
     private send(data: any): void;
 }
 
-export type SearchPlatform = "ytsearch" | "ytmsearch" | "scsearch" | "spsearch" | "amsearch" | "dzsearch" | "ymsearch";
+export type SearchPlatform = "ytsearch" | "ytmsearch" | "scsearch" | "spsearch" | "amsearch" | "dzsearch" | "ymsearch" | string;
 export type Version = "v3" | "v4";
+
+export type LavalinkTrackLoadException = {
+  message: string | null,
+  severity: "common" | "suspicious" | "fault",
+  cause: string
+}
 export type nodeResponse = {
     /**
      * Array of Loaded Tracks
@@ -175,6 +180,8 @@ export type nodeResponse = {
      * Plugin Info
      */
     pluginInfo?: any;
+    
+    exception: LavalinkTrackLoadException | null 
 }
 
 export type RiffyOptions = {
@@ -190,31 +197,25 @@ export type RiffyOptions = {
     defaultSearchPlatform?: SearchPlatform;
     restVersion?: Version;
     plugins?: Array<Plugin>;
-}
+} & Exclude<NodeOptions, "sessionId">
 
 type k = String;
 type v = any;
 
 export declare class Riffy extends EventEmitter {
-    constructor(client: any, nodes: {
-        name?: String;
-        host: String;
-        port: Number;
-        password: String;
-        secure: Boolean;
-    }, options: RiffyOptions);
+    constructor(client: any, nodes: LavalinkNode[], options: RiffyOptions);
     public client: any;
     public nodes: Array<LavalinkNode>;
-    public nodeMap: Collection<k, Node>;
-    public players: Collection<k, Player>;
+    public nodeMap: Map<k, Node>;
+    public players: Map<k, Player>;
     public options: RiffyOptions;
     public clientId: String;
     public initiated: Boolean;
     public send: RiffyOptions["send"];
     public defaultSearchPlatform: String;
-    public restVersion: NodeOptions["restVersion"];
+    public restVersion: RiffyOptions["restVersion"];
 
-    public readonly leastUsedNodes: Array<LavalinkNode>;
+    public readonly leastUsedNodes: Array<Node>;
 
     public init(clientId: String): this;
 
@@ -231,6 +232,11 @@ export declare class Riffy extends EventEmitter {
         voiceChannel: String;
         textChannel: String;
         deaf?: Boolean;
+        mute?: boolean;
+        /**
+         * @description voice region (rtc Region) used for filtering node based onit 
+         * */
+        region: string;
     }): Player;
 
     public createPlayer(node: Node, options: PlayerOptions): Player;
@@ -241,6 +247,7 @@ export declare class Riffy extends EventEmitter {
         query: String;
         source?: String;
         requester: any;
+        node: string | Node
     }): Promise<nodeResponse>;
 
 
@@ -288,29 +295,26 @@ export type LavalinkNode = {
     password: String;
     /**
      * Is node connection secured by SSL ?
+     * @default false 
      */
-    secure: Boolean;
-}
+    secure?: Boolean;
+    
+    /**
+     * Voice Regions for the Node
+     */
+    regions?: string[];
+
+} & Partial<NodeOptions>
 
 export type NodeOptions = {
     /**
      * The rest version of the node
      */
-    restVersion: "v3" | "v4";
+    restVersion: Version;
+
     /**
-     * The send function of the node
-     */
-    send: (payload: {
-        op: Number;
-        d: {
-            guild_id: String;
-            channel_id: String;
-            self_deaf: Boolean;
-            self_mute: Boolean;
-        }
-    }) => void;
-    /**
-     * The resume key of the node
+     * The resume key of the node 
+     * Ignored if node `restVersion` is not `v3`
      */
     resumeKey?: String;
     /**
@@ -351,10 +355,9 @@ export declare class Node {
     public restUrl: String;
     private ws: null;
 
-    public send: NodeOptions["send"];
     public resumeKey: NodeOptions["resumeKey"];
     public sessionId: NodeOptions["sessionId"];
-    public region: String | null;
+    public regions: string[] | null;
     public resumeTimeout: NodeOptions["resumeTimeout"];
     public autoResume: NodeOptions["autoResume"];
     public reconnectTimeout: NodeOptions["reconnectTimeout"];

@@ -8,9 +8,7 @@
     "build"
   ],
   "dependencies": {
-    "@discordjs/collection": "^2.0.0",
-    "jsdom": "^23.0.1",
-    "undici": ">=6.6.1",
+    "undici": ">=6.11.1",
     "ws": "^8.16.0"
   },
   "license": "MIT",
@@ -25,10 +23,10 @@
     "riffyjs",
     "eris"
   ],
-  "author": [
-    "@flameface",
-    "@unschooledgamers",
-    "@elitex"
+  "contributors": [
+    "FlameFace (https://github.com/flameface)",
+    "Elitex (https://github.com/Elitex07)",
+    "UnschooledGamer (https://github.com/unschooledgamer/)"
   ],
   "repository": {
     "type": "git",

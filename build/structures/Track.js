@@ -2,8 +2,12 @@ const { getImageUrl } = require("../functions/fetchImage");
 const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 class Track {
+
+    #rawData = {};
+    #cachedThumbnail = null;
     constructor(data, requester, node) {
-        this.track = data.encoded
+        this.rawData = data;
+        this.track = data.encoded;
         this.info = {
             identifier: data.info.identifier,
             seekable: data.info.isSeekable,
@@ -15,21 +19,24 @@ class Track {
             uri: data.info.uri,
             requester,
             sourceName: data.info.sourceName,
-        };
+            _cachedThumbnail: data.info.thumbnail ?? null,
+            get thumbnail() {
+            if (data.info.thumbnail) return data.info.thumbnail;
 
-        if (node.rest.version === "v4") {
-            this.info.isrc = data.info.isrc
-
-            if (data.info.thumbnail) {
-                this.info.thumbnail = data.info.thumbnail
-            } else if (data.info.artworkUrl) {
-                this.info.thumbnail = data.info.artworkUrl
-            } else {
-                this.info.thumbnail = getImageUrl(this.info)
+            if (node.rest.version === "v4") {
+                if (data.info.artworkUrl) {
+                  this._cachedThumbnail = data.info.artworkUrl;
+                  return data.info.artworkUrl
+               } else {
+                  return !this._cachedThumbnail ? (this._cachedThumbnail = getImageUrl(this)) : this._cachedThumbnail ?? null
+               }
+              } else {
+              return !this._cachedThumbnail
+                ? (this._cachedThumbnail = getImageUrl(this))
+                : this._cachedThumbnail ?? null;
+              }
             }
-        } else {
-            this.info.thumbnail = getImageUrl(this.info)
-        }
+        };
     }
 
     async resolve(riffy) {

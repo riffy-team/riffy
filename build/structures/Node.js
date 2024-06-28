@@ -2,8 +2,12 @@ const Websocket = require("ws");
 const { Rest } = require("./Rest");
 
 class Node {
+   /**
+    * @param {import("./Riffy").Riffy} riffy 
+    * @param {} node 
+    */
     constructor(riffy, node, options) {
-        this.riffy = riffy;
+        this.riffy = riffy
         this.name = node.name || node.host;
         this.host = node.host || "localhost";
         this.port = node.port || 2333;
@@ -21,8 +25,13 @@ class Node {
 
         this.restUrl = `http${this.secure ? "s" : ""}://${this.host}:${this.port}`;
         this.ws = null;
-        this.send = options.send;
-        this.region = node.region || null;
+        this.regions = node.regions;
+        /**
+         * Lavalink Info fetched While connecting.
+         * @todo Add Types
+         * 
+         */
+        this.info = {};
         this.stats = {
             players: 0,
             playingPlayers: 0,
@@ -44,6 +53,7 @@ class Node {
                 deficit: 0,
             },
         };
+
         this.connected = false;
 
         this.resumeKey = options.resumeKey || null;
@@ -60,10 +70,89 @@ class Node {
 
     connect() {
         if (this.ws) this.ws.close();
+
+        this.riffy.emit('debug', this.name, `Checking Node Version`);
+
+        /**
+         * @todo Probably to wait until version checks are completed before continuing to connnect to Lavalink.
+         * @todo Add option to skip the version checks in-case needed.
+         */
+        (async () => {
+            const requestOpts = (version = this.restVersion) => { 
+                return {
+                  method: "GET",
+                  endpoint: `/${version}/info`,
+                  undefined,
+                  includeHeaders: true
+                };
+            }
+
+            await Promise.all([this.rest.makeRequest(...Object.values(requestOpts())), this.rest.makeRequest(...Object.values(requestOpts(this.restVersion == "v3" ? "v4" : "v3")))]).then(([restVersionRequest, flippedRestRequest]) => {
+                /**
+                 * Lavalink Node's Version that was fetched, checks and uses the succeeded request
+                 * Uses `lavalink-api-version` header if `major` property isn't available/is `0` in the request, it can use either one variable. Defaults to `0` if `lavalink-api-version` isn't available.
+                 */
+                const nodeFetchedVersionObj = Object.assign(
+                    (
+                      ("version" in restVersionRequest && restVersionRequest) ||
+                      flippedRestRequest
+                    ).version,
+                    {
+                      major: !(restVersionRequest?.version || flippedRestRequest?.version)?.major
+                        ? Number(
+                            (restVersionRequest || flippedRestRequest).headers.get("lavalink-api-version")
+                          ) || 0
+                        : (restVersionRequest?.version || flippedRestRequest?.version)?.major,
+                    }
+                  ); 
+
+                if(restVersionRequest?.status == 404) this.riffy.emit(
+                  "debug",
+                  `[Node (${this.name}) - Version Check] ${
+                    this.restVersion
+                  } set By User/Defaulted Version Check Failed, attempted ${
+                    this.restVersion == "v3" ? "v4" : "v3"
+                  } For version Checking`
+                );
+
+                if(flippedRestRequest?.status === 404 && restVersionRequest?.status === 404) {
+                    this.riffy.emit("debug", `[Node (${this.name}) - Version Check] Both Version Checks failed, Disconnecting Gracefully & Throwing Error`)
+
+                    // Disconnect Websocket & Destroy the players(if any created - Just incase)
+                    this.destroy()
+
+                    throw new Error(`${this.name}(${this.host}) is using unsupported Lavalink Version, Supported Lavalink Versions are v3 and v4.`)
+                }
+
+                if(restVersionRequest?.status !== 404 || flippedRestRequest?.status !== 404) {
+                    this.riffy.emit(
+                      "debug",
+                      `[Node (${this.name}) - Version Check] Check ${restVersionRequest?.status === 404 ? "Un" : ""}successful Lavalink Server uses ${nodeFetchedVersionObj.semver} ${restVersionRequest.status === 404 ? `Doesn't match with restVersion: ${this.restVersion}, Provided in Riffy Options` : ""}`
+                    );
+
+                    // If defaulted/user-specified fails Graceful Destroy/close the node's connection.
+                    if(restVersionRequest?.status === 404) {
+                    this.riffy.emit("debug", `[Node (${this.name}) - Version Check] Disconnecting Gracefully & Throwing Error`)
+
+                    // Disconnect Websocket & Destroy the players(if any created - Just incase)
+                    this.destroy()
+
+                    throw new Error(`${this.name} is specified/defaulted to use ${this.restVersion}, but found using Lavalink version v${nodeFetchedVersionObj.major}, TIP: Set 'restVersion' property to v${nodeFetchedVersionObj.major}`);
+                    }
+                }
+                
+                const { headers, ...restVersionRequestWithoutHeaders } = restVersionRequest;
+
+                // If `restVersionRequest` isn't failed then update the `info` or set it back to empty Object.
+                this.info = !("status" in restVersionRequest) ? restVersionRequestWithoutHeaders : {};
+            })
+
+        })()
+
         const headers = {
             "Authorization": this.password,
             "User-Id": this.riffy.clientId,
-            "Client-Name": "Riffy",
+            "Client-Name": `Riffy/${this.riffy.version}`,
         };
 
         if (this.restVersion === "v4") {
@@ -90,53 +179,10 @@ class Node {
     open() {
         if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
 
-        this.riffy.emit("nodeConnect", this);
         this.connected = true;
         this.riffy.emit('debug', this.name, `Connection with Lavalink established on ${this.wsUrl}`);
 
         /** @todo Add Version Checking of Node */
-
-        // this.riffy.emit('debug', this.name, `Checking Node Version`)
-        
-        // (async () => {
-        //     const requestOpts = (version = this.restVersion) => { 
-        //         return {
-        //           method: "GET",
-        //           endpoint: `/${version}/stats`,
-        //         };
-        //     }
-            
-        //     await Promise.all([this.rest.makeRequest(requestOpts), this.rest.makeRequest(requestOpts(this.restVersion == "v3" ? "v4" : "v3"))]).then((restVersionRequest, flippedRestRequest) => {
-
-        //         if(restVersionRequest == null) this.riffy.emit(
-        //           "debug",
-        //           `[Node (${this.name}) - Version Check] ${
-        //             this.restVersion
-        //           } set By User/Defaulted Version Check Failed, attempted ${
-        //             this.restVersion == "v3" ? "v4" : "v3"
-        //           } For version Checking`
-        //         );
-
-        //         if(flippedRestRequest == null && restVersionRequest == null) {
-        //             this.riffy.emit("debug", `[Node (${this.name}) - Version Check] Both Version Checks failed, Disconnecting Gracefully & Throwing Error`)
-
-        //             // Disconnect Websocket & Destroy the players(if any created - Just incase)
-        //             this.destroy()
-                    
-        //             throw new Error(`${this.name}(${this.host}) is using unsupported Lavalink Version, Supported Lavalink Versions are v3 and v4.`)
-        //         }
-
-        //         if(restVersionRequest !== null || flippedRestRequest !== null) {
-        //             this.riffy.emit(
-        //               "debug",
-        //               `[Node (${this.name}) - Version Check] Check ${restVersionRequest == null ? "Un" : ""}successful Lavalink Server uses ${(restVersionRequest || flippedRestRequest).version.string} ${restVersionRequest == null && this.restVersion !== `v${restVersionRequest.version.major}` ? `Doesn't match with restVersion: ${this.restVersion}, Provided in Riffy Options` : ""}`
-        //             );
-                    
-        //         }
-
-        //     })
-
-        // })()
 
         if (this.autoResume) {
             for (const player of this.riffy.players.values()) {
@@ -172,6 +218,8 @@ class Node {
                 this.rest.setSessionId(payload.sessionId);
                 this.sessionId = payload.sessionId;
             }
+            
+            this.riffy.emit("nodeConnect", this);
 
             this.riffy.emit("debug", this.name, `Ready Payload received ${JSON.stringify(payload)}`);
 
@@ -194,7 +242,7 @@ class Node {
 
     close(event, reason) {
         this.riffy.emit("nodeDisconnect", this, { event, reason });
-        this.riffy.emit("debug", `Connection with Lavalink closed with Error code : ${event || "Unknown code"}`);
+        this.riffy.emit("debug", `Connection with Lavalink closed with Error code : ${event || "Unknown code"}, reason: ${reason || "Unknown reason"}`);
 
         this.connected = false;
         this.reconnect();
@@ -220,8 +268,11 @@ class Node {
     destroy() {
         if (!this.connected) return;
 
-        const player = this.riffy.players.filter((player) => player.node === this);
-        if (player.size) player.forEach((player) => player.destroy());
+        this.riffy.players.forEach((player) => {
+            if (player.node !== this) return;
+
+            player.destroy()
+        });
 
         if (this.ws) this.ws.close(1000, "destroy");
         this.ws.removeAllListeners();
@@ -235,15 +286,7 @@ class Node {
 
         this.riffy.nodeMap.delete(this.name);
         this.connected = false;
-    }
-
-    send(payload) {
-        const data = JSON.stringify(payload);
-        this.ws.send(data, (error) => {
-            if (error) return error;
-            return null;
-        });
-    }
+    } 
 
     disconnect() {
         if (!this.connected) return;
