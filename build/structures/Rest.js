@@ -18,7 +18,7 @@ class Rest {
     this.sessionId = sessionId;
   }
 
-  async makeRequest(method, endpoint, body = null, includeHeaders = false) {
+  async makeRequest(method, endpoint, body = null) {
     const headers = {
       "Content-Type": "application/json",
       Authorization: this.password,
@@ -51,7 +51,7 @@ class Rest {
       }`
     );
 
-    return Object.assign(data, includeHeaders ? { headers: response.headers } : {});
+    return data;
   }
 
   async getPlayers() {
@@ -162,7 +162,7 @@ class Rest {
     }
 
     try {
-      return await req.json();
+      return await req[req.headers.get("Content-Type").includes("text/plain") ? "text" : "json"]();
     } catch (e) {
       this.riffy.emit(
         "debug",
