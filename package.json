@@ -8,6 +8,7 @@
     "build"
   ],
   "dependencies": {
+    "jsdom": "^24.1.0",
     "undici": ">=6.11.1",
     "ws": "^8.16.0"
   },

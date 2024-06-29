@@ -29,9 +29,9 @@ class Node {
         /**
          * Lavalink Info fetched While connecting.
          * @todo Add Types
-         * 
+         * @todo Add This Property Later
          */
-        this.info = {};
+        //this.info = {};
         this.stats = {
             players: 0,
             playingPlayers: 0,
@@ -77,36 +77,37 @@ class Node {
          * @todo Probably to wait until version checks are completed before continuing to connnect to Lavalink.
          * @todo Add option to skip the version checks in-case needed.
          */
-        (async () => {
-            const requestOpts = (version = this.restVersion) => { 
-                return {
-                  method: "GET",
-                  endpoint: `/${version}/info`,
-                  undefined,
-                  includeHeaders: true
-                };
-            }
+        //(async () => {
+          //  const requestOpts = (version = this.restVersion) => { 
+            //    return {
+            //      method: "GET",
+            //      endpoint: `/${version}/info`,
+            //      undefined,
+            //      includeHeaders: true
+            //    };
+           // }
 
-            await Promise.all([this.rest.makeRequest(...Object.values(requestOpts())), this.rest.makeRequest(...Object.values(requestOpts(this.restVersion == "v3" ? "v4" : "v3")))]).then(([restVersionRequest, flippedRestRequest]) => {
+           // await Promise.all([this.rest.makeRequest(...Object.values(requestOpts())), this.rest.makeRequest(...Object.values(requestOpts(this.restVersion == "v3" ? "v4" : "v3")))]).then(([restVersionRequest, flippedRestRequest]) => {
                 /**
                  * Lavalink Node's Version that was fetched, checks and uses the succeeded request
                  * Uses `lavalink-api-version` header if `major` property isn't available/is `0` in the request, it can use either one variable. Defaults to `0` if `lavalink-api-version` isn't available.
                  */
-                const nodeFetchedVersionObj = Object.assign(
-                    (
-                      ("version" in restVersionRequest && restVersionRequest) ||
-                      flippedRestRequest
-                    ).version,
-                    {
-                      major: !(restVersionRequest?.version || flippedRestRequest?.version)?.major
-                        ? Number(
-                            (restVersionRequest || flippedRestRequest).headers.get("lavalink-api-version")
-                          ) || 0
-                        : (restVersionRequest?.version || flippedRestRequest?.version)?.major,
-                    }
-                  ); 
 
-                if(restVersionRequest?.status == 404) this.riffy.emit(
+               // const nodeFetchedVersionObj = Object.assign(
+                 //   (
+                 //     ("version" in restVersionRequest && restVersionRequest) ||
+                 //     flippedRestRequest
+                 //   ).version,
+                 //   {
+                 //     major: !(restVersionRequest?.version || flippedRestRequest?.version)?.major
+                 //       ? Number(
+                 //           (restVersionRequest || flippedRestRequest).headers.get("lavalink-api-version")
+                 //         ) || 0
+                 //       : (restVersionRequest?.version || flippedRestRequest?.version)?.major,
+                 //   }
+                //  ); 
+
+                /* if(restVersionRequest?.status == 404) this.riffy.emit(
                   "debug",
                   `[Node (${this.name}) - Version Check] ${
                     this.restVersion
@@ -147,7 +148,7 @@ class Node {
                 this.info = !("status" in restVersionRequest) ? restVersionRequestWithoutHeaders : {};
             })
 
-        })()
+        })() */
 
         const headers = {
             "Authorization": this.password,

@@ -289,26 +289,6 @@ client.on("messageCreate", async (message) => {
             message.reply(`\`\`\`js\n${error}\n\`\`\``);
         }
     }
-    if (command === "eval" && args[0]) {
-        try {
-          let evaled = await eval(args.join(" "));
-          let string = inspect(evaled);
-    
-          if (string.includes(client.token))
-            return message.reply("No token grabbing.");
-    
-          if (string.length > 2000) {
-            let output = new AttachmentBuilder(Buffer.from(string), {
-              name: "result.js",
-            });
-            return message.channel.send({ files: [output] });
-          }
-    
-          message.channel.send(`\`\`\`js\n${string}\n\`\`\``);
-        } catch (error) {
-          message.reply(`\`\`\`js\n${error}\n\`\`\``);
-        }
-      }
 })
 
 client.riffy.on("nodeConnect", node => {
@@ -347,4 +327,4 @@ client.on("raw", (d) => {
     client.riffy.updateVoiceState(d);
 });
 
-client.login("<DISCORD TOKEN>");
+client.login("<DISCORD-TOKEN>");

@@ -19,13 +19,13 @@ class Connection {
     setServerUpdate(data) {
         const { endpoint, token } = data;
         if (!endpoint) throw new Error("Session not found");
-
-        this.player.riffy.emit("debug", `[Player ${this.player.guildId} - CONNECTION] Received voice server, Updating LavaLink Voice Data.`)
+        const previousVoiceRegion = this.region;
 
         this.voice.endpoint = endpoint;
         this.voice.token = token;
         this.region = endpoint.split(".").shift()?.replace(/[0-9]/g, "") || null;
-        this.player.connected = true;
+
+        this.player.riffy.emit("debug", `[Player ${this.player.guildId} - CONNECTION] Received voice server, ${previousVoiceRegion !== null ? `Changed Voice Region from(oldRegion) ${previousVoiceRegion} to(newRegion) ${this.region}` : `Voice Server: ${this.region}`}, Updating Node's Voice Data.`)
 
         if (this.player.paused) {
             this.player.riffy.emit(

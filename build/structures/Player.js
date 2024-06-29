@@ -46,7 +46,7 @@ class Player extends EventEmitter {
     }
 
     async play() {
-        if (!this.connected) throw new Error("Player connection is not initiated. Kindly use Riffy.createConnection() and establish a connection, TIP: Check if Guild Voice States is set & 'updateVoiceState' is used in the raw(Gateway Raw) event");
+        if (!this.connected) throw new Error("Player connection is not initiated. Kindly use Riffy.createConnection() and establish a connection, TIP: Check if Guild Voice States intent is set/provided & 'updateVoiceState' is used in the raw(Gateway Raw) event");
         if (!this.queue.length) return;
 
         this.current = this.queue.shift();
@@ -164,6 +164,8 @@ class Player extends EventEmitter {
             self_deaf: deaf,
             self_mute: mute,
         });
+
+        this.connected = true
 
         this.riffy.emit("debug", this.guildId, `Player has informed the Discord Gateway to Establish Voice Connectivity in ${voiceChannel} Voice Channel, Awaiting Confirmation(Via Voice State Update & Voice Server Update events)`);
     }

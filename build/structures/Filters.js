@@ -354,13 +354,8 @@ class Filters {
     }
 
     async clearFilters() {
-        this.player.filters = new Filters(this.player);
-
-        if (this.nightcore) this.setNightcore(false)
-        if (this.equalizer.length !== 0) this.setEqualizer([])
-        if (this._8d) this.set8D(false)
-        if (this.slowmode) this.setSlowmode(false)
-
+        Object.assign(this, new Filters(this.player))
+        
         await this.updateFilters();
         return this;
     }
