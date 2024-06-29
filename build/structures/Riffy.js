@@ -195,7 +195,7 @@ class Riffy extends EventEmitter {
           this.tracks = response.loadType === "search" && response.data ? response.data.map((track) => new Track(track, requester, requestNode)) : [];
         }
       } else {
-        this.tracks = response.data?.tracks ? response.tracks.map((track) => new Track(track, requester, requestNode)) : [];
+        this.tracks = response?.tracks ? response.tracks.map((track) => new Track(track, requester, requestNode)) : [];
       }
       
       if (

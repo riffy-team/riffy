@@ -40,11 +40,6 @@ class Rest {
     // Emit apiResponse event with important data and Response
     this.riffy.emit("apiResponse", endpoint, response);
 
-    const headersJson = {};
-    for (const [name, value] of response.headers) {
-      headersJson[name] = value;
-    }
-
     this.riffy.emit(
       "debug",
       `[Rest] ${requestOptions.method} ${
@@ -68,7 +63,7 @@ class Rest {
 
   async updatePlayer(options) {
     // destructure data as requestBody for ease of use.
-    const { data: requestBody } = options;
+    let { data: requestBody } = options;
 
     if (
       (typeof requestBody.track !== "undefined" &&
@@ -92,12 +87,12 @@ class Rest {
       Object.assign(
         options.data,
         typeof options.data.track.encoded !== "undefined"
-          ? { encodedTrack: requestBody.track.encoded }
-          : { identifier: requestBody.track.identifier }
+          ? { encodedTrack: track.encoded }
+          : { identifier: track.identifier }
       );
     }
 
-    return await this.makeRequest(
+    return this.makeRequest(
       "PATCH",
       `/${this.version}/sessions/${this.sessionId}/players/${options.guildId}?noReplace=false`,
       options.data
@@ -105,14 +100,14 @@ class Rest {
   }
 
   async destroyPlayer(guildId) {
-    return await this.makeRequest(
+    return this.makeRequest(
       "DELETE",
       `/${this.version}/sessions/${this.sessionId}/players/${guildId}`
     );
   }
 
   async getTracks(identifier) {
-    return await this.makeRequest(
+    return this.makeRequest(
       "GET",
       `/${this.version}/loadtracks?identifier=${encodeURIComponent(identifier)}`
     );
@@ -120,14 +115,14 @@ class Rest {
 
   async decodeTrack(track, node) {
     if (!node) node = this.leastUsedNodes[0];
-    return await this.makeRequest(
+    return this.makeRequest(
       `GET`,
       `/${this.version}/decodetrack?encodedTrack=${encodeURIComponent(track)}`
     );
   }
 
   async decodeTracks(tracks) {
-    return await this.makeRequest(
+    return this.makeRequest(
       `POST`,
       `/${this.version}/decodetracks`,
       tracks
@@ -135,21 +130,21 @@ class Rest {
   }
 
   async getStats() {
-    return await this.makeRequest("GET", `/${this.version}/stats`);
+    return this.makeRequest("GET", `/${this.version}/stats`);
   }
 
   async getInfo() {
-    return await this.makeRequest("GET", `/${this.version}/info`);
+    return this.makeRequest("GET", `/${this.version}/info`);
   }
 
   async getRoutePlannerStatus() {
-    return await this.makeRequest(
+    return this.makeRequest(
       `GET`,
       `/${this.version}/routeplanner/status`
     );
   }
   async getRoutePlannerAddress(address) {
-    return await this.makeRequest(
+    return this.makeRequest(
       `POST`,
       `/${this.version}/routeplanner/free/address`,
       { address }
