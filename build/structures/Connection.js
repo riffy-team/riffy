@@ -19,10 +19,13 @@ class Connection {
     setServerUpdate(data) {
         const { endpoint, token } = data;
         if (!endpoint) throw new Error("Session not found");
+        const previousVoiceRegion = this.region;
 
         this.voice.endpoint = endpoint;
         this.voice.token = token;
         this.region = endpoint.split(".").shift()?.replace(/[0-9]/g, "") || null;
+
+        this.player.riffy.emit("debug", `[Player ${this.player.guildId} - CONNECTION] Received voice server, ${previousVoiceRegion !== null ? `Changed Voice Region from(oldRegion) ${previousVoiceRegion} to(newRegion) ${this.region}` : `Voice Server: ${this.region}`}, Updating Node's Voice Data.`)
 
         if (this.player.paused) {
             this.player.riffy.emit(
@@ -39,14 +42,16 @@ class Connection {
     setStateUpdate(data) {
         const { session_id, channel_id, self_deaf, self_mute } = data;
 
+        this.player.riffy.emit("debug", `[Player ${this.player.guildId} - CONNECTION] Received Voice State Update Informing the player ${channel_id !== null ? `Connected to ${this.voiceChannel}` : `Disconnected from ${this.voiceChannel}`}`)
+
         // If player is manually disconnected from VC
         if(channel_id == null) {
             this.player.destroy();
-            this.player.emit("playerDestroy", this.player);
+            this.player.riffy.emit("playerDestroy", this.player);
         }
 
         if (this.player.voiceChannel && channel_id && this.player.voiceChannel !== channel_id) {
-            this.player.emit("playerMove", this.player.voiceChannel, channel_id)
+            this.player.riffy.emit("playerMove", this.player.voiceChannel, channel_id)
             this.player.voiceChannel = channel_id;
             this.voiceChannel = channel_id
         }

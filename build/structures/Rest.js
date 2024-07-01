@@ -1,5 +1,6 @@
-// destructured, named undiciFetch for Better readability 
+// destructured, named undiciFetch for Better readability
 const { fetch: undiciFetch, Response } = require("undici");
+const nodeUtil = require("node:util")
 
 class Rest {
   constructor(riffy, options) {
@@ -36,7 +37,7 @@ class Rest {
     // Parses The Request
     const data = await this.parseResponse(response);
 
-    // Emit apiResponse event with important data and Response 
+    // Emit apiResponse event with important data and Response
     this.riffy.emit("apiResponse", endpoint, response);
 
     this.riffy.emit(
@@ -46,7 +47,7 @@ class Rest {
       } ${body ? `body: ${JSON.stringify(body)}` : ""} -> \n Status Code: ${
         response.status
       }(${response.statusText}) \n Response(body): ${JSON.stringify(await data)} \n Headers: ${
-        response.headers
+        nodeUtil.inspect(response.headers)
       }`
     );
 
@@ -62,30 +63,40 @@ class Rest {
 
   async updatePlayer(options) {
     // destructure data as requestBody for ease of use.
-    const { data: requestBody } = options
+    let { data: requestBody } = options;
 
-    if((typeof requestBody.track !== "undefined" && requestBody.track.encoded && requestBody.track.identifier) || requestBody.encodedTrack && requestBody.identifier) throw new Error(
-      `${
-        typeof requestBody.track !== "undefined"
-          ? `encoded And identifier`
-          : `encodedTrack And identifier`
-      } are mutually exclusive (Can't be provided together) in Update Player Endpoint`
-    );
+    if (
+      (typeof requestBody.track !== "undefined" &&
+        requestBody.track.encoded &&
+        requestBody.track.identifier) ||
+      (requestBody.encodedTrack && requestBody.identifier)
+    )
+      throw new Error(
+        `${
+          typeof requestBody.track !== "undefined"
+            ? `encoded And identifier`
+            : `encodedTrack And identifier`
+        } are mutually exclusive (Can't be provided together) in Update Player Endpoint`
+      );
 
-    if(this.version === "v3" && options.data?.track) {
+    if (this.version === "v3" && options.data?.track) {
+      const { track, ...otherRequestData } = requestBody;
 
-      const { track, ...otherRequestData } = requestBody
+      requestBody = { ...otherRequestData };
 
-      requestBody = { ...otherRequestData }
-
-      Object.assign(options.data, typeof options.data.track.encoded !== "undefined" ? { encodedTrack: requestBody.track.encoded} : { identifier: requestBody.track.identifier})
+      Object.assign(
+        options.data,
+        typeof options.data.track.encoded !== "undefined"
+          ? { encodedTrack: track.encoded }
+          : { identifier: track.identifier }
+      );
     }
 
     return this.makeRequest(
       "PATCH",
       `/${this.version}/sessions/${this.sessionId}/players/${options.guildId}?noReplace=false`,
       options.data
-    )
+    );
   }
 
   async destroyPlayer(guildId) {
@@ -99,7 +110,7 @@ class Rest {
     return this.makeRequest(
       "GET",
       `/${this.version}/loadtracks?identifier=${encodeURIComponent(identifier)}`
-    )
+    );
   }
 
   async decodeTrack(track, node) {
@@ -111,7 +122,7 @@ class Rest {
   }
 
   async decodeTracks(tracks) {
-    return await this.makeRequest(
+    return this.makeRequest(
       `POST`,
       `/${this.version}/decodetracks`,
       tracks
@@ -127,7 +138,7 @@ class Rest {
   }
 
   async getRoutePlannerStatus() {
-    return await this.makeRequest(
+    return this.makeRequest(
       `GET`,
       `/${this.version}/routeplanner/status`
     );
@@ -151,9 +162,14 @@ class Rest {
     }
 
     try {
-      return await req.json();
+      return await req[req.headers.get("Content-Type").includes("text/plain") ? "text" : "json"]();
     } catch (e) {
-      this.riffy.emit("debug", `[Rest - Error] There was an Error for ${new URL(req.url).pathname} ${e}`)
+      this.riffy.emit(
+        "debug",
+        `[Rest - Error] There was an Error for ${
+          new URL(req.url).pathname
+        } ${e}`
+      );
       return null;
     }
   }

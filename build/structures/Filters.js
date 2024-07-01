@@ -18,11 +18,24 @@ class Filters {
         this._8d = options._8d || null;
     }
 
+    /**
+     * 
+     * @param {string[]} band
+     * @returns 
+     */
+
     setEqualizer(band) {
         this.equalizer = band;
         this.updateFilters();
         return this;
     }
+
+    /**
+     * 
+     * @param {boolean} enabled 
+     * @param {*} options 
+     * @returns 
+     */
 
     setKaraoke(enabled, options = {}) {
         if (!this.player) return;
@@ -44,6 +57,13 @@ class Filters {
         }
     }
 
+    /**
+     * 
+     * @param {boolean} enabled 
+     * @param {*} options 
+     * @returns 
+     */
+
     setTimescale(enabled, options = {}) {
         if (!this.player) return;
 
@@ -63,6 +83,13 @@ class Filters {
         }
     }
 
+    /**
+     * 
+     * @param {boolean} enabled 
+     * @param {*} options 
+     * @returns 
+     */
+
     setTremolo(enabled, options = {}) {
         if (!this.player) return;
 
@@ -80,6 +107,13 @@ class Filters {
             return this;
         }
     }
+
+    /**
+     * 
+     * @param {boolean} enabled 
+     * @param {*} options 
+     * @returns 
+     */
 
     setVibrato(enabled, options = {}) {
         if (!this.player) return;
@@ -99,6 +133,13 @@ class Filters {
         }
     }
 
+    /**
+     * 
+     * @param {boolean} enabled 
+     * @param {*} options 
+     * @returns 
+     */
+
     setRotation(enabled, options = {}) {
         if (!this.player) return;
 
@@ -115,6 +156,13 @@ class Filters {
             return this;
         }
     }
+
+    /**
+     * 
+     * @param {boolean} enabled 
+     * @param {*} options 
+     * @returns 
+     */
 
     setDistortion(enabled, options = {}) {
         if (!this.player) return;
@@ -140,6 +188,13 @@ class Filters {
         }
     }
 
+    /**
+     * 
+     * @param {boolean} enabled 
+     * @param {*} options 
+     * @returns 
+     */
+
     setChannelMix(enabled, options = {}) {
         if (!this.player) return;
 
@@ -160,6 +215,13 @@ class Filters {
         }
     }
 
+    /**
+     * 
+     * @param {boolean} enabled 
+     * @param {*} options 
+     * @returns 
+     */
+
     setLowPass(enabled, options = {}) {
         if (!this.player) return;
 
@@ -177,10 +239,17 @@ class Filters {
         }
     }
 
+    /**
+     * 
+     * @param {boolean} enabled 
+     * @param {*} options 
+     * @returns 
+     */
+
     setBassboost(enabled, options = {}) {
         if (!this.player) return;
 
-        if (enabled == true) {
+        if (enabled) {
             if (options.value < 0 || options.value > 5) throw new Error("Bassboost value must be between 0 and 5");
 
             this.bassboost = options.value || 5;
@@ -199,7 +268,7 @@ class Filters {
     setSlowmode(enabled, options = {}) {
         if (!this.player) return;
 
-        if (enabled == true) {
+        if (enabled) {
             this.slowmode = true;
 
             this.setTimescale(true, {
@@ -211,10 +280,17 @@ class Filters {
         }
     }
 
+    /**
+     * 
+     * @param {boolean} enabled 
+     * @param {*} options 
+     * @returns 
+     */
+
     setNightcore(enabled, options = {}) {
         if (!this.player) return;
 
-        if (enabled == true) {
+        if (enabled) {
             if (!this.player) return;
             this.nightcore = enabled;
 
@@ -222,14 +298,19 @@ class Filters {
                 rate: options.rate || 1.5
             })
 
-            if (enabled) {
-                this.vaporwave = false;
-            }
+            this.vaporwave = false;
         } else {
             this.nightcore = null;
             this.setTimescale(false)
         }
     }
+
+    /**
+     * 
+     * @param {boolean} enabled 
+     * @param {*} options 
+     * @returns 
+     */
 
     setVaporwave(enabled, options = {}) {
         if (!this.player) return;
@@ -250,6 +331,13 @@ class Filters {
         }
     }
 
+    /**
+     * 
+     * @param {boolean} enabled 
+     * @param {*} options 
+     * @returns 
+     */
+
     set8D(enabled, options = {}) {
         if (!this.player) return;
 
@@ -265,16 +353,17 @@ class Filters {
         }
     }
 
-    clearFilters() {
-        this.player.filters = new Filters(this.player);
-        this.updateFilters();
+    async clearFilters() {
+        Object.assign(this, new Filters(this.player))
+        
+        await this.updateFilters();
         return this;
     }
 
-    updateFilters() {
+    async updateFilters() {
         const { equalizer, karaoke, timescale, tremolo, vibrato, rotation, distortion, channelMix, lowPass, volume } = this;
 
-        this.player.node.rest.updatePlayer({
+        await this.player.node.rest.updatePlayer({
             guildId: this.player.guildId,
             data: {
                 filters: { volume, equalizer, karaoke, timescale, tremolo, vibrato, rotation, distortion, channelMix, lowPass }

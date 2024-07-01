@@ -8,9 +8,8 @@
     "build"
   ],
   "dependencies": {
-    "@discordjs/collection": "^2.0.0",
-    "jsdom": "^23.0.1",
-    "undici": ">=6.6.1",
+    "jsdom": "^24.1.0",
+    "undici": ">=6.11.1",
     "ws": "^8.16.0"
   },
   "license": "MIT",
@@ -25,10 +24,10 @@
     "riffyjs",
     "eris"
   ],
-  "author": [
-    "@flameface",
-    "@unschooledgamers",
-    "@elitex"
+  "contributors": [
+    "FlameFace (https://github.com/flameface)",
+    "Elitex (https://github.com/Elitex07)",
+    "UnschooledGamer (https://github.com/unschooledgamer/)"
   ],
   "repository": {
     "type": "git",
@@ -37,5 +36,8 @@
   "bugs": {
     "url": "https://github.com/riffy-team/riffy.js/issues"
   },
-  "homepage": "https://riffy.js.org/"
+  "homepage": "https://riffy.js.org/",
+  "devDependencies": {
+    "discord.js": "^14.15.3"
+  }
 }

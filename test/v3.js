@@ -1,5 +1,6 @@
-const { Client, GatewayDispatchEvents } = require("discord.js");
+const { Client, GatewayDispatchEvents, AttachmentBuilder } = require("discord.js");
 const { Riffy } = require("../build/index.js");
+const { inspect } = require("node:util")
 
 const client = new Client({
     intents: [
@@ -14,9 +15,9 @@ const client = new Client({
 
 const nodes = [
     {
-        host: "localhost",
-        port: 2333,
-        password: "youshallnotpass",
+        host: "node.raidenbot.xyz",
+        port: 5500,
+        password: "pwd",
         secure: false
     }
 ];
@@ -36,7 +37,7 @@ client.on("ready", () => {
 });
 
 client.on("messageCreate", async (message) => {
-    if (!message.content.startsWith('!') || message.author.bot) return;
+    if (!message.content.startsWith('.') || message.author.bot) return;
 
     const args = message.content.slice(1).trim().split(" ");
     const command = args.shift().toLowerCase();
@@ -53,7 +54,7 @@ client.on("messageCreate", async (message) => {
 
         const resolve = await client.riffy.resolve({ query: query, requester: message.author });
         const { loadType, tracks, playlistInfo } = resolve;
-
+        console.log(resolve)
         if (loadType === 'PLAYLIST_LOADED') {
             for (const track of resolve.tracks) {
                 track.info.requester = message.author;
@@ -165,27 +166,16 @@ client.on("messageCreate", async (message) => {
         if (!player) return message.channel.send("No player found.");
 
         const loop = args[0];
-        if (!loop) return message.channel.send("Please provide a valid loop option.");
+        if (!loop || !["queue", "track"].includes(loop))
+            return message.channel.send("Please provide a valid loop option: `queue` or `track`.");
 
-        if (loop === "queue") {
-            if (player.loop === "queue") {
-                player.setLoop("none")
-                message.channel.send(`Queue loop is now disabled.`);
-            } else {
-                player.setLoop("queue")
-                message.channel.send(`Queue loop is now enabled.`);
-            }
-        } else if (loop === "track") {
-            if (player.loop === "track") {
-                player.setLoop("none")
-                message.channel.send(`Track loop is now disabled.`);
-            } else {
-                player.setLoop("track")
-                message.channel.send(`Track loop is now enabled.`);
-            }
-        } else {
-            return message.channel.send("Please provide a valid loop option.");
-        }
+        const toggleLoop = () => {
+            const loopType = player.loop === loop ? "none" : loop;
+            player.setLoop(loopType);
+            message.channel.send(`${loop.charAt(0).toUpperCase() + loop.slice(1)} loop is now ${loopType === "none" ? "disabled" : "enabled"}.`);
+        };
+
+        toggleLoop();
     }
 
     if (command === "shuffle") {
@@ -194,13 +184,6 @@ client.on("messageCreate", async (message) => {
 
         player.queue.shuffle();
         message.channel.send("Shuffled the queue.");
-    }
-
-    if (command === '8d') {
-        const player = client.riffy.players.get(message.guild.id);
-        if (!player) return message.channel.send("No player found.");
-
-        player.filters.setBassboost(true);
     }
 
     if (command === "remove") {
@@ -228,50 +211,31 @@ client.on("messageCreate", async (message) => {
 
         const filter = args[0];
 
-        if (filter === "8d") {
-            player.filters.set8D(true)
-            message.channel.send("8D filter enabled.")
-        } else if (filter === "bassboost") {
-            player.filters.setBassboost(true)
-            message.channel.send("Bassboost filter enabled.")
-        } else if (filter === "channelmix") {
-            player.filters.setChannelMix(true)
-            message.channel.send("Channelmix filter enabled.")
-        } else if (filter === "distortion") {
-            player.filters.setDistortion(true)
-            message.channel.send("Distortion filter enabled.")
-        } else if (filter === "karaoke") {
-            player.filters.setKaraoke(true)
-            message.channel.send("Karaoke filter enabled.")
-        } else if (filter === "lowpass") {
-            player.filters.setLowPass(true)
-            message.channel.send("Lowpass filter enabled.")
-        } else if (filter === "nightcore") {
-            player.filters.setNightcore(true)
-            message.channel.send("Nightcore filter enabled.")
-        } else if (filter === "rotate") {
-            player.filters.setRotation(true)
-            message.channel.send("Rotate filter enabled.")
-        } else if (filter === "slowmode") {
-            player.filters.setSlowmode(true)
-            message.channel.send("Slowmode filter enabled.")
-        } else if (filter === "timescale") {
-            player.filters.setTimescale(true)
-            message.channel.send("Timescale filter enabled.")
-        } else if (filter === "tremolo") {
-            player.filters.setTremolo(true)
-            message.channel.send("Tremolo filter enabled.")
-        } else if (filter === "vaporwave") {
-            player.filters.setVaporwave(true)
-            message.channel.send("Vaporwave filter enabled.")
-        } else if (filter === "vibrato") {
-            player.filters.setVibrato(true)
-            message.channel.send("Vibrato filter enabled.")
+        const filterActions = {
+            "8d": { method: "set8D", message: "8D filter enabled." },
+            "bassboost": { method: "setBassboost", message: "Bassboost filter enabled." },
+            "channelmix": { method: "setChannelMix", message: "Channelmix filter enabled." },
+            "distortion": { method: "setDistortion", message: "Distortion filter enabled." },
+            "karaoke": { method: "setKaraoke", message: "Karaoke filter enabled." },
+            "lowpass": { method: "setLowPass", message: "Lowpass filter enabled." },
+            "nightcore": { method: "setNightcore", message: "Nightcore filter enabled." },
+            "rotate": { method: "setRotation", message: "Rotate filter enabled." },
+            "slowmode": { method: "setSlowmode", message: "Slowmode filter enabled." },
+            "timescale": { method: "setTimescale", message: "Timescale filter enabled." },
+            "tremolo": { method: "setTremolo", message: "Tremolo filter enabled." },
+            "vaporwave": { method: "setVaporwave", message: "Vaporwave filter enabled." },
+            "vibrato": { method: "setVibrato", message: "Vibrato filter enabled." }
+        };
+
+        const action = filterActions[filter];
+        if (action) {
+            player.filters[action.method](true);
+            message.channel.send(action.message);
         } else {
-            return message.channel.send("Please provide a valid filter option.");
+            message.channel.send("Please provide a valid filter option.");
         }
 
-        console.log(player.filters)
+        // console.log(player.filters);
     }
 
     if (command === "dfilter") {
@@ -280,50 +244,50 @@ client.on("messageCreate", async (message) => {
 
         const filter = args[0];
 
-        if (filter === "8d") {
-            player.filters.set8D(false)
-            message.channel.send("8D filter disabled.")
-        } else if (filter === "bassboost") {
-            player.filters.setBassboost(false)
-            message.channel.send("Bassboost filter disabled.")
-        } else if (filter === "channelmix") {
-            player.filters.setChannelMix(false)
-            message.channel.send("Channelmix filter disabled.")
-        } else if (filter === "distortion") {
-            player.filters.setDistortion(false)
-            message.channel.send("Distortion filter disabled.")
-        } else if (filter === "karaoke") {
-            player.filters.setKaraoke(false)
-            message.channel.send("Karaoke filter disabled.")
-        } else if (filter === "lowpass") {
-            player.filters.setLowPass(false)
-            message.channel.send("Lowpass filter disabled.")
-        } else if (filter === "nightcore") {
-            player.filters.setNightcore(false)
-            message.channel.send("Nightcore filter disabled.")
-        } else if (filter === "rotate") {
-            player.filters.setRotation(false)
-            message.channel.send("Rotate filter disabled.")
-        } else if (filter === "slowmode") {
-            player.filters.setSlowmode(false)
-            message.channel.send("Slowmode filter disabled.")
-        } else if (filter === "timescale") {
-            player.filters.setTimescale(false)
-            message.channel.send("Timescale filter disabled.")
-        } else if (filter === "tremolo") {
-            player.filters.setTremolo(false)
-            message.channel.send("Tremolo filter disabled.")
-        } else if (filter === "vaporwave") {
-            player.filters.setVaporwave(false)
-            message.channel.send("Vaporwave filter disabled.")
-        } else if (filter === "vibrato") {
-            player.filters.setVibrato(false)
-            message.channel.send("Vibrato filter disabled.")
+        const filterActions = {
+            "8d": { method: "set8D", message: "8D filter disabled." },
+            "bassboost": { method: "setBassboost", message: "Bassboost filter disabled." },
+            "channelmix": { method: "setChannelMix", message: "Channelmix filter disabled." },
+            "distortion": { method: "setDistortion", message: "Distortion filter disabled." },
+            "karaoke": { method: "setKaraoke", message: "Karaoke filter disabled." },
+            "lowpass": { method: "setLowPass", message: "Lowpass filter disabled." },
+            "nightcore": { method: "setNightcore", message: "Nightcore filter disabled." },
+            "rotate": { method: "setRotation", message: "Rotate filter disabled." },
+            "slowmode": { method: "setSlowmode", message: "Slowmode filter disabled." },
+            "timescale": { method: "setTimescale", message: "Timescale filter disabled." },
+            "tremolo": { method: "setTremolo", message: "Tremolo filter disabled." },
+            "vaporwave": { method: "setVaporwave", message: "Vaporwave filter disabled." },
+            "vibrato": { method: "setVibrato", message: "Vibrato filter disabled." }
+        };
+
+        const action = filterActions[filter];
+        if (action) {
+            player.filters[action.method](false);
+            message.channel.send(action.message);
         } else {
-            return message.channel.send("Please provide a valid filter option.");
+            message.channel.send("Please provide a valid filter option.");
         }
 
-        console.log(player.filters)
+        // console.log(player.filters);
+    }
+
+    if (command === "eval" && args[0]) {
+        try {
+            let evaled = await eval(args.join(" "));
+            let string = inspect(evaled);
+
+            if (string.includes(client.token))
+                return message.reply("No token grabbing.");
+
+            if (string.length > 2000) {
+                let output = new AttachmentBuilder(Buffer.from(string), { name: "result.js" });
+                return message.channel.send({ files: [output] });
+            }
+
+            message.channel.send(`\`\`\`js\n${string}\n\`\`\``);
+        } catch (error) {
+            message.reply(`\`\`\`js\n${error}\n\`\`\``);
+        }
     }
 })
 
@@ -345,6 +309,8 @@ client.riffy.on("trackStart", async (player, track) => {
     channel.send(`Now playing: \`${track.info.title}\` by \`${track.info.author}\`.`);
 });
 
+client.riffy.on("debug", console.log)
+
 client.riffy.on("queueEnd", async (player) => {
     const channel = client.channels.cache.get(player.textChannel);
 
@@ -361,4 +327,4 @@ client.on("raw", (d) => {
     client.riffy.updateVoiceState(d);
 });
 
-client.login("Discord-Token");
+client.login("<DISCORD-TOKEN>");

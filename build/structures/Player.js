@@ -2,7 +2,7 @@ const { EventEmitter } = require("events");
 const { Connection } = require("./Connection");
 const { Filters } = require("./Filters");
 const { Queue } = require("./Queue");
-const { scAutoPlay, spAutoPlay } = require('../functions/autoPlay');
+const { soundcloud, spotify } = require('../functions/autoPlay');
 
 class Player extends EventEmitter {
     constructor(riffy, node, options) {
@@ -46,7 +46,7 @@ class Player extends EventEmitter {
     }
 
     async play() {
-        if (!this.connected) throw new Error("Player connection is not initiated. Kindly user Riffy.createConnection() and establish a connection");
+        if (!this.connected) throw new Error("Player connection is not initiated. Kindly use Riffy.createConnection() and establish a connection, TIP: Check if Guild Voice States intent is set/provided & 'updateVoiceState' is used in the raw(Gateway Raw) event");
         if (!this.queue.length) return;
 
         this.current = this.queue.shift();
@@ -113,7 +113,7 @@ class Player extends EventEmitter {
                 }
             } else if (player.previous.info.sourceName === "soundcloud") {
                 try {
-                    scAutoPlay(player.previous.info.uri).then(async (data) => {
+                    soundcloud(player.previous.info.uri).then(async (data) => {
                         let response = await this.riffy.resolve({ query: data, source: "scsearch", requester: player.previous.info.requester });
 
                         if (this.node.rest.version === "v4") {
@@ -134,7 +134,7 @@ class Player extends EventEmitter {
                 }
             } else if (player.previous.info.sourceName === "spotify") {
                 try {
-                    spAutoPlay(player.previous.info.identifier).then(async (data) => {
+                    spotify(player.previous.info.identifier).then(async (data) => {
                         const response = await this.riffy.resolve({ query: `https://open.spotify.com/track/${data}`, requester: player.previous.info.requester });
 
                         if (this.node.rest.version === "v4") {
@@ -165,8 +165,9 @@ class Player extends EventEmitter {
             self_mute: mute,
         });
 
-        this.connected = true;
-        this.riffy.emit("debug", this.guildId, "Player has been connected");
+        this.connected = true
+
+        this.riffy.emit("debug", this.guildId, `Player has informed the Discord Gateway to Establish Voice Connectivity in ${voiceChannel} Voice Channel, Awaiting Confirmation(Via Voice State Update & Voice Server Update events)`);
     }
 
     stop() {
@@ -287,11 +288,11 @@ class Player extends EventEmitter {
 
         const track = this.current;
 
-        if (this.node.rest.version === "v4") {
-            track.info.thumbnail = await track.info.thumbnail;
-        } else {
-            track.info.thumbnail = await track.info.thumbnail;
-        }
+        // if (this.node.rest.version === "v4") {
+        //     track.info.thumbnail = await track.info.thumbnail;
+        // } else {
+        //     track.info.thumbnail = await track.info.thumbnail;
+        // }
 
         switch (payload.type) {
             case "TrackStartEvent":
