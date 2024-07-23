@@ -171,8 +171,8 @@ class Node {
 
         setInterval(() => {
             if(Date.now() - this.lastStats > 5 * 60 * 1000) {
-                this.riffy.emit("debug", this.name, `Reconnecting to Lavalink due to inactivity (in sending stats) for 5 minutes.`);
-                this.reconnect();
+                this.riffy.emit("debug", this.name, `[Beta] No stat received since 5 minutes.`);
+                this.connect();
             }
         }, 5 * 60 * 1000)
     }
