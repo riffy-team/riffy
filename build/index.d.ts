@@ -3,17 +3,17 @@ import { EventEmitter } from "events";
 export declare class Track {
     constructor(data: any, requester: any, node: Node);
 
-    public track: String;
+    public track: string;
     public info: {
-        identifier: String;
-        seekable: Boolean;
-        author: String;
-        length: Number;
-        stream: Boolean;
-        sourceName: String;
-        title: String;
-        uri: String;
-        thumbnail: String | null;
+        identifier: string;
+        seekable: boolean;
+        author: string;
+        length: number;
+        stream: boolean;
+        sourceName: string;
+        title: string;
+        uri: string;
+        thumbnail: string | null;
         requester: any;
     };
 
@@ -21,16 +21,16 @@ export declare class Track {
 }
 
 export interface RestOptions {
-    secure: Boolean;
-    host: String;
-    port: Number;
-    sessionId: String;
-    password: String;
-    restVersion: String;
+    secure: boolean;
+    host: string;
+    port: number;
+    sessionId: string;
+    password: string;
+    restVersion: string;
 }
 
 interface RequestOptions {
-    guildId: String;
+    guildId: string;
     data: any;
 }
 
@@ -41,52 +41,52 @@ interface RestResponse {
 export declare class Rest extends EventEmitter {
     constructor(riffy: Riffy, options: RestOptions);
     public riffy: Riffy;
-    public url: String
+    public url: string
     public sessionId: RestOptions["sessionId"];
     public password: RestOptions["password"];
     public version: RestOptions["restVersion"];
-    public calls: Number;
+    public calls: number;
 
-    public setSessionId(sessionId: String): void;
-    public makeRequest(method: String, endpoint: String, body?: any): Promise<RestResponse | null>;
+    public setSessionId(sessionId: string): void;
+    public makeRequest(method: string, endpoint: string, body?: any): Promise<RestResponse | null>;
     public getPlayers(): Promise<RestResponse | null>;
     public updatePlayer(options: RequestOptions): Promise<void>;
-    public destroyPlayer(guildId: String): Promise<RestResponse | null>;
-    public getTracks(identifier: String): Promise<void>;
-    public decodeTrack(track: String, node?: any): Promise<void>;
+    public destroyPlayer(guildId: string): Promise<RestResponse | null>;
+    public getTracks(identifier: string): Promise<void>;
+    public decodeTrack(track: string, node?: any): Promise<void>;
     public decodeTracks(tracks: any[]): Promise<void>;
     public getStats(): Promise<void>;
     public getInfo(): Promise<void>;
     public getRoutePlannerStatus(): Promise<void>;
-    public getRoutePlannerAddress(address: String): Promise<void>;
+    public getRoutePlannerAddress(address: string): Promise<void>;
     public parseResponse(req: any): Promise<RestResponse | null>;
 }
 
 export declare class Queue extends Array<Track>{
-    get size(): Number;
+    get size(): number;
     get first(): Track | null;
 
     add(track: Track): this;
-    remove(index: Number): Track;
+    remove(index: number): Track;
     clear(): void;
     shuffle(): void;
 }
 
 export declare class Plugin {
-    constructor(name: String);
+    constructor(name: string);
 
     load(riffy: Riffy): void;
     unload(riffy: Riffy): void;
 }
 
 export interface PlayerOptions {
-    guildId: String;
-    textChannel?: String;
-    voiceChannel?: String;
-    deaf?: Boolean;
-    mute?: Boolean;
-    volume?: Number;
-    loop?: String;
+    guildId: string;
+    textChannel?: string;
+    voiceChannel?: string;
+    deaf?: boolean;
+    mute?: boolean;
+    volume?: number;
+    loop?: string;
 }
 
 export type LoopOption = "none" | "track" | "queue";
@@ -96,47 +96,47 @@ export declare class Player extends EventEmitter {
     public riffy: Riffy;
     public node: Node;
     public options: PlayerOptions;
-    public guildId: String;
-    public textChannel: String;
-    public voiceChannel: String;
+    public guildId: string;
+    public textChannel: string;
+    public voiceChannel: string;
     public connection: Connection;
-    public deaf: Boolean;
-    public mute: Boolean;
-    public volume: Number;
-    public loop: String;
+    public deaf: boolean;
+    public mute: boolean;
+    public volume: number;
+    public loop: string;
     public filters: Filters;
     public data: {};
     public queue: Queue;
-    public position: Number;
+    public position: number;
     public current: Track;
     public previous: Track | null;
-    public playing: Boolean;
-    public paused: Boolean;
-    public connected: Boolean;
-    public timestamp: Number;
-    public ping: Number;
-    public isAutoplay: Boolean;
+    public playing: boolean;
+    public paused: boolean;
+    public connected: boolean;
+    public timestamp: number;
+    public ping: number;
+    public isAutoplay: boolean;
 
     public play(): Promise<Player>;
 
     public autoplay(player: Player): Promise<Player>;
 
     public connect(options?: {
-        guildId: String;
-        voiceChannel: String;
-        deaf?: Boolean;
-        mute?: Boolean;
+        guildId: string;
+        voiceChannel: string;
+        deaf?: boolean;
+        mute?: boolean;
     }): void;
 
     public stop(): Player;
-    public pause(toggle?: Boolean): Player;
-    public seek(position: Number): void;
-    public setVolume(volume: Number): Player;
+    public pause(toggle?: boolean): Player;
+    public seek(position: number): void;
+    public setVolume(volume: number): Player;
     public setLoop(mode: LoopOption): Player;
-    public setTextChannel(channel: String): Player;
-    public setVoiceChannel(channel: String, options?: {
-        mute?: Boolean;
-        deaf?: Boolean;
+    public setTextChannel(channel: string): Player;
+    public setVoiceChannel(channel: string, options?: {
+        mute?: boolean;
+        deaf?: boolean;
     }): Player;
 
     public disconnect(): Player;
@@ -147,8 +147,8 @@ export declare class Player extends EventEmitter {
     private trackError(player: Player, track: Track, payload: any): void;
     private trackStuck(player: Player, track: Track, payload: any): void;
     private socketClosed(player: Player, payload: any): void;
-    private set(key: String, value: any): void;
-    private get(key: String): any;
+    private set(key: string, value: any): void;
+    private get(key: string): any;
     private send(data: any): void;
 }
 
@@ -168,13 +168,13 @@ export type nodeResponse = {
     /**
      * Load Type - "TRACK_LOADED", "PLAYLIST_LOADED", "SEARCH_RESULT", "NO_MATCHES", "LOAD_FAILED" for v3 and "track", "playlist", "search", "error" for v4
      */
-    loadType: String
+    loadType: string
     /**
      * Playlist Info
      */
     playlistInfo?: {
-        name: String;
-        selectedTrack: Number;
+        name: string;
+        selectedTrack: number;
     };
     /**
      * Plugin Info
@@ -186,12 +186,12 @@ export type nodeResponse = {
 
 export type RiffyOptions = {
     send: (payload: {
-        op: Number;
+        op: number;
         d: {
-            guild_id: String;
-            channel_id: String;
-            self_deaf: Boolean;
-            self_mute: Boolean;
+            guild_id: string;
+            channel_id: string;
+            self_deaf: boolean;
+            self_mute: boolean;
         }
     }) => void;
     defaultSearchPlatform?: SearchPlatform;
@@ -199,7 +199,7 @@ export type RiffyOptions = {
     plugins?: Array<Plugin>;
 } & Exclude<NodeOptions, "sessionId">
 
-type k = String;
+type k = string;
 type v = any;
 
 export declare class Riffy extends EventEmitter {
@@ -209,29 +209,29 @@ export declare class Riffy extends EventEmitter {
     public nodeMap: Map<k, Node>;
     public players: Map<k, Player>;
     public options: RiffyOptions;
-    public clientId: String;
-    public initiated: Boolean;
+    public clientId: string;
+    public initiated: boolean;
     public send: RiffyOptions["send"];
-    public defaultSearchPlatform: String;
+    public defaultSearchPlatform: string;
     public restVersion: RiffyOptions["restVersion"];
 
     public readonly leastUsedNodes: Array<Node>;
 
-    public init(clientId: String): this;
+    public init(clientId: string): this;
 
     public createNode(options: any): Node;
 
-    public destroyNode(identifier: String): void;
+    public destroyNode(identifier: string): void;
 
     public updateVoiceState(packet: any): void;
 
-    public fetchRegion(region: String): Array<LavalinkNode>;
+    public fetchRegion(region: string): Array<LavalinkNode>;
 
     public createConnection(options: {
-        guildId: String;
-        voiceChannel: String;
-        textChannel: String;
-        deaf?: Boolean;
+        guildId: string;
+        voiceChannel: string;
+        textChannel: string;
+        deaf?: boolean;
         mute?: boolean;
         /**
          * @description voice region (rtc Region) used for filtering node based onit 
@@ -241,21 +241,21 @@ export declare class Riffy extends EventEmitter {
 
     public createPlayer(node: Node, options: PlayerOptions): Player;
 
-    public removeConnection(guildId: String): void;
+    public removeConnection(guildId: string): void;
 
     public resolve(params: {
-        query: String;
-        source?: String;
+        query: string;
+        source?: string;
         requester: any;
         node: string | Node
     }): Promise<nodeResponse>;
 
 
-    public get(guildId: String): Player;
+    public get(guildId: string): Player;
 
     public on(event: "nodeConnect", listener: (node: Node) => void): this;
     public on(event: "nodeReconnect", listener: (node: Node) => void): this;
-    public on(event: "nodeDisconnect", listener: (node: Node, reason: String) => void): this;
+    public on(event: "nodeDisconnect", listener: (node: Node, reason: string) => void): this;
     public on(event: "nodeCreate", listener: (node: Node) => void): this;
     public on(event: "nodeDestroy", listener: (node: Node) => void): this;
     public on(event: "nodeError", listener: (node: Node, error: Error) => void): this;
@@ -269,35 +269,35 @@ export declare class Riffy extends EventEmitter {
 
     public on(event: "playerCreate", listener: (player: Player) => void): this;
     public on(event: "playerDisconnect", listener: (player: Player) => void): this;
-    public on(event: "playerMove", listener: (player: Player, oldChannel: String, newChannel: String) => void): this;
+    public on(event: "playerMove", listener: (player: Player, oldChannel: string, newChannel: string) => void): this;
     public on(event: "playerUpdate", listener: (player: Player, payload: any) => void): this;
 
     public on(event: "queueEnd", listener: (player: Player) => void): this;
-    public on(event: "debug", listener: (message: String) => void): this;
+    public on(event: "debug", listener: (message: string) => void): this;
 }
 
 export type LavalinkNode = {
     /**
      * The name of the node
      */
-    name?: String;
+    name?: string;
     /**
      * The IP of the node
      */
-    host: String;
+    host: string;
     /**
      * The port of the node
      */
-    port: Number;
+    port: number;
     /**
      * The password of the node
      */
-    password: String;
+    password: string;
     /**
      * Is node connection secured by SSL ?
      * @default false 
      */
-    secure?: Boolean;
+    secure?: boolean;
     
     /**
      * Voice Regions for the Node
@@ -316,27 +316,27 @@ export type NodeOptions = {
      * The resume key of the node 
      * Ignored if node `restVersion` is not `v3`
      */
-    resumeKey?: String;
+    resumeKey?: string;
     /**
      * The session id of the node
      */
-    sessionId?: String;
+    sessionId?: string;
     /**
      * The resume timeout of the node
      */
-    resumeTimeout?: Number;
+    resumeTimeout?: number;
     /**
      * The auto resume of the node
      */
-    autoResume?: Boolean;
+    autoResume?: boolean;
     /**
      * The reconnect timeout of the node
      */
-    reconnectTimeout?: Number;
+    reconnectTimeout?: number;
     /**
      * The reconnect tries of the node
      */
-    reconnectTries?: Number;
+    reconnectTries?: number;
 }
 
 export declare class Node {
@@ -351,8 +351,8 @@ export declare class Node {
 
     public restVersion: NodeOptions["restVersion"];
     public rest: Rest;
-    public wsUrl: String;
-    public restUrl: String;
+    public wsUrl: string;
+    public restUrl: string;
     private ws: null;
 
     public resumeKey: NodeOptions["resumeKey"];
@@ -363,11 +363,11 @@ export declare class Node {
     public reconnectTimeout: NodeOptions["reconnectTimeout"];
     public reconnectTries: NodeOptions["reconnectTries"];
 
-    public reconnectAttempt: Number;
-    public reconnectAttempted: Number;
+    public reconnectAttempt: number;
+    public reconnectAttempted: number;
 
-    public connected: Boolean;
-    public reconnecting: Boolean;
+    public connected: boolean;
+    public reconnecting: boolean;
     public stats: {
         players: 0,
         playingPlayers: 0,
@@ -394,106 +394,106 @@ export declare class Node {
     public open(): void;
     public error(event: any): void;
     public message(msg: any): void;
-    public close(event: any, reason: String): void;
+    public close(event: any, reason: string): void;
     public reconnect(): void;
     public disconnect(): void;
-    readonly penalties: Number;
+    readonly penalties: number;
 }
 
 export type FilterOptions = {
     /**
      * The volume of the player
      */
-    volume?: Number;
+    volume?: number;
     /**
      * The equalizer of the player
      */
-    equalizer?: Array<{ band: Number; gain: Number }>;
+    equalizer?: Array<{ band: number; gain: number }>;
     /**
      * The karaoke of the player
      */
     karaoke?: {
-        level: Number;
-        monoLevel: Number;
-        filterBand: Number;
-        filterWidth: Number;
+        level: number;
+        monoLevel: number;
+        filterBand: number;
+        filterWidth: number;
     } | null;
     /**
      * The timescale of the player
      */
     timescale?: {
-        speed: Number;
-        pitch: Number;
-        rate: Number;
+        speed: number;
+        pitch: number;
+        rate: number;
     } | null;
     /**
      * The tremolo of the player
      */
     tremolo?: {
-        frequency: Number;
-        depth: Number;
+        frequency: number;
+        depth: number;
     } | null;
     /**
      * The vibrato of the player
      */
     vibrato?: {
-        frequency: Number;
-        depth: Number;
+        frequency: number;
+        depth: number;
     } | null;
     /**
      * The rotation of the player
      */
     rotation?: {
-        rotationHz: Number;
+        rotationHz: number;
     } | null;
     /**
      * The distortion of the player
      */
     distortion?: {
-        sinOffset: Number;
-        sinScale: Number;
-        cosOffset: Number;
-        cosScale: Number;
-        tanOffset: Number;
-        tanScale: Number;
-        offset: Number;
-        scale: Number;
+        sinOffset: number;
+        sinScale: number;
+        cosOffset: number;
+        cosScale: number;
+        tanOffset: number;
+        tanScale: number;
+        offset: number;
+        scale: number;
     } | null;
     /**
      * The channel mix of the player
      */
     channelMix?: {
-        leftToLeft: Number;
-        leftToRight: Number;
-        rightToLeft: Number;
-        rightToRight: Number;
+        leftToLeft: number;
+        leftToRight: number;
+        rightToLeft: number;
+        rightToRight: number;
     } | null;
     /**
      * The low pass of the player
      */
     lowPass?: {
-        smoothing: Number;
+        smoothing: number;
     } | null;
     /**
      * The BassBoost of the player
      */
-    bassboost?: Number | null;
+    bassboost?: number | null;
     /**
      * The Slowmode of the player
      */
-    slowmode?: Number | null;
+    slowmode?: number | null;
     /**
      * The Nightcore of the player
      */
-    nightcore?: Boolean | null;
+    nightcore?: boolean | null;
     /**
      * The Vaporwave of the player
      */
-    vaporwave?: Boolean | null;
+    vaporwave?: boolean | null;
     /**
      * The 8D of the player
      */
-    _8d?: Boolean | null;
+    _8d?: boolean | null;
 }
 
 export declare class Filters {
@@ -515,77 +515,77 @@ export declare class Filters {
     public vaporwave: FilterOptions["vaporwave"];
     public _8d: FilterOptions["_8d"];
 
-    public setEquilizer(band: Array<{ band: Number; gain: Number }>): this;
+    public setEquilizer(band: Array<{ band: number; gain: number }>): this;
 
-    public setKaraoke(enabled: Boolean, options?: {
-        level: Number;
-        monoLevel: Number;
-        filterBand: Number;
-        filterWidth: Number;
+    public setKaraoke(enabled: boolean, options?: {
+        level: number;
+        monoLevel: number;
+        filterBand: number;
+        filterWidth: number;
     }): this;
 
-    public setTimescale(enabled: Boolean, options?: {
-        speed: Number;
-        pitch: Number;
-        rate: Number;
-    }): this;
-
-
-    public setTremolo(enabled: Boolean, options?: {
-        frequency: Number;
-        depth: Number;
-    }): this;
-
-    public setVibrato(enabled: Boolean, options?: {
-        frequency: Number;
-        depth: Number;
-    }): this;
-
-    public setRotation(enabled: Boolean, options?: {
-        rotationHz: Number;
-    }): this;
-
-    public setDistortion(enabled: Boolean, options?: {
-        sinOffset: Number;
-        sinScale: Number;
-        cosOffset: Number;
-        cosScale: Number;
-        tanOffset: Number;
-        tanScale: Number;
-        offset: Number;
-        scale: Number;
-    }): this;
-
-    public setChannelMix(enabled: Boolean, options?: {
-        leftToLeft: Number;
-        leftToRight: Number;
-        rightToLeft: Number;
-        rightToRight: Number;
-    }): this;
-
-    public setLowPass(enabled: Boolean, options?: {
-        smoothing: Number;
+    public setTimescale(enabled: boolean, options?: {
+        speed: number;
+        pitch: number;
+        rate: number;
     }): this;
 
 
-    public setBassboost(enabled: Boolean, options?: {
-        value: Number;
+    public setTremolo(enabled: boolean, options?: {
+        frequency: number;
+        depth: number;
     }): this;
 
-    public setSlowmode(enabled: Boolean, options?: {
-        rate: Number;
+    public setVibrato(enabled: boolean, options?: {
+        frequency: number;
+        depth: number;
     }): this;
 
-    public setNightcore(enabled: Boolean, options?: {
-        rate: Number;
+    public setRotation(enabled: boolean, options?: {
+        rotationHz: number;
     }): this;
 
-    public setVaporwave(enabled: Boolean, options?: {
-        pitch: Number;
+    public setDistortion(enabled: boolean, options?: {
+        sinOffset: number;
+        sinScale: number;
+        cosOffset: number;
+        cosScale: number;
+        tanOffset: number;
+        tanScale: number;
+        offset: number;
+        scale: number;
     }): this;
 
-    public set8D(enabled: Boolean, options?: {
-        rotationHz: Number;
+    public setChannelMix(enabled: boolean, options?: {
+        leftToLeft: number;
+        leftToRight: number;
+        rightToLeft: number;
+        rightToRight: number;
+    }): this;
+
+    public setLowPass(enabled: boolean, options?: {
+        smoothing: number;
+    }): this;
+
+
+    public setBassboost(enabled: boolean, options?: {
+        value: number;
+    }): this;
+
+    public setSlowmode(enabled: boolean, options?: {
+        rate: number;
+    }): this;
+
+    public setNightcore(enabled: boolean, options?: {
+        rate: number;
+    }): this;
+
+    public setVaporwave(enabled: boolean, options?: {
+        pitch: number;
+    }): this;
+
+    public set8D(enabled: boolean, options?: {
+        rotationHz: number;
     }): this;
 
     public clearFilters(): this;
@@ -597,7 +597,7 @@ export type Voice = {
     /**
      * The voice session id
      */
-    sessionId: String,
+    sessionId: string,
     /**
      * The voice event
      */
@@ -605,26 +605,26 @@ export type Voice = {
     /**
      * The voice endpoint
      */
-    endpoint: String
+    endpoint: string
 }
 
 export declare class Connection {
     constructor(player: Player);
     public player: Player;
-    public sessionId: String;
+    public sessionId: string;
     public voice: Voice;
-    public region: String;
-    public self_deaf: Boolean;
-    public self_mute: Boolean;
-    public voiceChannel: String;
+    public region: string;
+    public self_deaf: boolean;
+    public self_mute: boolean;
+    public voiceChannel: string;
 
-    public setServerUpdate(data: { endpoint: String; token: String }): void;
+    public setServerUpdate(data: { endpoint: string; token: string }): void;
 
     public setStateUpdate(data: {
-        session_id: String;
-        channel_id: String;
-        self_deaf: Boolean;
-        self_mute: Boolean;
+        session_id: string;
+        channel_id: string;
+        self_deaf: boolean;
+        self_mute: boolean;
     }): void;
 
     private updatePlayerVoiceData(): void;
