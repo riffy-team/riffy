@@ -2,28 +2,34 @@
 
 A lavalink client for Node.JS, designed to be simple and easy to use. Compatible with all Discord libraries (discord.js, Eris, etc.).
 
-## **Installation**
+## Installation
+
 ```shell
 npm install riffy
 ```
 
-## **Features**
+## Features
+
 - Supports versions 3 and 4 of the Lavalink protocols.
 - Autoplay support for YouTube, SoundCloud, and Spotify.
 - Compatible with all Discord libraries (discord.js, Eris, etc.).
 - Works with all Lavalink filters.
 
-## **Example Project**
+## Example Project
+
 - [Riffy Music Bot](https://github.com/riffy-team/riffy-music-bot)
 
-## **Documentation**
+## Documentation
+
 - [Documentation](https://riffy.js.org)
 - [Discord Server](https://discord.gg/TvjrWtEuyP)
 
-#### **1. Lavalink Node**
+#### 1. Lavalink Node
+
 First thing first, you need to have a lavalink node running. You can download the latest version of lavalink from [here](https://github.com/lavalink-devs/Lavalink), or you can use [this]() for free.
 
-#### **2. Creating a Project**
+#### 2. Creating a Project
+
 We are using [discord.js](https://discord.js.org) for this example, but you can use any discord library you want.
 
 Import the `Riffy` from the package.
@@ -164,17 +170,20 @@ client.on("raw", (d) => {
 client.login("Discord-Bot-Token-Here");
 ```
 
-#### **3. Running our Discord bot**
+#### 3. Running our Discord bot
+
 Now that we have created our project, we can run our bot by typing __node index.js__ in the terminal.
 
 When the bot is running, you can use the __!play song_name__ command to play music.
 
-#### **Conclusion**
+#### Conclusion
+
 That's it! You have successfully created a discord music bot using riffy. If you have any questions, feel free to join our [discord server](https://discord.gg/TvjrWtEuyP).
 
 We have set this example by keeping in mind that you know the basics of discord.js or any other discord library you are using.
 
-## **Our Team**
+## Our Team
+
 🟪 Elitex
 - Github: [@Elitex](https://github.com/Elitex07)
 - Discord: @elitex
@@ -187,5 +196,6 @@ We have set this example by keeping in mind that you know the basics of discord.
 - Github: [@UnschooledGamer](https://github.com/UnschooledGamer)
 - Discord: @unschooledgamer
 
-## **License**
+## License
+
 This project is licensed under the [MIT License](./LICENSE)
