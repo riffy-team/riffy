@@ -2,7 +2,7 @@
 **Riffy** is a lavalink client for node.js. It is designed to be simple and easy to use, with a focus on stablity and more features.
 
 ## **Installation**
-```
+```shell
 npm install riffy
 ```
 
