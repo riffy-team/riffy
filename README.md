@@ -1,5 +1,6 @@
-## **About**
-**Riffy** is a lavalink client for node.js. It is designed to be simple and easy to use, with a focus on stablity and more features.
+# Riffy [![NPM version](https://img.shields.io/npm/v/riffy.svg?style=flat-square&color=informational)](https://npmjs.com/package/riffy)
+
+A lavalink client for Node.JS, designed to be simple and easy to use. Compatible with all Discord libraries (discord.js, Eris, etc.).
 
 ## **Installation**
 ```shell
