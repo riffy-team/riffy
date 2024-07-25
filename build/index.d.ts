@@ -152,7 +152,7 @@ export declare class Player extends EventEmitter {
     private send(data: any): void;
 }
 
-export type SearchPlatform = "ytsearch" | "ytmsearch" | "scsearch" | "spsearch" | "amsearch" | "dzsearch" | "ymsearch" | string;
+export type SearchPlatform = "ytsearch" | "ytmsearch" | "scsearch" | "spsearch" | "amsearch" | "dzsearch" | "ymsearch" | (string & {})
 export type Version = "v3" | "v4";
 
 export type LavalinkTrackLoadException = {

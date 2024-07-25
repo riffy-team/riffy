@@ -10,8 +10,8 @@ class Riffy extends EventEmitter {
   constructor(client, nodes, options) {
     super();
     if (!client) throw new Error("Client is required to initialize Riffy");
-    if (!nodes) throw new Error("Nodes are required to initialize Riffy");
-    if (!options.send) throw new Error("Send function is required to initialize Riffy");
+    if (!nodes || !Array.isArray(nodes)) throw new Error(`Nodes are required & Must Be an Array(Received ${typeof nodes}) for to initialize Riffy`);
+    if (!options.send || typeof options.send !== "function") throw new Error("Send function is required to initialize Riffy");
 
     this.client = client;
     this.nodes = nodes;
@@ -121,14 +121,6 @@ class Riffy extends EventEmitter {
 
     return this.createPlayer(node, options);
   }
-    
-  fetchRegion(region) {
-     const nodesByRegion = [...this.nodeMap.values()]
-       .filter((node) => node.connected && node.regions == region?.toLowerCase())
-       .sort((a, b) => b.rest.calls - a.rest.calls);
-    
-     return nodesByRegion;
-  }
 
   createPlayer(node, options) {
     const player = new Player(this, node, options);
@@ -155,12 +147,12 @@ class Riffy extends EventEmitter {
   }
 
   /**
-   * @param {Object} param0 
+   * @param {object} param0 
    * @param {string} param0.query used for searching as a search Query  
    * @param {*} param0.source  A source to search the query on example:ytmsearch for youtube music
    * @param {*} param0.requester the requester who's requesting 
-   * @param {string? | Node?} param0.node  the node to request the query on either use node identifier/name or the node class itself
-   * @returns -- returned properties values are nullable if lavlink doesn't  give them
+   * @param {(string | Node)?} param0.node  the node to request the query on either use node identifier/name or the node class itself
+   * @returns -- returned properties values are nullable if lavalink doesn't  give them
    * */
   async resolve({ query, source, requester, node }) {
     try {

@@ -2,9 +2,6 @@ const { getImageUrl } = require("../functions/fetchImage");
 const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 class Track {
-
-    #rawData = {};
-    #cachedThumbnail = null;
     constructor(data, requester, node) {
         this.rawData = data;
         this.track = data.encoded;

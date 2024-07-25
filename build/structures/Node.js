@@ -169,12 +169,6 @@ class Node {
         this.ws.on("close", this.close.bind(this));
 
 
-        setInterval(() => {
-            if(Date.now() - this.lastStats > 5 * 60 * 1000) {
-                this.riffy.emit("debug", this.name, `[Beta] No stat received since 5 minutes.`);
-                this.connect();
-            }
-        }, 5 * 60 * 1000)
     }
 
     open() {
@@ -258,7 +252,7 @@ class Node {
                 return this.destroy();
             }
 
-            this.ws.removeAllListeners();
+            this.ws?.removeAllListeners();
             this.ws = null;
             this.riffy.emit("nodeReconnect", this);
             this.connect();
@@ -276,14 +270,12 @@ class Node {
         });
 
         if (this.ws) this.ws.close(1000, "destroy");
-        this.ws.removeAllListeners();
+        this.ws?.removeAllListeners();
         this.ws = null;
 
-        this.reconnectAttempted = 1;
         clearTimeout(this.reconnectAttempt);
 
         this.riffy.emit("nodeDestroy", this);
-        this.riffy.destroyPlayer(player.guildId)
 
         this.riffy.nodeMap.delete(this.name);
         this.connected = false;
