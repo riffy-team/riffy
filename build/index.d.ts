@@ -234,9 +234,9 @@ export declare class Riffy extends EventEmitter {
         deaf?: boolean;
         mute?: boolean;
         /**
-         * @description voice region (rtc Region) used for filtering node based onit 
+         * @description voice region (rtc Region) used for filtering node based on it 
          * */
-        region: string;
+        region?: string;
     }): Player;
 
     public createPlayer(node: Node, options: PlayerOptions): Player;
