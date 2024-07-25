@@ -101,6 +101,17 @@ class Riffy extends EventEmitter {
     return nodesByRegion;
   }
 
+  /**
+   * Creates a connection based on the provided options.
+   *
+   * @param {Object} options - The options for creating the connection.
+   * @param {string} options.guildId - The ID of the guild.
+   * @param {string} [options.region] - The region for the connection.
+   * @param {number} [options.defaultVolume] - The default volume of the player. **By-Default**: **100**
+   * @param {LoopOption} [options.loop] - The loop mode of the player.
+   * @throws {Error} Throws an error if Riffy is not initialized or no nodes are available.
+   * @return {Player} The created player.
+   */
   createConnection(options) {
     if (!this.initiated) throw new Error("You have to initialize Riffy in your ready event");
 
@@ -108,7 +119,7 @@ class Riffy extends EventEmitter {
     if (player) return player;
 
     if (this.leastUsedNodes.length === 0) throw new Error("No nodes are available");
-
+    
     let node;
     if (options.region) {
       const region = this.fetchRegion(options.region)[0];
@@ -152,7 +163,7 @@ class Riffy extends EventEmitter {
    * @param {*} param0.source  A source to search the query on example:ytmsearch for youtube music
    * @param {*} param0.requester the requester who's requesting 
    * @param {(string | Node)?} param0.node  the node to request the query on either use node identifier/name or the node class itself
-   * @returns -- returned properties values are nullable if lavalink doesn't  give them
+   * @returns {import("..").nodeResponse} returned properties values are nullable if lavalink doesn't  give them
    * */
   async resolve({ query, source, requester, node }) {
     try {
@@ -200,7 +211,7 @@ class Riffy extends EventEmitter {
       }
 
       this.loadType = response.loadType ?? null
-      this.pluginInfo = response.pluginInfo ?? null;
+      this.pluginInfo = response.pluginInfo ?? {};
 
       return {
         loadType: this.loadType,

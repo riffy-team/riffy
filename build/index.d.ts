@@ -85,8 +85,8 @@ export interface PlayerOptions {
     voiceChannel?: string;
     deaf?: boolean;
     mute?: boolean;
-    volume?: number;
-    loop?: string;
+    defaultVolume?: number;
+    loop?: LoopOption;
 }
 
 export type LoopOption = "none" | "track" | "queue";
@@ -168,18 +168,19 @@ export type nodeResponse = {
     /**
      * Load Type - "TRACK_LOADED", "PLAYLIST_LOADED", "SEARCH_RESULT", "NO_MATCHES", "LOAD_FAILED" for v3 and "track", "playlist", "search", "error" for v4
      */
-    loadType: string
+    loadType: string | null
     /**
      * Playlist Info
      */
-    playlistInfo?: {
+    playlistInfo: {
         name: string;
         selectedTrack: number;
-    };
+    } | null;
     /**
      * Plugin Info
+     * ## Properties may not exist(Means Empty Object) if Lavalink/Node does not return/provide them
      */
-    pluginInfo?: any;
+    pluginInfo: object;
     
     exception: LavalinkTrackLoadException | null 
 }
@@ -227,6 +228,17 @@ export declare class Riffy extends EventEmitter {
 
     public fetchRegion(region: string): Array<LavalinkNode>;
 
+   /**
+   * Creates a connection based on the provided options.
+   *
+   * @param {Object} options - The options for creating the connection.
+   * @param {string} options.guildId - The ID of the guild.
+   * @param {string} [options.region] - The region for the connection.
+   * @param {number} [options.defaultVolume] - The default volume of the player. **By-Default**: **100**
+   * @param {LoopOption} [options.loop] - The loop mode of the player.
+   * @throws {Error} Throws an error if Riffy is not initialized or no nodes are available.
+   * @return {Player} The created player.
+   */
     public createConnection(options: {
         guildId: string;
         voiceChannel: string;
@@ -234,8 +246,15 @@ export declare class Riffy extends EventEmitter {
         deaf?: boolean;
         mute?: boolean;
         /**
+         * @description Default volume of the player
+         * @default default 100
+         */
+        defaultVolume?: number
+
+        loop?: LoopOption;
+        /**
          * @description voice region (rtc Region) used for filtering node based on it 
-         * */
+         */
         region?: string;
     }): Player;
 
@@ -243,11 +262,19 @@ export declare class Riffy extends EventEmitter {
 
     public removeConnection(guildId: string): void;
 
+    /**
+   * @param {object} param0 
+   * @param {string} param0.query used for searching as a search Query  
+   * @param {*} param0.source  A source to search the query on example:ytmsearch for youtube music
+   * @param {*} param0.requester the requester who's requesting 
+   * @param {(string | Node)?} param0.node  the node to request the query on either use node identifier/name or the node class itself
+   * @returns {nodeResponse} returned properties values are nullable if lavalink doesn't  give them
+   * */
     public resolve(params: {
         query: string;
         source?: string;
         requester: any;
-        node: string | Node
+        node?: string | Node
     }): Promise<nodeResponse>;
 
 

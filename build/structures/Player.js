@@ -17,7 +17,7 @@ class Player extends EventEmitter {
         this.filters = new Filters(this);
         this.mute = options.mute ?? false;
         this.deaf = options.deaf ?? false;
-        this.volume = options.volume ?? 100;
+        this.volume = options.defaultVolume ?? 100;
         this.loop = options.loop ?? "none";
         this.data = {};
         this.queue = new Queue();
