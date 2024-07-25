@@ -168,7 +168,12 @@ class Node {
         this.ws.on("message", this.message.bind(this));
         this.ws.on("close", this.close.bind(this));
 
-
+        setInterval(() => {
+            if(Date.now() - this.lastStats > 5 * 60 * 1000) {
+                this.riffy.emit("debug", this.name, `[Beta] No stat received since 5 minutes.`);
+                this.connect();
+            }
+        }, 5 * 60 * 1000)
     }
 
     open() {
