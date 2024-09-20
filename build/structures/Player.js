@@ -2,7 +2,7 @@ const { EventEmitter } = require("events");
 const { Connection } = require("./Connection");
 const { Filters } = require("./Filters");
 const { Queue } = require("./Queue");
-const { soundcloud, spotify } = require('../functions/autoPlay');
+const { spAutoPlay, scAutoPlay } = require('../functions/autoPlay');
 
 class Player extends EventEmitter {
     constructor(riffy, node, options) {
@@ -113,7 +113,7 @@ class Player extends EventEmitter {
                 }
             } else if (player.previous.info.sourceName === "soundcloud") {
                 try {
-                    soundcloud(player.previous.info.uri).then(async (data) => {
+                    scAutoPlay(player.previous.info.uri).then(async (data) => {
                         let response = await this.riffy.resolve({ query: data, source: "scsearch", requester: player.previous.info.requester });
 
                         if (this.node.rest.version === "v4") {
@@ -134,7 +134,7 @@ class Player extends EventEmitter {
                 }
             } else if (player.previous.info.sourceName === "spotify") {
                 try {
-                    spotify(player.previous.info.identifier).then(async (data) => {
+                    spAutoPlay(player.previous.info.identifier).then(async (data) => {
                         const response = await this.riffy.resolve({ query: `https://open.spotify.com/track/${data}`, requester: player.previous.info.requester });
 
                         if (this.node.rest.version === "v4") {

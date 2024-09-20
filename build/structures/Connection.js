@@ -18,7 +18,8 @@ class Connection {
 
     setServerUpdate(data) {
         const { endpoint, token } = data;
-        if (!endpoint) throw new Error("Session not found");
+        if (!endpoint) throw new Error(`Missing 'endpoint' property in VOICE_SERVER_UPDATE packet/payload, Wait for some time Or Disconnect the Bot from Voice Channel and Try Again.`);
+        
         const previousVoiceRegion = this.region;
 
         this.voice.endpoint = endpoint;
