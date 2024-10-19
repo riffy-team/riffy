@@ -166,11 +166,16 @@ export type nodeResponse = {
      */
     tracks: Array<Track>;
     /**
-     * Load Type - "TRACK_LOADED", "PLAYLIST_LOADED", "SEARCH_RESULT", "NO_MATCHES", "LOAD_FAILED" for v3 and "track", "playlist", "search", "error" for v4
+     * Lavalink Load Types
+     * - V3 -> "TRACK_LOADED", "PLAYLIST_LOADED", "SEARCH_RESULT", "NO_MATCHES", "LOAD_FAILED"
+     * - V4 -> "track", "playlist", "search", "error"
+     * 
+     * `null` in-case where Lavalink doesn't return them (due to Error or so.)
      */
     loadType: string | null
     /**
      * Playlist Info
+     * `null` if Lavalink doesn't return them
      */
     playlistInfo: {
         name: string;
@@ -200,10 +205,73 @@ export type RiffyOptions = {
     plugins?: Array<Plugin>;
 } & Exclude<NodeOptions, "sessionId">
 
+// In index.d.ts
+export declare const enum RiffyEventType {
+    // Node Events
+    NodeConnect = "nodeConnect",
+    NodeReconnect = "nodeReconnect",
+    NodeDisconnect = "nodeDisconnect",
+    NodeCreate = "nodeCreate",
+    NodeDestroy = "nodeDestroy",
+    NodeError = "nodeError",
+    SocketClosed = "socketClosed",
+
+    // Track Events
+    TrackStart = "trackStart",
+    TrackEnd = "trackEnd",
+    TrackError = "trackError",
+    TrackStuck = "trackStuck",
+
+    // Player Events
+    PlayerCreate = "playerCreate",
+    PlayerDisconnect = "playerDisconnect",
+    PlayerMove = "playerMove",
+    PlayerUpdate = "playerUpdate",
+    QueueEnd = "queueEnd",
+
+    // Misc Events
+    Debug = "debug"
+}
+
+// Define your event handlers type map
+export type RiffyEvents = {
+    // Node Events
+    [RiffyEventType.NodeConnect]: (node: Node) => void;
+    [RiffyEventType.NodeReconnect]: (node: Node) => void;
+    [RiffyEventType.NodeDisconnect]: (node: Node, reason: string) => void;
+    [RiffyEventType.NodeCreate]: (node: Node) => void;
+    [RiffyEventType.NodeDestroy]: (node: Node) => void;
+    [RiffyEventType.NodeError]: (node: Node, error: Error) => void;
+    [RiffyEventType.SocketClosed]: (player: Player, payload: any) => void;
+
+    // Track Events
+    [RiffyEventType.TrackStart]: (player: Player, track: Track, payload: any) => void;
+    [RiffyEventType.TrackEnd]: (player: Player, track: Track, payload: any) => void;
+    [RiffyEventType.TrackError]: (player: Player, track: Track, payload: any) => void;
+    [RiffyEventType.TrackStuck]: (player: Player, track: Track, payload: any) => void;
+
+    // Player Events
+    [RiffyEventType.PlayerCreate]: (player: Player) => void;
+    [RiffyEventType.PlayerDisconnect]: (player: Player) => void;
+    [RiffyEventType.PlayerMove]: (player: Player, oldChannel: string, newChannel: string) => void;
+    [RiffyEventType.PlayerUpdate]: (player: Player, payload: any) => void;
+    [RiffyEventType.QueueEnd]: (player: Player) => void;
+
+    // Misc Events
+    [RiffyEventType.Debug]: (message: string[]) => void;
+};
+
+// k as `key`
 type k = string;
-type v = any;
 
 export declare class Riffy extends EventEmitter {
+    // Event Emitter overrides
+    public on<K extends keyof RiffyEvents>(event: K, listener: RiffyEvents[K]): this;
+    public once<K extends keyof RiffyEvents>(event: K, listener: RiffyEvents[K]): this;
+    public off<K extends keyof RiffyEvents>(event: K, listener: RiffyEvents[K]): this;
+    public removeAllListeners<K extends keyof RiffyEvents>(event?: K): this;
+    public emit<K extends keyof RiffyEvents>(event: K, ...args: Parameters<RiffyEvents[K]>): boolean;
+
     constructor(client: any, nodes: LavalinkNode[], options: RiffyOptions);
     public client: any;
     public nodes: Array<LavalinkNode>;
@@ -279,28 +347,6 @@ export declare class Riffy extends EventEmitter {
 
 
     public get(guildId: string): Player;
-
-    public on(event: "nodeConnect", listener: (node: Node) => void): this;
-    public on(event: "nodeReconnect", listener: (node: Node) => void): this;
-    public on(event: "nodeDisconnect", listener: (node: Node, reason: string) => void): this;
-    public on(event: "nodeCreate", listener: (node: Node) => void): this;
-    public on(event: "nodeDestroy", listener: (node: Node) => void): this;
-    public on(event: "nodeError", listener: (node: Node, error: Error) => void): this;
-
-    public on(event: "trackStart", listener: (player: Player, track: Track, payload: any) => void): this;
-    public on(event: "trackEnd", listener: (player: Player, track: Track, payload: any) => void): this;
-    public on(event: "trackError", listener: (player: Player, track: Track, payload: any) => void): this;
-    public on(event: "trackStuck", listener: (player: Player, track: Track, payload: any) => void): this;
-
-    public on(event: "socketClosed", listener: (player: Player, payload: any) => void): this;
-
-    public on(event: "playerCreate", listener: (player: Player) => void): this;
-    public on(event: "playerDisconnect", listener: (player: Player) => void): this;
-    public on(event: "playerMove", listener: (player: Player, oldChannel: string, newChannel: string) => void): this;
-    public on(event: "playerUpdate", listener: (player: Player, payload: any) => void): this;
-
-    public on(event: "queueEnd", listener: (player: Player) => void): this;
-    public on(event: "debug", listener: (message: string) => void): this;
 }
 
 export type LavalinkNode = {
@@ -366,6 +412,49 @@ export type NodeOptions = {
     reconnectTries?: number;
 }
 
+type NodeInfo = {
+    /**
+     * The Semantic Version Object of the node
+     * @see https://lavalink.dev/api/rest.html#version-object
+     */
+    version: NodeInfoSemanticVersionObj;
+    buildTime: number;
+    /**
+     * The git information of the node
+     * @see https://lavalink.dev/api/rest.html#git-object
+     */
+    git: {
+        branch: string;
+        commit: string;
+        commitTime: string;
+    };
+    jvm: string;
+    lavaplayer: string;
+    /**
+     * The available enabled source managers for the node
+     */
+    sourceManagers: string[];
+    /**
+     * The available filters (To apply For the Player)
+     */
+    filters: string[];
+    /**
+     * The enabled plugins of the Node
+     * @see https://lavalink.dev/api/rest.html#plugin-object
+     */
+    plugins: Array<{
+        name: string;
+        version: string;
+    }>;
+}
+
+type NodeInfoSemanticVersionObj = {
+    semver: string;
+    major: number;
+    minor: number;
+    patch: number;
+}
+
 export declare class Node {
     constructor(riffy: Riffy, node: LavalinkNode, options: NodeOptions);
     public riffy: Riffy;
@@ -395,6 +484,7 @@ export declare class Node {
 
     public connected: boolean;
     public reconnecting: boolean;
+    public info: NodeInfo;
     public stats: {
         players: 0,
         playingPlayers: 0,

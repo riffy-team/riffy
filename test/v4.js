@@ -463,10 +463,6 @@ client.on("raw", (d) => {
   client.riffy.updateVoiceState(d);
 });
 
-client.on("debug", (...args) => {
-  console.log(`[DEBUG - d.js]`, ...args);
-});
-
 client.riffy.on("debug", (...m) => {
   console.log(`[DEBUG - RIFFY]`, ...m);
 });

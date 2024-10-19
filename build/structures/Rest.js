@@ -18,7 +18,7 @@ class Rest {
     this.sessionId = sessionId;
   }
 
-  async makeRequest(method, endpoint, body = null) {
+  async makeRequest(method, endpoint, body = null, includeHeaders = false) {
     const headers = {
       "Content-Type": "application/json",
       Authorization: this.password,
@@ -29,8 +29,11 @@ class Rest {
       headers,
       body: body ? JSON.stringify(body) : null,
     };
-
-    const response = await undiciFetch(this.url + endpoint, requestOptions);
+    
+    const response = await undiciFetch(this.url + endpoint, requestOptions).catch((e) => {
+      
+      throw new Error(`There was an Error while Making Node Request(likely caused by Network Issue): ${method} ${this.url}${endpoint}`, { cause: e });
+    })
 
     this.calls++;
 
@@ -51,7 +54,10 @@ class Rest {
       }`
     );
 
-    return data;
+    return includeHeaders === true ? {
+      data,
+      headers: response.headers,
+    } : data;
   }
 
   async getPlayers() {

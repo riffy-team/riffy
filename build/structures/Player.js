@@ -330,6 +330,24 @@ class Player extends EventEmitter {
 
     trackEnd(player, track, payload) {
         this.previous = track;
+        // By using lower case We handle both Lavalink Versions(v3, v4) Smartly 😎, 
+        // If reason is replaced do nothing expect User do something hopefully else RIP.
+        if(payload.reason.toLowerCase() === "replaced") return this.riffy.emit("trackEnd", player, track, payload);
+
+        // Replacing & to lower case it Again Smartly 😎, Handled Both Lavalink Versions.
+        // This avoids track that got cleaned-up or failed to load to be played again (Via Loop Mode).
+        if(["loadfailed", "cleanup"].includes(payload.reason.replace("_", "").toLowerCase())) {
+
+            if(player.queue.length === 0) { 
+                this.playing = false;
+                return this.riffy.emit("queueEnd", player);
+            }
+
+            this.riffy.emit("trackEnd", player, track, payload);
+            return player.play();
+        }
+
+
         if (this.loop === "track") {
             player.queue.unshift(this.previous);
             this.riffy.emit("trackEnd", player, track, payload);
