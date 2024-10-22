@@ -206,7 +206,7 @@ export type RiffyOptions = {
     /**
      * @description Default is false (only one track) 
      */
-    multipleTrackHistory?: number | boolean = false;
+    multipleTrackHistory?: number | boolean;
 } & Exclude<NodeOptions, "sessionId">
 
 // In index.d.ts
