@@ -1,0 +1,32 @@
+name: continuous (Preview) releases
+on:
+  pull_request_review:
+    types: [submitted]
+  pull_request: 
+    types: [labeled]
+
+jobs:
+  approved:
+    if: github.event.review.state == 'APPROVED' && !contains(github.event.pull_request.labels.name, 'DO NOT PREVIEW RELEASE') || contains(github.event.pull_request.labels.name, 'Bypass check - PREVIEW RELEASE') || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.name, 'PR Manual CI RUN'))
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - run: corepack enable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm install
+
+      - run: npx pkg-pr-new publish
+
+      - name: Remove Manual PR Run label
+        if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.name, 'PR Manual CI RUN')
+        uses: actions-ecosystem/action-remove-labels@v1
+        with:
+          labels: PR Manual CI RUN
