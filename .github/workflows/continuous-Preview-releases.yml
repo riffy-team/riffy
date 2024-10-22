@@ -1,9 +1,25 @@
 name: continuous (Preview) releases
+# avoids paths like tests folder, .md, and anything that starts with `.`
+# also avoids tags.
 on:
   pull_request_review:
     types: [submitted]
   pull_request: 
     types: [labeled, synchronize]
+    paths: 
+      - 'build/**'
+      - '!tests/**'
+      - '!*.md'
+      - '!.*'
+  push: 
+    paths:
+    - 'build/**'
+    - '!tests/**'
+    - '!*.md'
+    - '!.*'
+    branches: [main]
+    tags:
+      - "!**"
 
 permissions: 
   pull-requests: write
@@ -11,7 +27,8 @@ permissions:
 
 jobs:
   approved:
-    if: github.event.review.state == 'APPROVED' && !contains(github.event.pull_request.labels.*.name, 'DO NOT PREVIEW RELEASE') || contains(github.event.pull_request.labels.*.name, 'Bypass check - PREVIEW RELEASE') || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'PR Manual CI RUN'))
+    if: github.event.review.state == 'APPROVED' && !contains(github.event.pull_request.labels.*.name, 'DO NOT PREVIEW RELEASE') || contains(github.event.pull_request.labels.*.name, 'Bypass check - PREVIEW RELEASE') || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'PR Manual CI RUN')) 
+        || github.event_name == ''
     runs-on: ubuntu-latest
 
     steps:
