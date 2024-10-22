@@ -6,6 +6,13 @@ on:
     types: [labeled]
 
 jobs:
+  debug: 
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dump GitHub context
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: echo "$GITHUB_CONTEXT"
   approved:
     if: github.event.review.state == 'APPROVED' && !contains(github.event.pull_request.labels.name, 'DO NOT PREVIEW RELEASE') || contains(github.event.pull_request.labels.name, 'Bypass check - PREVIEW RELEASE') || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.name, 'PR Manual CI RUN'))
     runs-on: ubuntu-latest
