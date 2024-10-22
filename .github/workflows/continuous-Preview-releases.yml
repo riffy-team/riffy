@@ -30,4 +30,4 @@ jobs:
         run: gh pr edit $PR --remove-label $labels
         env:
           PR: ${{ github.event.pull_request.number }}
-          labels: PR Manual CI RUN
+          labels: 'PR Manual CI RUN'
