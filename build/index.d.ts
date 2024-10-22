@@ -203,6 +203,10 @@ export type RiffyOptions = {
     defaultSearchPlatform?: SearchPlatform;
     restVersion?: Version;
     plugins?: Array<Plugin>;
+    /**
+     * @description Default is false (only one track) 
+     */
+    multipleTrackHistory?: number | boolean = false;
 } & Exclude<NodeOptions, "sessionId">
 
 // In index.d.ts

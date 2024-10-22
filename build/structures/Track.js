@@ -16,6 +16,7 @@ class Track {
             uri: data.info.uri,
             requester,
             sourceName: data.info.sourceName,
+            isrc: data.info?.isrc || null,
             _cachedThumbnail: data.info.thumbnail ?? null,
             get thumbnail() {
             if (data.info.thumbnail) return data.info.thumbnail;

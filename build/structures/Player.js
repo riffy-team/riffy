@@ -23,7 +23,7 @@ class Player extends EventEmitter {
         this.queue = new Queue();
         this.position = 0;
         this.current = null;
-        this.previous = null;
+        this.previousTracks = new Array();
         this.playing = false;
         this.paused = false;
         this.connected = false;
@@ -44,6 +44,29 @@ class Player extends EventEmitter {
             this.handleEvent(data)
         });
     }
+    /**
+     * @description gets the Previously played Track
+     */
+    get previous() {
+     return this.previousTracks?.[0]
+    }
+
+    /**
+     * @private
+     */
+    addToPreviousTrack(track) {
+      if (Number.isInteger(this.riffy.options.multipleTrackHistory) && this.previousTracks.length >= this.riffy.options.mutipleTrackHistory)       {
+      this.previousTracks.splice(this.riffy.options.multipleTrackHistory, this.previousTracks.length)
+      } 
+      // If its falsy Save Only last Played Track.
+      else if(!this.riffy.options.multipleTrackHistory) {
+       this.previousTracks[0] = track;
+       return;
+      }
+       
+      this.previousTracks.unshift(track)
+    }
+
 
     async play() {
         if (!this.connected) throw new Error("Player connection is not initiated. Kindly use Riffy.createConnection() and establish a connection, TIP: Check if Guild Voice States intent is set/provided & 'updateVoiceState' is used in the raw(Gateway Raw) event");
@@ -329,7 +352,8 @@ class Player extends EventEmitter {
     }
 
     trackEnd(player, track, payload) {
-        this.previous = track;
+        this.addToPreviousTrack(track)
+        const previousTrack = this.previous;
         // By using lower case We handle both Lavalink Versions(v3, v4) Smartly 😎, 
         // If reason is replaced do nothing expect User do something hopefully else RIP.
         if(payload.reason.toLowerCase() === "replaced") return this.riffy.emit("trackEnd", player, track, payload);
@@ -349,13 +373,13 @@ class Player extends EventEmitter {
 
 
         if (this.loop === "track") {
-            player.queue.unshift(this.previous);
+            player.queue.unshift(previousTrack);
             this.riffy.emit("trackEnd", player, track, payload);
             return player.play();
         }
 
         else if (track && this.loop === "queue") {
-            player.queue.push(this.previous);
+            player.queue.push(previousTrack);
             this.riffy.emit("trackEnd", player, track, payload);
             return player.play();
         }
@@ -407,8 +431,16 @@ class Player extends EventEmitter {
         return this.data[key];
     }
 
-    send(data) {
-        this.riffy.send({ op: 4, d: data });
+    /**
+    * @description clears All custom Data set on the Player
+    */ 
+    clearData() {
+      for (const key in this.data) {
+        if (this.data.hasOwnProperty(key)) {
+          delete this.data[key];
+        }
+      }
+      return this;
     }
 }
 
