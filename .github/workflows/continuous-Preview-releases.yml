@@ -31,3 +31,4 @@ jobs:
         env:
           PR: ${{ github.event.pull_request.number }}
           labels: 'PR Manual CI RUN'
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
