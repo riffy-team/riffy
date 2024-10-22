@@ -26,6 +26,8 @@ jobs:
 
       - name: Install pkg-pr-new & prebuild, dependencies
         run: npm install pkg-pr-new --save-dev --no-frozen-lockfile
+      
+      - run: ls -la
 
       - run: npx pkg-pr-new publish
 
