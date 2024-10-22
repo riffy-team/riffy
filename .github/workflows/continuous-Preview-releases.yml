@@ -38,7 +38,7 @@ jobs:
       - run: npx pkg-pr-new publish
 
       - name: Remove Manual PR Run label
-        if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.name, 'PR Manual CI RUN')
+        if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'PR Manual CI RUN')
         uses: actions-ecosystem/action-remove-labels@v1
         with:
           labels: PR Manual CI RUN
