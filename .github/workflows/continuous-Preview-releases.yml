@@ -13,6 +13,11 @@ jobs:
         env:
           GITHUB_CONTEXT: ${{ toJson(github) }}
         run: echo "$GITHUB_CONTEXT"
+      - name: evaluate checks
+        run:  echo "Is Approved ${{ github.event.review.state == 'APPROVED' }}"
+            | echo "Is Labeled(DO NOT PREVIEW RELEASE) ${{ contains(github.event.pull_request.labels.name, 'DO NOT PREVIEW RELEASE') }}"
+            | echo "Is Labeled(Bypass check - PREVIEW RELEASE) ${{ contains(github.event.pull_request.labels.name, 'Bypass check - PREVIEW RELEASE') }}"
+            | echo "Is Labeled(PR Manual CI RUN - ${{ github.event.pull_request.labels.name }}) ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.name, 'PR Manual CI RUN') }}"
   approved:
     if: github.event.review.state == 'APPROVED' && !contains(github.event.pull_request.labels.name, 'DO NOT PREVIEW RELEASE') || contains(github.event.pull_request.labels.name, 'Bypass check - PREVIEW RELEASE') || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.name, 'PR Manual CI RUN'))
     runs-on: ubuntu-latest
