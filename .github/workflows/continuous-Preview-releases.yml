@@ -5,6 +5,10 @@ on:
   pull_request: 
     types: [labeled, synchronize]
 
+permissions: 
+  pull-requests: write
+
+
 jobs:
   approved:
     if: github.event.review.state == 'APPROVED' && !contains(github.event.pull_request.labels.*.name, 'DO NOT PREVIEW RELEASE') || contains(github.event.pull_request.labels.*.name, 'Bypass check - PREVIEW RELEASE') || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'PR Manual CI RUN'))
