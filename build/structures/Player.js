@@ -423,6 +423,11 @@ class Player extends EventEmitter {
         this.riffy.emit("debug", this.guildId, "Player paused, channel deleted, Or Client was kicked");
     }
 
+
+    send(data) {
+        this.riffy.send({ op: 4, d: data });
+    }
+
     set(key, value) {
         return this.data[key] = value;
     }
