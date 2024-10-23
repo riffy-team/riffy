@@ -1,5 +1,7 @@
 import { EventEmitter } from "events";
 
+type Nullable<T> = T | null
+
 export declare class Track {
     constructor(data: any, requester: any, node: Node);
 
@@ -13,6 +15,7 @@ export declare class Track {
         sourceName: string;
         title: string;
         uri: string;
+        isrc: string | null
         thumbnail: string | null;
         requester: any;
     };
@@ -459,6 +462,30 @@ type NodeInfoSemanticVersionObj = {
     patch: number;
 }
 
+export interface NodeLyricsResult {
+  /** The name of the source */
+  sourceName: string;
+  /** The name of the provider */
+  provider: string;
+  /** The Lyrics Text */
+  text: Nullable<string>;
+  /** The Lyrics Lines */
+  lines: Array<NodeLyricsLine>;
+  /** Additional plugin related Information */
+  plugin: object
+}
+
+interface NodeLyricsLine {
+  /** timestamp of the line in ms(milliseconds) */
+  timestamp: number;
+  /** Duration of the line in ms(milliseconds) */
+  duration: number;
+  /** The Lyric String */
+  line: string;
+  /** Additional plugin related Information */
+  plugin: object
+}
+
 export declare class Node {
     constructor(riffy: Riffy, node: LavalinkNode, options: NodeOptions);
     public riffy: Riffy;
@@ -488,7 +515,7 @@ export declare class Node {
 
     public connected: boolean;
     public reconnecting: boolean;
-    public info: NodeInfo;
+    public info: NodeInfo | {};
     public stats: {
         players: 0,
         playingPlayers: 0,

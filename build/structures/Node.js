@@ -65,6 +65,17 @@ class Node {
 
         this.lastStats = Date.now();
     }
+
+
+    lyrics = {
+      /** @description fetches Lyrics for Currently playing Track 
+       * @param {boolean} skipTrackSource skips the Track Source & fetches from highest priority source (configured on Lavalink Server) 
+       */
+      getCurrentTrack: async (skipTrackSource) {
+      
+      }
+    } 
+
     /**
      * @typedef {Object} fetchInfoOptions
      * @property {import("..").Version} [restVersion] The Rest Version to fetch info the from, Default: one set in the constructor(Node.restVersion)
