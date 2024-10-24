@@ -1,7 +1,9 @@
 const { Client, GatewayDispatchEvents, AttachmentBuilder } = require("discord.js");
 const { Riffy } = require("../build/index.js");
 const { inspect } = require("node:util")
-
+/**
+ * @type {import("discord.js").Client & { riffy: Riffy}}
+ */
 const client = new Client({
   intents: [
     "Guilds",

@@ -1,5 +1,6 @@
 const Websocket = require("ws");
 const { Rest } = require("./Rest");
+const { Track } = require("./Track");
 
 class Node {
     /**
@@ -28,8 +29,9 @@ class Node {
         this.regions = node.regions;
         /**
          * Lavalink Info fetched While/After connecting.
+         * @type {import("..").NodeInfo | null}
          */
-        this.info = {};
+        this.info = null;
         this.stats = {
             players: 0,
             playingPlayers: 0,
@@ -68,13 +70,80 @@ class Node {
 
 
     lyrics = {
-      /** @description fetches Lyrics for Currently playing Track 
-       * @param {boolean} skipTrackSource skips the Track Source & fetches from highest priority source (configured on Lavalink Server) 
-       */
-      getCurrentTrack: async (skipTrackSource) {
-      
-      }
-    } 
+        /**
+         * Checks if the node has all the required plugins available.
+         * @param {boolean} [eitherOne=true] If set to true, will return true if at least one of the plugins is present.
+         * @param {...string} plugins The plugins to look for.
+         * @returns {Promise<boolean>} If the plugins are available.
+         * @throws {RangeError} If the plugins are missing.
+         */
+        checkAvailable: async (eitherOne=true,...plugins) => {
+            console.log("checkAvailable - plugins", ...plugins)
+            if (!this.sessionId) throw new Error(`Node (${this.name}) is not Ready/Connected.`)
+            if (!plugins.length) plugins = ["lavalyrics-plugin", "java-lyrics-plugin", "lyrics"];
+
+            const missingPlugins = [];
+
+            plugins.forEach((plugin) => {
+                const p = this.info.plugins.find((p) => p.name === plugin)
+
+                if (!p) {
+                    missingPlugins.push(plugin)
+                    return false;
+                }
+
+                return true;
+            });
+
+            if (!eitherOne && missingPlugins.length === plugins.length) {
+                throw new RangeError(`Node (${this.name}) is missing plugins: ${missingPlugins.join(", ")} (required for Lyrics)`)
+            } else if (missingPlugins.length) {
+                throw new RangeError(`Node (${this.name}) is missing plugins: ${missingPlugins.join(", ")} (required for Lyrics)`)
+            }
+
+            return true
+        },
+
+        /**
+         * Fetches lyrics for a given track or encoded track string.
+         * 
+         * @param {Track|string} trackOrEncodedTrackStr - The track object or encoded track string.
+         * @param {boolean} [skipTrackSource=false] - Whether to skip the track source and fetch from the highest priority source (configured on Lavalink Server).
+         * @returns {Promise<Object|null>} The lyrics data or null if the plugin is unavailable Or If no lyrics were found OR some Http request error occured.
+         * @throws {TypeError} If `trackOrEncodedTrackStr` is not a `Track` or `string`.
+         */
+        get: async (trackOrEncodedTrackStr, skipTrackSource=false) => {
+            if (!(await this.lyrics.checkAvailable(false, "lavalyrics-plugin"))) return null;
+            if(!(trackOrEncodedTrackStr instanceof Track) && typeof trackOrEncodedTrackStr !== "string") throw new TypeError(`Expected \`Track\` or \`string\` for \`trackOrEncodedTrackStr\` in "lyrics.get" but got \`${typeof trackOrEncodedTrackStr}\``)
+
+            let encodedTrackStr = typeof trackOrEncodedTrackStr === "string" ? trackOrEncodedTrackStr : trackOrEncodedTrackStr.track;
+
+            return await this.rest.makeRequest("GET",`/v4/lyrics?skipTrackSource=${skipTrackSource}&track=${encodedTrackStr}`);
+        },
+
+        /** @description fetches Lyrics for Currently playing Track 
+         * @param {string} guildId The Guild Id of the Player
+         * @param {boolean} skipTrackSource skips the Track Source & fetches from highest priority source (configured on Lavalink Server) 
+         * @param {string} [plugin] The Plugin to use(**Only required if you have too many known (i.e java-lyrics-plugin, lavalyrics-plugin) Lyric Plugins**)
+         */
+        getCurrentTrack: async (guildId, skipTrackSource=false, plugin) => {
+            const DEFAULT_PLUGIN = "lavalyrics-plugin"
+            if (!(await this.lyrics.checkAvailable())) return null;
+
+            const nodePlugins = this.info?.plugins;
+            let requestURL = `/v4/sessions/${this.sessionId}/players/${guildId}/track/lyrics?skipTrackSource=${skipTrackSource}&plugin=${plugin}`
+            
+            // If no `plugin` param is specified, check for `java-lyrics-plugin` or `lyrics` (also if lavalyrics-plugin is not available)
+            if(!plugin && (nodePlugins.find((p) => p.name === "java-lyrics-plugin") || nodePlugins.find((p) => p.name === "lyrics")) && !(nodePlugins.find((p) => p.name === DEFAULT_PLUGIN))) {
+                requestURL = `/v4/sessions/${this.sessionId}/players/${guildId}/lyrics?skipTrackSource=${skipTrackSource}`
+            } else if(plugin && ["java-lyrics-plugin", "lyrics"].includes(plugin)) {
+                // If `plugin` param is specified, And it's one of either `lyrics` or `java-lyrics-plugin`
+                requestURL = `/v4/sessions/${this.sessionId}/players/${guildId}/lyrics?skipTrackSource=${skipTrackSource}`
+            }
+
+            return await this.rest.makeRequest("GET", `${requestURL}`)
+        }
+    }
 
     /**
      * @typedef {Object} fetchInfoOptions
@@ -190,13 +259,17 @@ class Node {
         this.ws.on("close", this.close.bind(this));
     }
 
-    open() {
+    async open() {
         if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
 
         this.connected = true;
         this.riffy.emit('debug', this.name, `Connection with Lavalink established on ${this.wsUrl}`);
 
-        /** @todo Add Version Checking of Node */
+        this.info = await this.fetchInfo().then((info) => this.info = info).catch((e) => (console.error(`Node (${this.name}) Failed to fetch info (${this.restVersion}/info) on WS-OPEN: ${e}`), null));
+
+        if (!this.info && !this.options.bypassChecks.nodeFetchInfo) {
+            throw new Error(`Node (${this.name} - URL: ${this.restUrl}) Failed to fetch info on WS-OPEN`);
+        }
 
         if (this.autoResume) {
             for (const player of this.riffy.players.values()) {
@@ -279,7 +352,32 @@ class Node {
         }, this.reconnectTimeout);
     }
 
-    destroy() {
+/**
+ * Destroys the node connection and cleans up resources.
+ * 
+ * @param {boolean} [clean=false] - Determines if a clean destroy should be performed.
+ *                                  ### If `clean` is `true`
+ *                                  it removes all listeners and nullifies the websocket,
+ *                                  emits a "nodeDestroy" event, and deletes the node from the nodes map.
+ *                                  ### If `clean` is `false`
+ *                                  it performs the full disconnect process which includes:
+ *                                  - Destroying all players associated with this node.
+ *                                  - Closing the websocket connection.
+ *                                  - Removing all listeners and nullifying the websocket.
+ *                                  - Clearing any reconnect attempts.
+ *                                  - Emitting a "nodeDestroy" event.
+ *                                  - Deleting the node from the node map.
+ *                                  - Setting the connected state to false.
+ */
+    destroy(clean=false) {
+        if(clean) {
+            this.ws?.removeAllListeners();
+            this.ws = null;
+            this.riffy.emit("nodeDestroy", this);
+            this.riffy.nodes.delete(this.name);
+            return;
+        }
+
         if (!this.connected) return;
 
         this.riffy.players.forEach((player) => {

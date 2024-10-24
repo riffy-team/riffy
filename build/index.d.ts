@@ -210,6 +210,12 @@ export type RiffyOptions = {
      * @description Default is false (only one track) 
      */
     multipleTrackHistory?: number | boolean;
+    /**
+     * @description Used to bypass few checks that throw Errors (Only Possible ones are listed below)
+     */
+    bypassChecks: {
+      nodeFetchInfo: boolean;
+    }
 } & Exclude<NodeOptions, "sessionId">
 
 // In index.d.ts
@@ -462,6 +468,39 @@ type NodeInfoSemanticVersionObj = {
     patch: number;
 }
 
+type LyricPluginWithoutLavaLyrics = "java-lyrics-plugin" | "lyrics"
+
+/**
+ * @see https://github.com/DuncteBot/java-timed-lyrics
+ * @see https://github.com/DRSchlaubi/lyrics.kt
+ */
+export type LyricPluginWithoutLavaLyricsResult = {
+    type: "timed" | "text" | (string & {}),
+    track: {
+        title: string;
+        author: string;
+        album: string | null;
+        albumArt: {
+            url: string;
+            height: number;
+            width: number;
+        }[] | null;
+    };
+    source: string;
+} | { 
+    type: "text";
+    text: string;
+} | {
+    type: "timed";
+    lines: {
+        line: string;
+        range: {
+            start: number;
+            end: number;
+        };
+    }[];
+}
+
 export interface NodeLyricsResult {
   /** The name of the source */
   sourceName: string;
@@ -504,6 +543,11 @@ export declare class Node {
 
     public resumeKey: NodeOptions["resumeKey"];
     public sessionId: NodeOptions["sessionId"];
+    /**
+     * Voice Regions Setup for the Node
+     * Helpful for region-based Node filtering.
+     * i.e If Voice Channel Region is `eu_west` Filter's Nodes specifically to `eu_west` 
+     */
     public regions: string[] | null;
     public resumeTimeout: NodeOptions["resumeTimeout"];
     public autoResume: NodeOptions["autoResume"];
@@ -515,7 +559,10 @@ export declare class Node {
 
     public connected: boolean;
     public reconnecting: boolean;
-    public info: NodeInfo | {};
+     /**
+     * Lavalink Info fetched While/After connecting.
+     */
+    public info: NodeInfo | null;
     public stats: {
         players: 0,
         playingPlayers: 0,
@@ -537,6 +584,44 @@ export declare class Node {
             deficit: 0,
         },
     };
+    public lastStats: number
+
+    /**
+     * fetches Lavalink Info
+     * returns null if some error occurred.
+     * @see https://lavalink.dev/api/rest.html#info
+     */
+    fetchInfo(): Promise<NodeInfo | null>;
+
+    /**
+     * Lavalink Lyrics API (Works Only when Lavalink has Lyrics Plugin like: [lavalyrics](https://github.com/topi314/LavaLyrics))
+     */
+    lyrics: {
+        /**
+         * Checks if the node has all the required plugins available.
+         * @param {boolean} [eitherOne=true] If set to true, will return true if at least one of the plugins is present.
+         * @param {...string} plugins The plugins to look for.
+         * @returns {Promise<boolean>} If the plugins are available.
+         * @throws {RangeError} If the plugins are missing.
+         */
+        checkAvailable: (eitherOne: boolean, ...plugins: string[]) => Promise<boolean>;
+        /**
+         * Fetches lyrics for a given track or encoded track string.
+         * 
+         * @param {Track|string} trackOrEncodedTrackStr - The track object or encoded track string.
+         * @param {boolean} [skipTrackSource=false] - Whether to skip the track source and fetch from the highest priority source (configured on Lavalink Server).
+         * @returns {Promise<Object|null>} The lyrics data or null if the plugin is unavailable Or If no lyrics were found OR some Http request error occured.
+         * @throws {TypeError} If `trackOrEncodedTrackStr` is not a `Track` or `string`.
+         */
+        get: (trackOrEncodedTrackStr: Track | string, skipTrackSource: boolean) => Promise<NodeLyricsResult | null>;
+
+        /** @description fetches Lyrics for Currently playing Track 
+         * @param {string} guildId The Guild Id of the Player
+         * @param {boolean} skipTrackSource skips the Track Source & fetches from highest priority source (configured on Lavalink Server) 
+         * @param {string} [plugin] The Plugin to use(**Only required if you have too many known (i.e java-lyrics-plugin, lavalyrics-plugin) Lyric Plugins**)
+         */
+        getCurrentTrack: <TPlugin extends LyricPluginWithoutLavaLyrics | (string & {})>(guildId: string, skipTrackSource: boolean, plugin?: TPlugin) => Promise<TPlugin extends LyricPluginWithoutLavaLyrics ? LyricPluginWithoutLavaLyricsResult : NodeLyricsResult | null>;
+    }
 
     public connect(): void;
     public open(): void;
