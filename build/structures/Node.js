@@ -95,9 +95,11 @@ class Node {
                 return true;
             });
 
-            if (!eitherOne && missingPlugins.length === plugins.length) {
+            const AllPluginsMissing = missingPlugins.length === plugins.length;
+
+            if (eitherOne && AllPluginsMissing) {
                 throw new RangeError(`Node (${this.name}) is missing plugins: ${missingPlugins.join(", ")} (required for Lyrics)`)
-            } else if (missingPlugins.length) {
+            } else if (!eitherOne && missingPlugins.length) {
                 throw new RangeError(`Node (${this.name}) is missing plugins: ${missingPlugins.join(", ")} (required for Lyrics)`)
             }
 
