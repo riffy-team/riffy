@@ -48,7 +48,11 @@ class Riffy extends EventEmitter {
     this.nodes.forEach((node) => this.createNode(node));
     this.initiated = true;
 
+    this.emit("debug", `Riffy initialized, connecting to ${this.nodes.length} node(s)`);
+
     if (this.plugins) {
+      this.emit("debug", `Loading ${this.plugins.length} Riffy plugin(s)`);
+
       this.plugins.forEach((plugin) => {
         plugin.load(this);
       });
@@ -139,6 +143,8 @@ class Riffy extends EventEmitter {
 
     player.connect(options);
 
+    this.emit('debug', `Created a player (${options.guildId}) on node ${node.name}`);
+
     this.emit("playerCreate", player);
     return player;
   }
@@ -170,14 +176,16 @@ class Riffy extends EventEmitter {
       if (!this.initiated) throw new Error("You have to initialize Riffy in your ready event");
       
       if(node && (typeof node !== "string" && !(node instanceof Node))) throw new Error(`'node' property must either be an node identifier/name('string') or an Node/Node Class, But Received: ${typeof node}`)
-
-      const sources = source || this.defaultSearchPlatform;
+      // ^^(jsdoc) A source to search the query on example:ytmsearch for youtube music
+      const querySource = source || this.defaultSearchPlatform;
 
       const requestNode = (node && typeof node === 'string' ? this.nodeMap.get(node) : node) || this.leastUsedNodes[0];
       if (!requestNode) throw new Error("No nodes are available.");
 
       const regex = /^https?:\/\//;
-      const identifier = regex.test(query) ? query : `${sources}:${query}`;
+      const identifier = regex.test(query) ? query : `${querySource}:${query}`;
+
+      this.emit("debug", `Searching for ${query} on node "${requestNode.name}"`);
 
       let response = await requestNode.rest.makeRequest(`GET`, `/${requestNode.rest.version}/loadtracks?identifier=${encodeURIComponent(identifier)}`);
 
@@ -192,13 +200,22 @@ class Riffy extends EventEmitter {
       if (requestNode.rest.version === "v4") {
         if (response.loadType === "track") {
           this.tracks = response.data ? [new Track(response.data, requester, requestNode)] : [];
+
+          this.emit("debug", `Search Success for "${query}" on node "${requestNode.name}", loadType: ${response.loadType}, Resulted track Title: ${this.tracks[0].info.title} by ${this.tracks[0].info.author}`);
         } else if (response.loadType === "playlist") {
           this.tracks = response.data?.tracks ? response.data.tracks.map((track) => new Track(track, requester, requestNode)) : [];
+
+          this.emit("debug", `Search Success for "${query}" on node "${requestNode.name}", loadType: ${response.loadType} tracks: ${this.tracks.length}`);
         } else {
           this.tracks = response.loadType === "search" && response.data ? response.data.map((track) => new Track(track, requester, requestNode)) : [];
+
+          this.emit("debug", `Search ${this.loadType !== "error" ? "Success" : "Failed"} for "${query}" on node "${requestNode.name}", loadType: ${response.loadType} tracks: ${this.tracks.length}`);
         }
       } else {
+        // v3 (Legacy or Lavalink V3)
         this.tracks = response?.tracks ? response.tracks.map((track) => new Track(track, requester, requestNode)) : [];
+
+        this.emit("debug", `Search ${this.loadType !== "error" || this.loadType !== "LOAD_FAILED" ? "Success" : "Failed"} for "${query}" on node "${requestNode.name}", loadType: ${response.loadType} tracks: ${this.tracks.length}`);
       }
       
       if (
@@ -221,7 +238,8 @@ class Riffy extends EventEmitter {
         tracks: this.tracks,
       };
     } catch (error) {
-      throw new Error(error);
+      this.emit("debug", `Search Failed for "${query}" on node "${requestNode.name}", Due to: ${error?.stack || error}`);
+      throw error;
     }
   }
 

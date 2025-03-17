@@ -3,6 +3,7 @@ const { Connection } = require("./Connection");
 const { Filters } = require("./Filters");
 const { Queue } = require("./Queue");
 const { spAutoPlay, scAutoPlay } = require('../functions/autoPlay');
+const { inspect } = require("util");
 
 class Player extends EventEmitter {
     constructor(riffy, node, options) {
@@ -348,6 +349,7 @@ class Player extends EventEmitter {
     trackStart(player, track, payload) {
         this.playing = true;
         this.paused = false;
+        this.riffy.emit(`debug`, `Player (${player.guildId}) has started playing ${track.info.title} by ${track.info.author}`);
         this.riffy.emit("trackStart", player, track, payload);
     }
 
@@ -364,6 +366,7 @@ class Player extends EventEmitter {
 
             if(player.queue.length === 0) { 
                 this.playing = false;
+                this.riffy.emit("debug", `Player (${player.guildId}) Track-Ended(${track.info.title}) with reason: ${payload.reason}, emitting queueEnd instead of trackEnd as queue is empty/finished`);
                 return this.riffy.emit("queueEnd", player);
             }
 
@@ -371,15 +374,18 @@ class Player extends EventEmitter {
             return player.play();
         }
 
+        this.riffy.emit("debug", `Player (${player.guildId}) has the track ${track.info.title} by ${track.info.author} ended with reason: ${payload.reason}`);
 
         if (this.loop === "track") {
             player.queue.unshift(previousTrack);
+            this.riffy.emit("debug", `Player (${player.guildId}) looped track ${track.info.title} by ${track.info.author}, as loop mode is set to 'track'`);
             this.riffy.emit("trackEnd", player, track, payload);
             return player.play();
         }
 
         else if (track && this.loop === "queue") {
             player.queue.push(previousTrack);
+            this.riffy.emit("debug", `Player (${player.guildId}) looping Queue, as loop mode is set to 'queue'`);
             this.riffy.emit("trackEnd", player, track, payload);
             return player.play();
         }
@@ -399,12 +405,14 @@ class Player extends EventEmitter {
     }
 
     trackError(player, track, payload) {
+        this.riffy.emit("debug", `Player (${player.guildId}) has an exception/error while playing ${track.info.title} by ${track.info.author} this track, exception received: ${inspect(payload.exception)}`);
         this.riffy.emit("trackError", player, track, payload);
         this.stop();
     }
 
     trackStuck(player, track, payload) {
         this.riffy.emit("trackStuck", player, track, payload);
+        this.riffy.emit("debug", `Player (${player.guildId}) has been stuck track ${track.info.title} by ${track.info.author} for ${payload.thresholdMs}ms, skipping track...`);
         this.stop();
     }
 
@@ -420,7 +428,7 @@ class Player extends EventEmitter {
 
         this.riffy.emit("socketClosed", player, payload);
         this.pause(true);
-        this.riffy.emit("debug", this.guildId, "Player paused, channel deleted, Or Client was kicked");
+        this.riffy.emit("debug", `Player (${player.guildId}) Voice Connection has been closed with code: ${payload.code}, Player paused(to any track playing). some possible causes: Voice channel deleted, Or Client(Bot) was kicked`);
     }
 
 
