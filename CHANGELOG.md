@@ -1,5 +1,35 @@
 # Changelog
 
+## v1.0.7 (2025-06-10)
+
+### What's Changed
+* CI: add continuous (PREVIEW) releases by @UnschooledGamer in https://github.com/riffy-team/riffy/pull/16
+### Features & Improvements
+* fix: added totp to spotify autoplay endpoint (#20) by @olliedean in https://github.com/riffy-team/riffy/pull/21
+* chore: Update Spotify get token endpoint as it has changed, leading to autoplay errors.
+- [Add: fetchInfo & Node.info & types, includeHeaders option for `Rest.makeRequest`](https://github.com/riffy-team/riffy/commit/3734cb0c3fc9dbe7933b3aa6149d77ba16acff6e)
+- [feat: lyrics API, add: fetchInfo when Node Connected `bypassChecks.nodeFetchInfo` option in RiffyOptions to suppress the Error thrown](https://github.com/riffy-team/riffy/commit/84a70abaae6fae91f13fb4ac68e96b1ccd0264f6)
+
+- TypeScript Declarations:
+  * Added richer types for events, lyrics, and Lavalink node info.
+  * Introduced RiffyEventType enum and RiffyEvents type map for better event handling.
+  * Improved option and response types, including support for nullable fields and lyric plugins.
+  
+- Player 
+  * [feat: Allow Multiple Previous Tracks (Default: Only One Track)](https://github.com/riffy-team/riffy/commit/74f9ca40130c20bdb6052323d5584df2b0c4a363)
+  * Added clearData() method to clear all custom data on a player.
+  * More informative debug events and tracking for playback state and transitions. 
+  
+ - **Debug & Logging:** Extended debug events throughout the Riffy class and player lifecycle for better traceability.
+
+### Dependency Updates
+- Updated jsdom and discord.js(dev dependency) to newer versions.
+
+### New Contributors
+* @olliedean made their first contribution in https://github.com/riffy-team/riffy/pull/21
+
+**Full Changelog**: https://github.com/riffy-team/riffy/compare/v1.0.7-rc.2...v1.0.7
+
 ## v1.0.7-rc.2 (2024-09-20)
 
 * Update error message and correct autoplay function imports
