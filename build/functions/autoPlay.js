@@ -54,14 +54,14 @@ async function spAutoPlay(track_id) {
 
     const [totp, timestamp] = generateTotp();
     const params = {
-        "reason": "transport",
-        "productType": "embed",
+        "reason": "init",
+        "productType": "web-player",
         "totp": totp,
         "totpVer": 5,
         "ts": timestamp,
     }
 
-    const data = await undici.fetch("https://open.spotify.com/get_access_token?" + new URLSearchParams(params).toString());
+    const data = await undici.fetch("https://open.spotify.com/api/token?" + new URLSearchParams(params).toString());
 
     const body = await data.json();
 

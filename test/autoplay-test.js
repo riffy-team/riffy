@@ -1,9 +1,9 @@
-const { soundcloud, spotify } = require("../build/functions/autoPlay");
+const { scAutoPlay, spAutoPlay } = require("../build/functions/autoPlay");
 
-soundcloud("https://soundcloud.com/alanwalker/alan-walker-peder-elias-putri-ariani-who-i-am").then(x => {
-    console.log(x)
+scAutoPlay("https://soundcloud.com/alanwalker/alan-walker-peder-elias-putri-ariani-who-i-am").then(x => {
+    console.log("—".repeat(7), "soundcloud Autoplay Result: ", x)
 })
 
-spotify("1zHzHVjNlhj2PwRlngEKEo").then(x => {
-    console.log(x)
+spAutoPlay("1zHzHVjNlhj2PwRlngEKEo").then(x => {
+    console.log("—".repeat(7)," Spotify AutoPlay Result: ", x)
 })
