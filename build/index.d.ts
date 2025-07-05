@@ -218,7 +218,6 @@ export type RiffyOptions = {
     }
 } & Exclude<NodeOptions, "sessionId">
 
-// In index.d.ts
 export declare const enum RiffyEventType {
     // Node Events
     NodeConnect = "nodeConnect",
@@ -243,35 +242,139 @@ export declare const enum RiffyEventType {
     QueueEnd = "queueEnd",
 
     // Misc Events
-    Debug = "debug"
+    Debug = "debug",
+    Raw = "raw"
 }
 
-// Define your event handlers type map
 export type RiffyEvents = {
+
     // Node Events
-    [RiffyEventType.NodeConnect]: (node: Node) => void;
-    [RiffyEventType.NodeReconnect]: (node: Node) => void;
-    [RiffyEventType.NodeDisconnect]: (node: Node, reason: string) => void;
-    [RiffyEventType.NodeCreate]: (node: Node) => void;
-    [RiffyEventType.NodeDestroy]: (node: Node) => void;
-    [RiffyEventType.NodeError]: (node: Node, error: Error) => void;
-    [RiffyEventType.SocketClosed]: (player: Player, payload: any) => void;
+
+    /**
+     * Emitted when a node connects
+     * @param node The node that connected.
+     */
+    "nodeConnect": (node: Node) => void;
+
+    /**
+     * Emitted when a node reconnects
+     * @param node The node that reconnected.
+     */
+    "nodeReconnect": (node: Node) => void;
+    /**
+     * Emitted when a node disconnects
+     * @param node The node that disconnected.
+     * @param reason The reason for the disconnect.
+     */
+    "nodeDisconnect": (node: Node, reason: string) => void;
+
+    /**
+     * Emitted when a node is created
+     * @param node The node that was created.
+     */
+    "nodeCreate": (node: Node) => void;
+
+    /**
+     * Emitted when a node is destroyed
+     * @param node The node that was destroyed.
+     */
+    "nodeDestroy": (node: Node) => void;
+
+    /**
+     * Emitted when a node encounters an error
+     * @param node The node that encountered the error.
+     * @param error The error that occurred.
+     */
+    "nodeError": (node: Node, error: Error) => void;
+
+    /**
+     * Emitted when a Player's socket(Websocket to Discord from Lavalink) is closed
+     * @description This is emitted when a player disconnects/leaves a voice channel (Sent by Lavalink via WebSocketClosedEvent)
+     * @param player The player that the socket is closed for.
+     * @param payload The payload of the socket close.
+     * 
+     * @see https://lavalink.dev/api/websocket.html#websocketclosedevent
+     */
+    "socketClosed": (player: Player, payload: any) => void;
 
     // Track Events
-    [RiffyEventType.TrackStart]: (player: Player, track: Track, payload: any) => void;
-    [RiffyEventType.TrackEnd]: (player: Player, track: Track, payload: any) => void;
-    [RiffyEventType.TrackError]: (player: Player, track: Track, payload: any) => void;
-    [RiffyEventType.TrackStuck]: (player: Player, track: Track, payload: any) => void;
+
+    /**
+     * Emitted when a track starts playing
+     * @param player The player that started playing the track.
+     * @param track The track that is playing.
+     * @param payload The payload of the track start.
+     * 
+     * @see https://lavalink.dev/api/websocket.html#trackstartevent
+     */
+    "trackStart": (player: Player, track: Track, payload: any) => void;
+
+    /**
+     * Emitted when a track ends (Queue End is emitted when the queue ends i.e when the last track ends Instead of this.)
+     * @param player The player that ended the track.
+     * @param track The track that ended.
+     * @param payload The payload of the track end.
+     * 
+     * @see https://lavalink.dev/api/websocket.html#trackendevent
+     */
+    "trackEnd": (player: Player, track: Track, payload: any) => void;
+
+    /**
+     * Emitted when a track encounters an error (Sent by Lavalink via [TrackExceptionEvent](https://lavalink.dev/api/websocket.html#trackexceptionevent))
+     * @param player The player that encountered the error.
+     * @param track The track that encountered the error.
+     * @param payload The payload of the track error.
+     */
+    "trackError": (player: Player, track: Track, payload: any) => void;
+
+    /**
+     * Emitted when a track gets stuck (Sent by Lavalink via [TrackStuckEvent](https://lavalink.dev/api/websocket.html#trackstuckevent))
+     * @param player The player that got stuck.
+     * @param track The track that got stuck.
+     * @param payload The payload of the track stuck.
+     * 
+     * @see https://lavalink.dev/api/websocket.html#trackstuckevent
+     */
+    "trackStuck": (player: Player, track: Track, payload: any) => void;
 
     // Player Events
-    [RiffyEventType.PlayerCreate]: (player: Player) => void;
-    [RiffyEventType.PlayerDisconnect]: (player: Player) => void;
-    [RiffyEventType.PlayerMove]: (player: Player, oldChannel: string, newChannel: string) => void;
-    [RiffyEventType.PlayerUpdate]: (player: Player, payload: any) => void;
-    [RiffyEventType.QueueEnd]: (player: Player) => void;
+
+    /**
+     * Emitted when a player is created
+     * @param player The player that was created.
+     */
+    "playerCreate": (player: Player) => void;
+    
+    /**
+     * Emitted when a player disconnects
+     * @param player The player that disconnected.
+     */
+    "playerDisconnect": (player: Player) => void;
+
+    /**
+     * Emitted when a player moves to a new voice channel
+     * @param player The player that moved.
+     * @param oldChannel The old voice channel.
+     * @param newChannel The new voice channel.
+     */
+    "playerMove": (player: Player, oldChannel: string, newChannel: string) => void;
+
+    /**
+     * Emitted when a player's state is updated
+     * @param player The player that was updated.
+     * @param payload The payload of the player update.
+     */
+    "playerUpdate": (player: Player, payload: any) => void;
+
+    /**
+     * Emitted when a player's queue ends
+     * @param player The player that had its queue end.
+     */
+    "queueEnd": (player: Player) => void;
 
     // Misc Events
-    [RiffyEventType.Debug]: (message: string[]) => void;
+    "debug": (...message: string[]) => void;
+    "raw": (type: string, payload: any) => void;
 };
 
 // k as `key`
