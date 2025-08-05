@@ -160,16 +160,37 @@ client.riffy.on("trackStart", async (player, track) => {
 // This is the event handler for queue end.
 client.riffy.on("queueEnd", async (player) => {
     const channel = client.channels.cache.get(player.textChannel);
+    const source = await player.current.info.sourceName
 
     // Set this to true if you want to enable autoplay.
     const autoplay = false;
 
     if (autoplay) {
+  if (source !== "youtube") {
         player.autoplay(player);
+} else {
+ return player.autoplay2(player);
+}
     } else {
         player.destroy();
         channel.send("Queue has ended.");
     }
+});
+
+client.riffy.on("autoplayFail", async (player, musicTitle, error) => {
+  console.log(`[Autoplay] Falha ao encontrar recomendação para: ${musicTitle}`);
+  
+  if (error) console.error(error);
+
+  // Sends notice in the player's text channel
+  if (player.textChannel) {
+    const channel = client.channels.cache.get(player.textChannel);
+    if (channel) {
+      channel.send({
+        content: `⚠️ I couldn't find any songs similar to **${musicTitle}** to continue autoplay.`,
+      }).catch(() => {});
+    }
+  }
 });
 
 // This will update the voice state of the player.
