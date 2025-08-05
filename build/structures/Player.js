@@ -4,6 +4,8 @@ const { Filters } = require("./Filters");
 const { Queue } = require("./Queue");
 const { spAutoPlay, scAutoPlay } = require('../functions/autoPlay');
 const { inspect } = require("util");
+const KiritoApi = require("kiritoapi")
+const kitapi = new KiritoApi()
 
 class Player extends EventEmitter {
     constructor(riffy, node, options) {
@@ -102,6 +104,61 @@ class Player extends EventEmitter {
      * @returns 
      */
     async autoplay(player) {
+  if (!player || !player.previous) {
+    this.isAutoplay = false;
+    return this;
+  }
+
+  this.isAutoplay = true;
+
+  const prevTitle = player.previous.info.title;
+  const requester = player.previous.info.requester;
+
+  try {
+    // Requisição para sua API de recomendações (você pode alterar a URL abaixo)
+    const res = await kitapi.privi(`/api/v1/music/recommeds?musica=${encodeURIComponent(prevTitle)}`);
+
+    // Verifica se a resposta está válida
+    if (!res || res.status !== 200 || !res.url) {
+      this.riffy.emit("autoplayFail", player, prevTitle);
+      return this.stop();
+    }
+
+    const query = res.url;
+
+    // Faz a busca no YouTube Music
+    const response = await this.riffy.resolve({
+      query,
+      source: "ytmsearch",
+      requester
+    });
+
+    const valid = this.node.rest.version === "v4"
+      ? (!response || !response.tracks || ["error", "empty"].includes(response.loadType))
+      : (!response || !response.tracks || ["LOAD_FAILED", "NO_MATCHES"].includes(response.loadType));
+
+    if (valid) {
+      this.riffy.emit("autoplayFail", player, prevTitle);
+      return this.stop();
+    }
+
+    // Escolhe uma música aleatória entre as encontradas
+    const track = response.tracks[Math.floor(Math.random() * response.tracks.length)];
+
+    // Adiciona à fila e começa a tocar
+    this.queue.push(track);
+    this.play();
+
+    return this;
+  } catch (e) {
+    // Em caso de erro, emite evento de falha
+    this.riffy.emit("autoplayFail", player, prevTitle, e);
+    console.error("[Autoplay] Erro ao buscar recomendação:", e);
+    return this.stop();
+  }
+        }
+    
+    async autoplay2(player) {
         if (!player) {
             if (player == null) {
                 this.isAutoplay = false;
