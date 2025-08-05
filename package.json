@@ -10,7 +10,8 @@
   "dependencies": {
     "jsdom": "^26.0.0",
     "undici": ">=6.11.1",
-    "ws": "^8.16.0"
+    "ws": "^8.16.0",
+    "kiritoapi": "^1.1.4-alfa"
   },
   "license": "MIT",
   "keywords": [
