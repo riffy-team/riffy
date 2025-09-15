@@ -169,9 +169,11 @@ class Riffy extends EventEmitter {
    * @param {*} param0.source  A source to search the query on example:ytmsearch for youtube music
    * @param {*} param0.requester the requester who's requesting 
    * @param {(string | Node)} [param0.node] the node to request the query on either use node identifier/name or the node class itself
-   * @returns {import("..").nodeResponse} returned properties values are nullable if lavalink doesn't  give them
+   * @returns {import("..").nodeResponse} returned properties values are nullable if lavalink doesn't give them
    * */
   async resolve({ query, source, requester, node }) {
+    let requestNode;
+
     try {
       if (!this.initiated) throw new Error("You have to initialize Riffy in your ready event");
       
@@ -179,7 +181,7 @@ class Riffy extends EventEmitter {
       // ^^(jsdoc) A source to search the query on example:ytmsearch for youtube music
       const querySource = source || this.defaultSearchPlatform;
 
-      const requestNode = (node && typeof node === 'string' ? this.nodeMap.get(node) : node) || this.leastUsedNodes[0];
+      requestNode = (node && typeof node === 'string' ? this.nodeMap.get(node) : node) || this.leastUsedNodes[0];
       if (!requestNode) throw new Error("No nodes are available.");
 
       const regex = /^https?:\/\//;
@@ -232,7 +234,7 @@ class Riffy extends EventEmitter {
 
       return {
         loadType: this.loadType,
-        exception: this.loadType == "error" ? response.data : this.loadType == "LOAD_FAILED" ? response.exception : null,
+        exception: this.loadType === "error" ? response.data : this.loadType === "LOAD_FAILED" ? response.exception : null,
         playlistInfo: this.playlistInfo,
         pluginInfo: this.pluginInfo,
         tracks: this.tracks,
