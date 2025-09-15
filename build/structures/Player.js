@@ -137,53 +137,50 @@ class Player extends EventEmitter {
                 }
             } else if (player.previous.info.sourceName === "soundcloud") {
                 try {
-                    const recommendedUrls = await scAutoPlay(player.previous.info.uri);
-                    const data = recommendedUrls[Math.floor(Math.random() * recommendedUrls.length)];
-                    let response = await this.riffy.resolve({ query: data, source: "scsearch", requester: player.previous.info.requester });
+                    scAutoPlay(player.previous.info.uri).then(async (data) => {
+                        let response = await this.riffy.resolve({ query: data, source: "scsearch", requester: player.previous.info.requester });
 
-                    if (this.node.rest.version === "v4") {
-                        if (!response || !response.tracks || ["error", "empty"].includes(response.loadType)) return this.stop();
-                    } else {
-                        if (!response || !response.tracks || ["LOAD_FAILED", "NO_MATCHES"].includes(response.loadType)) return this.stop();
-                    }
+                        if (this.node.rest.version === "v4") {
+                            if (!response || !response.tracks || ["error", "empty"].includes(response.loadType)) return this.stop();
+                        } else {
+                            if (!response || !response.tracks || ["LOAD_FAILED", "NO_MATCHES"].includes(response.loadType)) return this.stop();
+                        }
 
-                    let track = response.tracks[Math.floor(Math.random() * Math.floor(response.tracks.length))];
+                        let track = response.tracks[Math.floor(Math.random() * Math.floor(response.tracks.length))];
 
-                    this.queue.push(track);
-                    this.play();
-                    return this;
+                        this.queue.push(track);
+                        this.play();
+                        return this;
+                    })
                 } catch (e) {
                     console.log(e);
                     return this.stop();
                 }
             } else if (player.previous.info.sourceName === "spotify") {
                 try {
-                    // First, search for the Spotify track on SoundCloud
-                    const scQuery = `${player.previous.info.title} ${player.previous.info.author}`;
-                    const scResponse = await this.riffy.resolve({ query: scQuery, source: "scsearch", requester: player.previous.info.requester });
+                    // First, search for the Spotify track on YouTube
+                    const ytQuery = `${player.previous.info.title} ${player.previous.info.author}`;
+                    const ytResponse = await this.riffy.resolve({ query: ytQuery, source: "ytsearch", requester: player.previous.info.requester });
 
                     if (this.node.rest.version === "v4") {
-                        if (!scResponse || !scResponse.tracks || ["error", "empty"].includes(scResponse.loadType)) return this.stop();
+                        if (!ytResponse || !ytResponse.tracks || ["error", "empty"].includes(ytResponse.loadType)) return this.stop();
                     } else {
-                        if (!scResponse || !scResponse.tracks || ["LOAD_FAILED", "NO_MATCHES"].includes(scResponse.loadType)) return this.stop();
+                        if (!ytResponse || !ytResponse.tracks || ["LOAD_FAILED", "NO_MATCHES"].includes(ytResponse.loadType)) return this.stop();
                     }
 
-                    const scTrack = scResponse.tracks[0]; // Pick the first result
+                    const ytTrack = ytResponse.tracks[0]; // Pick the first result
 
-                    // Now, use scAutoPlay with the SoundCloud track URI
-                    const recommendedUrls = await scAutoPlay(scTrack.info.uri);
-                    const recommendedUrl = recommendedUrls[Math.floor(Math.random() * recommendedUrls.length)];
-
-                    // Resolve the recommended SoundCloud track to get its info
-                    const recommendedResponse = await this.riffy.resolve({ query: recommendedUrl, source: "scsearch", requester: player.previous.info.requester });
+                    // Use YouTube's RD list to get recommendations
+                    const rdUrl = `https://www.youtube.com/watch?v=${ytTrack.info.identifier}&list=RD${ytTrack.info.identifier}`;
+                    const rdResponse = await this.riffy.resolve({ query: rdUrl, source: "ytmsearch", requester: player.previous.info.requester });
 
                     if (this.node.rest.version === "v4") {
-                        if (!recommendedResponse || !recommendedResponse.tracks || ["error", "empty"].includes(recommendedResponse.loadType)) return this.stop();
+                        if (!rdResponse || !rdResponse.tracks || ["error", "empty"].includes(rdResponse.loadType)) return this.stop();
                     } else {
-                        if (!recommendedResponse || !recommendedResponse.tracks || ["LOAD_FAILED", "NO_MATCHES"].includes(recommendedResponse.loadType)) return this.stop();
+                        if (!rdResponse || !rdResponse.tracks || ["LOAD_FAILED", "NO_MATCHES"].includes(rdResponse.loadType)) return this.stop();
                     }
 
-                    const recommendedTrack = recommendedResponse.tracks[0];
+                    const recommendedTrack = rdResponse.tracks[Math.floor(Math.random() * Math.floor(rdResponse.tracks.length))];
                     const spotifyQuery = `${recommendedTrack.info.title} ${recommendedTrack.info.author}`;
 
                     // Search for the recommended track on Spotify

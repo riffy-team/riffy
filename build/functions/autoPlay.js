@@ -18,21 +18,19 @@ async function scAutoPlay(url) {
     const sectionElement = secondNoscript.querySelector('section');
     const articleElements = sectionElement.querySelectorAll('article');
 
-    const recommendedUrls = [];
     articleElements.forEach(articleElement => {
         const h2Element = articleElement.querySelector('h2[itemprop="name"]');
 
         const aElement = h2Element.querySelector('a[itemprop="url"]');
         const href = `https://soundcloud.com${aElement.getAttribute('href')}`
 
-        recommendedUrls.push(href);
+        return href;
     });
-    return recommendedUrls;
 }
 
 async function spAutoPlay(track_id) {
     // Since Spotify's recommendations API is deprecated and unreliable,
-    // This approach is more reliable.
+    // This approach is more reliable and it uses official YT recommendations API.
 
     try {
         // For now, return null to indicate we need track info from the player
