@@ -158,22 +158,55 @@ class Player extends EventEmitter {
                 }
             } else if (player.previous.info.sourceName === "spotify") {
                 try {
-                    spAutoPlay(player.previous.info.identifier).then(async (data) => {
-                        const response = await this.riffy.resolve({ query: `https://open.spotify.com/track/${data}`, requester: player.previous.info.requester });
+                    // Use Spotify search for recommendations
+                    const artist = player.previous.info.author || '';
+                    const title = player.previous.info.title || '';
 
-                        if (this.node.rest.version === "v4") {
-                            if (!response || !response.tracks || ["error", "empty"].includes(response.loadType)) return this.stop();
-                        } else {
-                            if (!response || !response.tracks || ["LOAD_FAILED", "NO_MATCHES"].includes(response.loadType)) return this.stop();
+                    // Create search query for similar tracks
+                    let searchQuery;
+                    if (artist && title) {
+                        // Search for similar tracks by the same artist or similar artists
+                        searchQuery = `${artist} similar tracks`;
+                    } else if (title) {
+                        searchQuery = `${title} similar songs`;
+                    } else {
+                        searchQuery = `${artist} recommendations`;
+                    }
+
+                    let response = await this.riffy.resolve({
+                        query: searchQuery,
+                        source: "spsearch", // we can change this to ytmsearch if needed but the result will be youtube so it's better to keep it spsearch
+                        requester: player.previous.info.requester
+                    });
+
+                    if (this.node.rest.version === "v4") {
+                        if (!response || !response.tracks || ["error", "empty"].includes(response.loadType)) {
+                            return this.stop();
                         }
+                    } else {
+                        if (!response || !response.tracks || ["LOAD_FAILED", "NO_MATCHES"].includes(response.loadType)) {
+                            return this.stop();
+                        }
+                    }
 
-                        let track = response.tracks[Math.floor(Math.random() * Math.floor(response.tracks.length))];
-                        this.queue.push(track);
-                        this.play();
-                        return this;
-                    })
-                } catch (e) {
-                    console.log(e);
+                    // Filter out very short tracks (keep tracks over 1 minute)
+                    let validTracks = response.tracks.filter(track => {
+                        const duration = track.info.length || track.info.duration || 0;
+                        return duration >= 60000; // At least 1 minute
+                    });
+
+                    if (validTracks.length === 0) {
+                        return this.stop();
+                    }
+
+                    // Select a random track from valid results
+                    let track = validTracks[Math.floor(Math.random() * validTracks.length)];
+
+                    this.queue.push(track);
+                    this.play();
+                    return this;
+
+                } catch (error) {
                     return this.stop();
                 }
             }
