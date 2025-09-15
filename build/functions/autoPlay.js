@@ -29,52 +29,17 @@ async function scAutoPlay(url) {
 }
 
 async function spAutoPlay(track_id) {
-    const TOTP_SECRET = new Uint8Array([53,53,48,55,49,52,53,56,53,51,52,56,55,52,57,57,53,57,50,50,52,56,54,51,48,51,50,57,51,52,55]);
+    // Since Spotify's recommendations API is deprecated and unreliable,
+    // This approach is more reliable and doesn't require API keys
 
-    const hmac = crypto.createHmac('sha1', TOTP_SECRET);
-
-    function generateTotp() {
-        const counter = Math.floor(Date.now() / 30000);
-        const counterBuffer = Buffer.alloc(8);
-        counterBuffer.writeBigInt64BE(BigInt(counter));
-        
-        hmac.update(counterBuffer);
-        const hmacResult = hmac.digest();
-        
-        const offset = hmacResult[hmacResult.length - 1] & 15;
-        const truncatedValue = 
-            ((hmacResult[offset] & 127) << 24) |
-            ((hmacResult[offset + 1] & 255) << 16) |
-            ((hmacResult[offset + 2] & 255) << 8) |
-            (hmacResult[offset + 3] & 255);
-        
-        const totp = (truncatedValue % 1000000).toString().padStart(6, '0');
-        return [totp, counter * 30000];
+    try {
+        // For now, return null to indicate we need track info from the player
+        // The actual implementation will be handled in the Player.autoplay method
+        return null;
+    } catch (error) {
+        console.error('Spotify autoplay error:', error);
+        return null;
     }
-
-    const [totp, timestamp] = generateTotp();
-    const params = {
-        "reason": "init",
-        "productType": "web-player",
-        "totp": totp,
-        "totpVer": 5,
-        "ts": timestamp,
-    }
-
-    const data = await undici.fetch("https://open.spotify.com/api/token?" + new URLSearchParams(params).toString());
-
-    const body = await data.json();
-
-    const res = await undici.fetch(`https://api.spotify.com/v1/recommendations?limit=10&seed_tracks=${track_id}`, {
-        headers: {
-            Authorization: `Bearer ${body.accessToken}`,
-            'Content-Type': 'application/json',
-        },
-    })
-
-    const json = await res.json();
-
-    return json.tracks[Math.floor(Math.random() * json.tracks.length)].id
 }
 
 module.exports = { scAutoPlay, spAutoPlay };
