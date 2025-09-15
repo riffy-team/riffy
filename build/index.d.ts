@@ -150,8 +150,9 @@ export declare class Player extends EventEmitter {
     private trackError(player: Player, track: Track, payload: any): void;
     private trackStuck(player: Player, track: Track, payload: any): void;
     private socketClosed(player: Player, payload: any): void;
-    private set(key: string, value: any): void;
-    private get(key: string): any;
+    public set(key: string, value: any): any;
+    public get(key: string): any;
+    public clearData(): this;
     private send(data: any): void;
 }
 
