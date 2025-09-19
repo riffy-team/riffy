@@ -159,7 +159,8 @@ class Player extends EventEmitter {
             } else if (player.previous.info.sourceName === "spotify") {
                 try {
                     // First, search for the Spotify track on YouTube
-                    const ytQuery = `${player.previous.info.title} ${player.previous.info.author}`;
+                    const ytQuery = `${player.previous.info.title} ${player.previous.info.author} official video`;
+
                     const ytResponse = await this.riffy.resolve({ query: ytQuery, source: "ytsearch", requester: player.previous.info.requester });
 
                     if (this.node.rest.version === "v4") {
@@ -192,7 +193,7 @@ class Player extends EventEmitter {
                         if (!response || !response.tracks || ["LOAD_FAILED", "NO_MATCHES"].includes(response.loadType)) return this.stop();
                     }
 
-                    let track = response.tracks[Math.floor(Math.random() * Math.floor(response.tracks.length))];
+                    let track = response.tracks[0]; // Pick the most relevant result instead of random
                     this.queue.push(track);
                     this.play();
                     return this;
