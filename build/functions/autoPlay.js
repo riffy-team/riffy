@@ -30,7 +30,7 @@ async function scAutoPlay(url) {
 
 async function spAutoPlay(track_id) {
     // Since Spotify's recommendations API is deprecated and unreliable,
-    // This approach is more reliable and doesn't require API keys
+    // This approach is more reliable and it uses official YT recommendations API.
 
     try {
         // For now, return null to indicate we need track info from the player
