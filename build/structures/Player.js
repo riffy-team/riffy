@@ -173,7 +173,7 @@ class Player extends EventEmitter {
 
                     // Use YouTube's RD list to get recommendations
                     const rdUrl = `https://www.youtube.com/watch?v=${ytTrack.info.identifier}&list=RD${ytTrack.info.identifier}`;
-                    const rdResponse = await this.riffy.resolve({ query: rdUrl, source: "ytmsearch", requester: player.previous.info.requester });
+                    const rdResponse = await this.riffy.resolve({ query: rdUrl, source: "ytsearch", requester: player.previous.info.requester });
 
                     if (this.node.rest.version === "v4") {
                         if (!rdResponse || !rdResponse.tracks || ["error", "empty"].includes(rdResponse.loadType)) return this.stop();
@@ -182,7 +182,39 @@ class Player extends EventEmitter {
                     }
 
                     const recommendedTrack = rdResponse.tracks[Math.floor(Math.random() * Math.floor(rdResponse.tracks.length))];
-                    const spotifyQuery = `${recommendedTrack.info.title} ${recommendedTrack.info.author}`;
+
+                    let songTitle = recommendedTrack.info.title || "";
+                    let artist = recommendedTrack.info.author || "";
+
+                    // If title looks like "Artist - Title" or "ARTIST - TITLE", prefer parsing that
+                    const dashMatch = songTitle.match(/^\s*(.+?)\s*-\s*(.+)\s*$/);
+                    if (dashMatch) {
+                        // If author is generic (like channel name), use parsed artist
+                        const parsedArtist = dashMatch[1].trim();
+                        const parsedTitle = dashMatch[2].trim();
+                        // Use parsed values but only if parsedArtist is not the same as parsedTitle
+                        if (parsedArtist && parsedTitle && parsedArtist.toLowerCase() !== parsedTitle.toLowerCase()) {
+                            artist = parsedArtist;
+                            songTitle = parsedTitle;
+                        }
+                    }
+
+                    // Normalize separators and remove common noisy suffixes
+                    // Remove content in parentheses/brackets anywhere in the title (e.g., (Official Video), [Lyrics])
+                    songTitle = songTitle.replace(/\s*[\[(][^\])]+[\])]/g, "").trim();
+
+                    // Remove common descriptors like 'official music video', 'official video', 'lyrics', 'audio', 'hd', 'mv', 'clip'
+                    songTitle = songTitle.replace(/\b(official\s+music\s+video|official\s+video|official|music\s+video|lyrics|lyric|audio|hd|mv|clip)\b/ig, "").trim();
+
+                    // Remove stray separators like '|' or ':' and trailing text after them (keep left-most segment)
+                    if (songTitle.includes("|") || songTitle.includes(":")) {
+                        songTitle = songTitle.split(/\||:/)[0].trim();
+                    }
+
+                    // Collapse multiple spaces
+                    songTitle = songTitle.replace(/\s{2,}/g, " ");
+
+                    const spotifyQuery = `${songTitle} ${artist}`.trim();
 
                     // Search for the recommended track on Spotify
                     const response = await this.riffy.resolve({ query: spotifyQuery, source: "spsearch", requester: player.previous.info.requester });
