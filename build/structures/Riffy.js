@@ -172,17 +172,16 @@ class Riffy extends EventEmitter {
    * @returns {import("..").nodeResponse} returned properties values are nullable if lavalink doesn't give them
    * */
   async resolve({ query, source, requester, node }) {
-    let requestNode;
+    if (!this.initiated) throw new Error("You have to initialize Riffy in your ready event");
+
+    if(node && (typeof node !== "string" && !(node instanceof Node))) throw new Error(`'node' property must either be an node identifier/name('string') or an Node/Node Class, But Received: ${typeof node}`)
+
+    const requestNode = (node && typeof node === 'string' ? this.nodeMap.get(node) : node) || this.leastUsedNodes[0];
+    if (!requestNode) throw new Error("No nodes are available.");
 
     try {
-      if (!this.initiated) throw new Error("You have to initialize Riffy in your ready event");
-      
-      if(node && (typeof node !== "string" && !(node instanceof Node))) throw new Error(`'node' property must either be an node identifier/name('string') or an Node/Node Class, But Received: ${typeof node}`)
       // ^^(jsdoc) A source to search the query on example:ytmsearch for youtube music
       const querySource = source || this.defaultSearchPlatform;
-
-      requestNode = (node && typeof node === 'string' ? this.nodeMap.get(node) : node) || this.leastUsedNodes[0];
-      if (!requestNode) throw new Error("No nodes are available.");
 
       const regex = /^https?:\/\//;
       const identifier = regex.test(query) ? query : `${querySource}:${query}`;
