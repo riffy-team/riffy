@@ -42,6 +42,12 @@ class Riffy extends EventEmitter {
       .sort((a, b) => a.rest.calls - b.rest.calls);
   }
 
+  get bestNode() {
+    return [...this.nodeMap.values()]
+        .filter(node => node.connected)
+        .sort((a, b) => a.penalties - b.penalties)[0];
+  }
+
   init(clientId) {
     if (this.initiated) return this;
     this.clientId = clientId;
@@ -156,6 +162,59 @@ class Riffy extends EventEmitter {
     this.players.delete(guildId);
 
     this.emit("playerDestroy", player);
+  }
+
+  /**
+   * Migrates a player or a node to a new node.
+   * @param {import("./Player").Player | import("./Node").Node} target The player or node to migrate.
+   * @param {import("./Node").Node} [destinationNode] The node to migrate to.
+   */
+  async migrate(target, destinationNode = null) {
+    if (target instanceof Player) {
+        const player = target;
+        let node;
+
+        if (destinationNode) {
+            node = destinationNode;
+        } else {
+            node = [...this.nodeMap.values()]
+                .filter(n => n.connected && n !== player.node)
+                .sort((a, b) => a.penalties - b.penalties)[0];
+        }
+
+        if (!node) throw new Error("No other nodes are available to migrate to.");
+        if (player.node === node) throw new Error("Player is already on the destination node.");
+
+        await player.moveTo(node);
+        return player;
+    }
+
+    if (target instanceof Node) {
+        const nodeToMigrate = target;
+        if (!nodeToMigrate.connected) throw new Error("The node to migrate from is not connected.");
+
+        const playersToMigrate = [...this.players.values()].filter(p => p.node === nodeToMigrate);
+        if (!playersToMigrate.length) return [];
+
+        const availableNodes = [...this.nodeMap.values()]
+            .filter(n => n.connected && n !== nodeToMigrate)
+            .sort((a, b) => a.penalties - b.penalties);
+
+        if (!availableNodes.length) throw new Error("No other nodes are available to migrate to.");
+
+        const migratedPlayers = [];
+        for (const player of playersToMigrate) {
+            const bestNode = availableNodes.shift();
+            if (!bestNode) {
+                this.emit("debug", `Could not migrate player ${player.guildId}, no other nodes available.`);
+                continue;
+            }
+            await player.moveTo(bestNode);
+            migratedPlayers.push(player);
+            availableNodes.push(bestNode); 
+        }
+        return migratedPlayers;
+    }
   }
 
   removeConnection(guildId) {
