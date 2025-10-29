@@ -19,22 +19,26 @@ class Track {
             isrc: data.info?.isrc || null,
             _cachedThumbnail: data.info.thumbnail ?? null,
             get thumbnail() {
-            if (data.info.thumbnail) return data.info.thumbnail;
+                if (this._cachedThumbnail) return this._cachedThumbnail;
+                if (data.info.thumbnail) return data.info.thumbnail;
 
-            if (node.rest.version === "v4") {
-                if (data.info.artworkUrl) {
-                  this._cachedThumbnail = data.info.artworkUrl;
-                  return data.info.artworkUrl
-               } else {
-                  return !this._cachedThumbnail ? (this._cachedThumbnail = getImageUrl(this)) : this._cachedThumbnail ?? null
-               }
-              } else {
-              return !this._cachedThumbnail
-                ? (this._cachedThumbnail = getImageUrl(this))
-                : this._cachedThumbnail ?? null;
-              }
+                if (node.rest.version === "v4") {
+                    if (data.info.artworkUrl) {
+                        this._cachedThumbnail = data.info.artworkUrl;
+                        return data.info.artworkUrl
+                    } else {
+                        return !this._cachedThumbnail ? (this._cachedThumbnail = getImageUrl(this)) : this._cachedThumbnail ?? null
+                    }
+                } else {
+                    return !this._cachedThumbnail
+                        ? (this._cachedThumbnail = getImageUrl(this))
+                        : this._cachedThumbnail ?? null;
+                }
             }
         };
+
+
+        this.pluginInfo = data.pluginInfo
     }
 
     async resolve(riffy) {

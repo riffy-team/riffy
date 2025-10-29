@@ -16,6 +16,11 @@ export declare class Track {
         title: string;
         uri: string;
         isrc: string | null
+
+        /**
+         * @description Caches the fetched (if any), reuses this. Instead of fetching them again.
+         */
+        _cachedThumbnail: string | null;
         thumbnail: string | null;
         requester: any;
     };
@@ -65,7 +70,7 @@ export declare class Rest extends EventEmitter {
     public parseResponse(req: any): Promise<RestResponse | null>;
 }
 
-export declare class Queue extends Array<Track>{
+export declare class Queue extends Array<Track> {
     get size(): number;
     get first(): Track | null;
 
