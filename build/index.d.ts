@@ -220,8 +220,8 @@ export type nodeResponse = {
      * ## Properties may not exist(Means Empty Object) if Lavalink/Node does not return/provide them
      */
     pluginInfo: object;
-    
-    exception: LavalinkTrackLoadException | null 
+
+    exception: LavalinkTrackLoadException | null
 }
 
 export type RiffyOptions = {
@@ -270,7 +270,7 @@ export type RiffyOptions = {
      * @description Used to bypass few checks that throw Errors (Only Possible ones are listed below)
      */
     bypassChecks: {
-      nodeFetchInfo: boolean;
+        nodeFetchInfo: boolean;
     }
 } & Exclude<NodeOptions, "sessionId">
 
@@ -421,7 +421,7 @@ export type RiffyEvents = {
      * @param player The player that was created.
      */
     "playerCreate": (player: Player) => void;
-    
+
     /**
      * Emitted when a player disconnects
      * @param player The player that disconnected.
@@ -657,7 +657,7 @@ export type LavalinkNode = {
      * @default false 
      */
     secure?: boolean;
-    
+
     /**
      * Voice Regions for the Node
      */
@@ -760,7 +760,7 @@ export type LyricPluginWithoutLavaLyricsResult = {
         }[] | null;
     };
     source: string;
-} | { 
+} | {
     type: "text";
     text: string;
 } | {
@@ -775,27 +775,27 @@ export type LyricPluginWithoutLavaLyricsResult = {
 }
 
 export interface NodeLyricsResult {
-  /** The name of the source */
-  sourceName: string;
-  /** The name of the provider */
-  provider: string;
-  /** The Lyrics Text */
-  text: Nullable<string>;
-  /** The Lyrics Lines */
-  lines: Array<NodeLyricsLine>;
-  /** Additional plugin related Information */
-  plugin: object
+    /** The name of the source */
+    sourceName: string;
+    /** The name of the provider */
+    provider: string;
+    /** The Lyrics Text */
+    text: Nullable<string>;
+    /** The Lyrics Lines */
+    lines: Array<NodeLyricsLine>;
+    /** Additional plugin related Information */
+    plugin: object
 }
 
 interface NodeLyricsLine {
-  /** timestamp of the line in ms(milliseconds) */
-  timestamp: number;
-  /** Duration of the line in ms(milliseconds) */
-  duration: number;
-  /** The Lyric String */
-  line: string;
-  /** Additional plugin related Information */
-  plugin: object
+    /** timestamp of the line in ms(milliseconds) */
+    timestamp: number;
+    /** Duration of the line in ms(milliseconds) */
+    duration: number;
+    /** The Lyric String */
+    line: string;
+    /** Additional plugin related Information */
+    plugin: object
 }
 
 export declare class Node {
@@ -832,9 +832,9 @@ export declare class Node {
 
     public connected: boolean;
     public reconnecting: boolean;
-     /**
-     * Lavalink Info fetched While/After connecting.
-     */
+    /**
+    * Lavalink Info fetched While/After connecting.
+    */
     public info: NodeInfo | null;
     public stats: {
         players: 0,
