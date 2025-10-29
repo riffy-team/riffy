@@ -889,7 +889,7 @@ export declare class Node {
          * @param {boolean} skipTrackSource skips the Track Source & fetches from highest priority source (configured on Lavalink Server) 
          * @param {string} [plugin] The Plugin to use(**Only required if you have too many known (i.e java-lyrics-plugin, lavalyrics-plugin) Lyric Plugins**)
          */
-        getCurrentTrack: <TPlugin extends LyricPluginWithoutLavaLyrics | (string & {})>(guildId: string, skipTrackSource: boolean, plugin?: TPlugin) => Promise<TPlugin extends LyricPluginWithoutLavaLyrics ? LyricPluginWithoutLavaLyricsResult : NodeLyricsResult | null>;
+        getCurrentTrack: <TPlugin extends LyricPluginWithoutLavaLyrics | (string & {}) >(guildId: string, skipTrackSource: boolean, plugin?: TPlugin) => Promise<TPlugin extends LyricPluginWithoutLavaLyrics ? LyricPluginWithoutLavaLyricsResult : NodeLyricsResult | null>;
     }
 
     public connect(): void;
