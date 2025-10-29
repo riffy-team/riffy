@@ -567,17 +567,17 @@ export declare class Riffy extends EventEmitter {
 
     public fetchRegion(region: string): Array<LavalinkNode>;
 
-   /**
-   * Creates a connection based on the provided options.
-   *
-   * @param {Object} options - The options for creating the connection.
-   * @param {string} options.guildId - The ID of the guild.
-   * @param {string} [options.region] - The region for the connection.
-   * @param {number} [options.defaultVolume] - The default volume of the player. **By-Default**: **100**
-   * @param {LoopOption} [options.loop] - The loop mode of the player.
-   * @throws {Error} Throws an error if Riffy is not initialized or no nodes are available.
-   * @return {Player} The created player.
-   */
+    /**
+    * Creates a connection based on the provided options.
+    *
+    * @param {Object} options - The options for creating the connection.
+    * @param {string} options.guildId - The ID of the guild.
+    * @param {string} [options.region] - The region for the connection.
+    * @param {number} [options.defaultVolume] - The default volume of the player. **By-Default**: **100**
+    * @param {LoopOption} [options.loop] - The loop mode of the player.
+    * @throws {Error} Throws an error if Riffy is not initialized or no nodes are available.
+    * @return {Player} The created player.
+    */
     public createConnection(options: {
         guildId: string;
         voiceChannel: string;
@@ -628,6 +628,10 @@ export declare class Riffy extends EventEmitter {
     }): Promise<nodeResponse>;
 
 
+    /**
+     * @description Get a Player by it's given `guildId`
+     * @throws {Error} Throws an Error if player is not found.
+     */
     public get(guildId: string): Player;
 }
 
