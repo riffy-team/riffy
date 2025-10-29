@@ -498,6 +498,9 @@ class Player extends EventEmitter {
     /**
      * Moves the player to a new node.
      * @param {import("./Node").Node} newNode The node to move the player to.
+     * @throws {TypeError} If no `newNode` is provided.
+     * @throws {Error} If `newNode` provided is not connected.
+     * @throws {Error} If `newNode` provided is same as the Player's current Node.
      */
     async moveTo(newNode) {
         if (!newNode) throw new TypeError("You must provide a node to move to.");
@@ -523,8 +526,10 @@ class Player extends EventEmitter {
                     sessionId: this.connection.voice.sessionId,
                 }
             };
-
-            await oldNode.rest.destroyPlayer(this.guildId);
+            
+            if(oldNode.connected) {
+                await oldNode.rest.destroyPlayer(this.guildId);
+            }
 
             this.node = newNode;
 

@@ -119,6 +119,18 @@ export declare class Player extends EventEmitter {
     public timestamp: number;
     public ping: number;
     public isAutoplay: boolean;
+    public migrating: boolean;
+
+    /**
+     * @description gets the Previously played Track
+     */
+    get previous(): Track | undefined
+
+    /**
+     * @private
+     * @param track
+     */
+    addToPreviousTrack(track: Track): void
 
     public play(): Promise<Player>;
 
@@ -152,17 +164,30 @@ export declare class Player extends EventEmitter {
     private socketClosed(player: Player, payload: any): void;
     public set(key: string, value: any): any;
     public get(key: string): any;
+
+    /**
+    * @description clears All custom Data set on the Player
+    */ 
     public clearData(): this;
     private send(data: any): void;
+
+    /**
+     * Moves the player to a new node.
+     * @param {import("./Node").Node} newNode The node to move the player to.
+     * @throws {TypeError} If no `newNode` is provided.
+     * @throws {Error} If `newNode` provided is not connected.
+     * @throws {Error} If `newNode` provided is same as the Player's current Node.
+     */
+    public moveTo(newNode: Node): Promise<Player>;
 }
 
 export type SearchPlatform = "ytsearch" | "ytmsearch" | "scsearch" | "spsearch" | "amsearch" | "dzsearch" | "ymsearch" | (string & {})
 export type Version = "v3" | "v4";
 
 export type LavalinkTrackLoadException = {
-  message: string | null,
-  severity: "common" | "suspicious" | "fault",
-  cause: string
+    message: string | null,
+    severity: "common" | "suspicious" | "fault",
+    cause: string
 }
 export type nodeResponse = {
     /**
@@ -206,6 +231,31 @@ export type RiffyOptions = {
     }) => void;
     defaultSearchPlatform?: SearchPlatform;
     restVersion?: Version;
+
+    /**
+     * Auto Migrate Players on/when (??? something 🙃🥲)
+     * 
+     * Default: false
+     * @default false
+     */
+    autoMigratePlayers?: boolean
+
+    /**
+     * Auto Migration of Players when the Node Disconnects.
+     * 
+     * Default: false
+     * @default false
+     */
+    migrateOnDisconnect?: boolean
+
+    /**
+     * Auto Migration of Players when The Node Fails (receives an Error in the Websocket Connection)
+     * 
+     * Default: false
+     * @default false
+     */
+    migrateOnFailure?: boolean
+
     plugins?: Array<Plugin>;
     /**
      * @description Default is false (only one track) 
@@ -227,6 +277,8 @@ export declare const enum RiffyEventType {
     NodeCreate = "nodeCreate",
     NodeDestroy = "nodeDestroy",
     NodeError = "nodeError",
+    NodeMigrated = "nodeMigrated",
+    NodeMigrationFailed = "nodeMigrationFailed",
     SocketClosed = "socketClosed",
 
     // Track Events
@@ -240,6 +292,8 @@ export declare const enum RiffyEventType {
     PlayerDisconnect = "playerDisconnect",
     PlayerMove = "playerMove",
     PlayerUpdate = "playerUpdate",
+    PlayerMigrationFailed = "playerMigrationFailed",
+    PlayerMigrated = "playerMigrated",
     QueueEnd = "queueEnd",
 
     // Misc Events
@@ -297,6 +351,23 @@ export type RiffyEvents = {
      * @see https://lavalink.dev/api/websocket.html#websocketclosedevent
      */
     "socketClosed": (player: Player, payload: any) => void;
+
+    /**
+     * Emitted When a Node Has been Migrated.
+     * Migration means moving all resources (i.e players) from One Node to Another.
+     * @param node 
+     * @param players 
+     * @returns {void}
+     */
+    "nodeMigrated": (node: Node, players: Player[]) => void;
+
+    /**
+     * Emitted When a Node Migration Has Failed.
+     * @param node 
+     * @param error Humanly written Error/Reason why that happened (humanly :upside_down_emoji:).
+     * @returns {void}
+     */
+    "nodeMigrationFailed": (node: Node, error: Error) => void;
 
     // Track Events
 
@@ -368,6 +439,23 @@ export type RiffyEvents = {
     "playerUpdate": (player: Player, payload: any) => void;
 
     /**
+     * Emitted when a Player's Migration has Failed (🥲 sad life no music for them)
+     * @param player For The Player that Migration Failed.
+     * @param error Error/Reason why that happened (humanly :upside_down:).
+     * @returns 
+     */
+    "playerMigrationFailed": (player: Player, error: Error) => void;
+
+    /**
+     * Emitted When a Player was Migrated (😃👏 More Music for them)
+     * @param player The Player that was migrated (Gotta know them 🙃)
+     * @param oldNode Node that the Player was migrated From. (Poor Node ⚒️)
+     * @param newNode To the Node which the Player Migrated. (😃👏)
+     * @returns 
+     */
+    "playerMigrated": (player: Player, oldNode: Node, newNode: Node) => void;
+
+    /**
      * Emitted when a player's queue ends
      * @param player The player that had its queue end.
      */
@@ -395,13 +483,74 @@ export declare class Riffy extends EventEmitter {
     public nodeMap: Map<k, Node>;
     public players: Map<k, Player>;
     public options: RiffyOptions;
-    public clientId: string;
+    public clientId: string?;
     public initiated: boolean;
-    public send: RiffyOptions["send"];
+    public send: RiffyOptions["send"] | null;
+    /**
+     * Auto Migrate Players on/when (??? something 🙃🥲)
+     */
+    public readonly autoMigratePlayers: boolean
+    /**
+     * Auto Migration of Players when the Node Disconnects.
+     */
+    public readonly migrateOnDisconnect: boolean
+    /**
+     * Auto Migration of Players when The Node Fails (receives an Error in the Websocket Connection)
+     */
+    public readonly migrateOnFailure: boolean
+    /**
+     * Migration Strategy Function, takes a player and availableNodes returns the Best Node for the given player.
+     * Could be used for custom Strategies i.e Priority Nodes for Certain Players.
+     * Default to {@link _defaultMigrationStrategy} that filters nodes which are Connected, not same (Node) as given player's Node, {@link Node.penalties penalties}
+     */
+    migrationStrategyFn?: Function;
     public defaultSearchPlatform: string;
+    
     public restVersion: RiffyOptions["restVersion"];
 
+    /**
+     * @description The Tracks from last search/load tracks (Riffy.resolve) result **OR** Empty Array if none.
+     */
+    public tracks: Tracks[];
+
+    /**
+     * Lavalink Load Types
+     * - V3 -> "TRACK_LOADED", "PLAYLIST_LOADED", "SEARCH_RESULT", "NO_MATCHES", "LOAD_FAILED"
+     * - V4 -> "track", "playlist", "search", "error"
+     * 
+     * `null` in-case where Lavalink doesn't return them (due to Error or so.)
+     */
+    public loadType: nodeResponse["loadType"];
+
+    /**
+     * @description playlistInfo from last search/load tracks (Riffy.resolve) result, OR is `null` if none.
+     */
+    public playlistInfo: nodeResponse["playlistInfo"]
+
+    /**
+     * @description `pluginInfo` from last search/load tracks (Riffy.resolve) result, OR is `null` if none. 
+     */
+    public pluginInfo: nodeResponse["pluginInfo"];
+
+    /**
+     * @description (Read-Only) Array of Riffy Plugins, as provided (added) in Riffy Options/Constructor
+     * @readonly
+     */
+    public readonly plugins: RiffyOptions["plugins"]
+
+    /**
+     * @description Current Version of Riffy.
+     */
+    public readonly version: string
+
+    private readonly _defaultMigrationStrategy(player: Player, availableNodes: Node[]): Node | undefined | null
+
     public readonly leastUsedNodes: Array<Node>;
+
+    /**
+     * @description A Single Best Node is returned After Filtering All connected Nodes by {@link Node.penalties penalties}
+     */
+    public readonly bestNode(): Node | null | undefined;
 
     public init(clientId: string): this;
 
@@ -445,6 +594,17 @@ export declare class Riffy extends EventEmitter {
 
     public createPlayer(node: Node, options: PlayerOptions): Player;
 
+    /**
+     * @description Destroys the player for given guildId (if present)
+     */
+    public destroyPlayer(guildId): void;
+
+    /**
+    * Migrates a player or a node to a new node.
+    * @param {import("./Player").Player | import("./Node").Node} target The player or node to migrate.
+    * @param {import("./Node").Node} [destinationNode] The node to migrate to.
+    */
+    public migrate(target: Node | Player, destinationNode?: Node): Players[]
     public removeConnection(guildId: string): void;
 
     /**

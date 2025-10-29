@@ -25,7 +25,11 @@ class Riffy extends EventEmitter {
     this.autoMigratePlayers = options.autoMigratePlayers ?? false;
     this.migrateOnDisconnect = options.migrateOnDisconnect ?? false;
     this.migrateOnFailure = options.migrateOnFailure ?? false;
-    this.migrationStrategy = options.migrationStrategy || this._defaultMigrationStrategy;
+    /**
+     * Migration Strategy Function, takes a player and availableNodes returns the Best Node for the given player.
+     * Could be used for custom Strategies i.e Priority Nodes for Certain Players.
+     */
+    this.migrationStrategyFn = options.migrationStrategyFn || this._defaultMigrationStrategy;
     this.restVersion = options.restVersion || "v3";
     this.tracks = [];
     this.loadType = null;
@@ -188,7 +192,7 @@ class Riffy extends EventEmitter {
             node = destinationNode;
         } else {
             const availableNodes = [...this.nodeMap.values()].filter(n => n.connected && n !== player.node);
-            node = this.migrationStrategy(player, availableNodes);
+            node = this.migrationStrategyFn(player, availableNodes);
         }
 
         if (!node) {
@@ -230,7 +234,7 @@ class Riffy extends EventEmitter {
         const migratedPlayers = [];
         let migrationFailed = false;
         for (const player of playersToMigrate) {
-            const bestNode = this.migrationStrategy(player, availableNodes);
+            const bestNode = this.migrationStrategyFn(player, availableNodes);
             if (!bestNode) {
                 this.emit("debug", `Could not migrate player ${player.guildId}, no suitable node found using migration strategy.`);
                 this.emit("playerMigrationFailed", player, new Error("No suitable node found for migration."));

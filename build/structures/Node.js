@@ -414,11 +414,12 @@ class Node {
 
     disconnect() {
         if (!this.connected) return;
-        this.riffy.players.forEach((player) => { if (player.node == this) { player.move() } });
+        this.riffy.players.forEach((player) => { if (player.node == this) { this.riffy.bestNode() ? player.moveTo(this.riffy.bestNode()) : true } });
         this.ws.close(1000, "destroy");
         this.ws?.removeAllListeners();
         this.ws = null;
-        this.riffy.nodes.delete(this.name);
+        // Allowing to connect back.
+        // this.riffy.nodeMap.delete(this.name);
         this.riffy.emit("nodeDisconnect", this);
         this.connected = false;
     }
