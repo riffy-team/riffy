@@ -1,6 +1,20 @@
 import { EventEmitter } from "events";
 
-type Nullable<T> = T | null
+type Nullable<T> = T | null;
+type Prettify<T> = 
+    [T] extends [object]
+        ? { [K in keyof T]: Prettify<T[K]>}
+        : T;
+
+type PrettifyWithNull<T> = 
+  [T] extends [object]
+    ? { [K in keyof T]: PrettifyWithNullOrUndefined<T[K]> } & {}
+    : (null extends T ? (Exclude<T, null> | null) : never);
+
+type PrettifyWithNullOrUndefined<T> =
+  [T] extends [object]
+    ? { [K in keyof T]: PrettifyWithNullOrUndefined<T[K]> } & {}
+    : (null extends T ? (Exclude<T, null> | null) : (undefined extends T ? (Exclude<T, undefined> | undefined) : T));
 
 export declare class Track {
     constructor(data: any, requester: any, node: Node);
@@ -117,7 +131,6 @@ export declare class Player extends EventEmitter {
     public queue: Queue;
     public position: number;
     public current: Track;
-    public previous: Track | null;
     public playing: boolean;
     public paused: boolean;
     public connected: boolean;
@@ -495,7 +508,7 @@ export declare class Riffy extends EventEmitter {
     public nodeMap: Map<k, Node>;
     public players: Map<k, Player>;
     public options: RiffyOptions;
-    public clientId: string?;
+    public clientId: PrettifyWithNull<Nullable<string>>;
     public initiated: boolean;
     public send: RiffyOptions["send"] | null;
     /**
@@ -555,14 +568,14 @@ export declare class Riffy extends EventEmitter {
      */
     public readonly version: string
 
-    private readonly _defaultMigrationStrategy(player: Player, availableNodes: Node[]): Node | undefined | null
+    private _defaultMigrationStrategy(player: Player, availableNodes: Node[]): Node | undefined | null
 
     public readonly leastUsedNodes: Array<Node>;
 
     /**
      * @description A Single Best Node is returned After Filtering All connected Nodes by {@link Node.penalties penalties}
      */
-    public readonly bestNode(): Node | null | undefined;
+    public readonly bestNode: Node | null | undefined;
 
     public init(clientId: string): this;
 
@@ -616,7 +629,7 @@ export declare class Riffy extends EventEmitter {
     * @param {import("./Player").Player | import("./Node").Node} target The player or node to migrate.
     * @param {import("./Node").Node} [destinationNode] The node to migrate to.
     */
-    public migrate(target: Node | Player, destinationNode?: Node): Players[]
+    public migrate(target: Node | Player, destinationNode?: Node): Player[]
     public removeConnection(guildId: string): void;
 
     /**
