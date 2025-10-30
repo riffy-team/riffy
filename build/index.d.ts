@@ -261,6 +261,13 @@ export type RiffyOptions = {
      */
     migrateOnFailure?: boolean
 
+    /**
+     * Migration Strategy Function, takes a player and availableNodes returns the Best Node for the given player.
+     * Could be used for custom Strategies i.e Priority Nodes for Certain Players.
+     * Default to {@link Riffy._defaultMigrationStrategy} that filters nodes which are Connected, not same (Node) as given player's Node, {@link Node.penalties penalties}
+     */
+    migrationStrategyFn?: Function;
+
     plugins?: Array<Plugin>;
     /**
      * @description Default is false (only one track) 
@@ -508,7 +515,7 @@ export declare class Riffy extends EventEmitter {
      * Could be used for custom Strategies i.e Priority Nodes for Certain Players.
      * Default to {@link _defaultMigrationStrategy} that filters nodes which are Connected, not same (Node) as given player's Node, {@link Node.penalties penalties}
      */
-    migrationStrategyFn?: Function;
+    public readonly migrationStrategyFn?: Function;
     public defaultSearchPlatform: string;
     
     public restVersion: RiffyOptions["restVersion"];
@@ -516,7 +523,7 @@ export declare class Riffy extends EventEmitter {
     /**
      * @description The Tracks from last search/load tracks (Riffy.resolve) result **OR** Empty Array if none.
      */
-    public tracks: Tracks[];
+    public tracks: Track[];
 
     /**
      * Lavalink Load Types
