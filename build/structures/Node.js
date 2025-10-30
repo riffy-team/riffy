@@ -285,6 +285,11 @@ class Node {
     error(event) {
         if (!event) return;
         this.riffy.emit("nodeError", this, event);
+        if (this.riffy.migrateOnFailure) {
+            this.riffy.migrate(this).catch(err => {
+                this.riffy.emit("debug", `Failed to auto-migrate players from node ${this.name} on error: ${err.message}`);
+            });
+        }
     }
 
     message(msg) {
@@ -329,11 +334,18 @@ class Node {
         if (payload.guildId && player) player.emit(payload.op, payload);
     }
 
-    close(event, reason) {
+    async close(event, reason) {
         this.riffy.emit("nodeDisconnect", this, { event, reason });
         this.riffy.emit("debug", `Connection with Lavalink closed with Error code : ${event || "Unknown code"}, reason: ${reason || "Unknown reason"}`);
 
         this.connected = false;
+        if (this.riffy.migrateOnDisconnect) {
+            try {
+                await this.riffy.migrate(this);
+            } catch (err) {
+                this.riffy.emit("debug", `Failed to auto-migrate players from node ${this.name} on disconnect: ${err.message}`);
+            }
+        }
         this.reconnect();
     }
 
@@ -402,11 +414,12 @@ class Node {
 
     disconnect() {
         if (!this.connected) return;
-        this.riffy.players.forEach((player) => { if (player.node == this) { player.move() } });
+        this.riffy.players.forEach((player) => { if (player.node == this) { this.riffy.bestNode() ? player.moveTo(this.riffy.bestNode()) : true } });
         this.ws.close(1000, "destroy");
         this.ws?.removeAllListeners();
         this.ws = null;
-        this.riffy.nodes.delete(this.name);
+        // Allowing to connect back.
+        // this.riffy.nodeMap.delete(this.name);
         this.riffy.emit("nodeDisconnect", this);
         this.connected = false;
     }

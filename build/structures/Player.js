@@ -31,6 +31,7 @@ class Player extends EventEmitter {
         this.timestamp = 0;
         this.ping = 0;
         this.isAutoplay = false;
+        this.migrating = false;
 
         this.on("playerUpdate", (packet) => {
             (this.connected = packet.state.connected),
@@ -340,6 +341,11 @@ class Player extends EventEmitter {
     }
 
     async handleEvent(payload) {
+        if (this.migrating) {
+            this.riffy.emit("debug", `Player (${this.guildId}) is migrating, ignoring event: ${payload.type}`);
+            return;
+        }
+
         const player = this.riffy.players.get(payload.guildId);
         if (!player) return;
 
@@ -487,6 +493,72 @@ class Player extends EventEmitter {
         }
       }
       return this;
+    }
+
+    /**
+     * Moves the player to a new node.
+     * @param {import("./Node").Node} newNode The node to move the player to.
+     * @throws {TypeError} If no `newNode` is provided.
+     * @throws {Error} If `newNode` provided is not connected.
+     * @throws {Error} If `newNode` provided is same as the Player's current Node.
+     */
+    async moveTo(newNode) {
+        if (!newNode) throw new TypeError("You must provide a node to move to.");
+        if (!newNode.connected) throw new Error("The node you provided is not connected.");
+        if (this.node === newNode) throw new Error("Player is already connected to this node.");
+
+        this.migrating = true;
+
+        try {
+            const oldNode = this.node;
+
+            const { player, ...filterData } = this.filters;
+
+            const state = {
+                track: this.current,
+                position: this.position,
+                volume: this.volume,
+                paused: this.paused,
+                filters: filterData,
+                voice: {
+                    token: this.connection.voice.token,
+                    endpoint: this.connection.voice.endpoint,
+                    sessionId: this.connection.voice.sessionId,
+                }
+            };
+            
+            if(oldNode.connected) {
+                await oldNode.rest.destroyPlayer(this.guildId);
+            }
+
+            this.node = newNode;
+
+            await this.node.rest.updatePlayer({
+                guildId: this.guildId,
+                data: {
+                    voice: state.voice
+                }
+            });
+
+            if (state.track) {
+                await this.node.rest.updatePlayer({
+                    guildId: this.guildId,
+                    data: {
+                        track: {
+                            encoded: state.track.track,
+                        },
+                        position: state.position,
+                        volume: state.volume,
+                        paused: state.paused,
+                        filters: state.filters
+                    }
+                });
+            }
+        } finally {
+            this.migrating = false;
+        }
+
+        return this;
     }
 }
 

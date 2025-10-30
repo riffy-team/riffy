@@ -16,6 +16,11 @@ export declare class Track {
         title: string;
         uri: string;
         isrc: string | null
+
+        /**
+         * @description Caches the fetched (if any), reuses this. Instead of fetching them again.
+         */
+        _cachedThumbnail: string | null;
         thumbnail: string | null;
         requester: any;
     };
@@ -65,7 +70,7 @@ export declare class Rest extends EventEmitter {
     public parseResponse(req: any): Promise<RestResponse | null>;
 }
 
-export declare class Queue extends Array<Track>{
+export declare class Queue extends Array<Track> {
     get size(): number;
     get first(): Track | null;
 
@@ -119,6 +124,18 @@ export declare class Player extends EventEmitter {
     public timestamp: number;
     public ping: number;
     public isAutoplay: boolean;
+    public migrating: boolean;
+
+    /**
+     * @description gets the Previously played Track
+     */
+    get previous(): Track | undefined
+
+    /**
+     * @private
+     * @param track
+     */
+    addToPreviousTrack(track: Track): void
 
     public play(): Promise<Player>;
 
@@ -152,17 +169,30 @@ export declare class Player extends EventEmitter {
     private socketClosed(player: Player, payload: any): void;
     public set(key: string, value: any): any;
     public get(key: string): any;
+
+    /**
+    * @description clears All custom Data set on the Player
+    */ 
     public clearData(): this;
     private send(data: any): void;
+
+    /**
+     * Moves the player to a new node.
+     * @param {import("./Node").Node} newNode The node to move the player to.
+     * @throws {TypeError} If no `newNode` is provided.
+     * @throws {Error} If `newNode` provided is not connected.
+     * @throws {Error} If `newNode` provided is same as the Player's current Node.
+     */
+    public moveTo(newNode: Node): Promise<Player>;
 }
 
 export type SearchPlatform = "ytsearch" | "ytmsearch" | "scsearch" | "spsearch" | "amsearch" | "dzsearch" | "ymsearch" | (string & {})
 export type Version = "v3" | "v4";
 
 export type LavalinkTrackLoadException = {
-  message: string | null,
-  severity: "common" | "suspicious" | "fault",
-  cause: string
+    message: string | null,
+    severity: "common" | "suspicious" | "fault",
+    cause: string
 }
 export type nodeResponse = {
     /**
@@ -190,8 +220,8 @@ export type nodeResponse = {
      * ## Properties may not exist(Means Empty Object) if Lavalink/Node does not return/provide them
      */
     pluginInfo: object;
-    
-    exception: LavalinkTrackLoadException | null 
+
+    exception: LavalinkTrackLoadException | null
 }
 
 export type RiffyOptions = {
@@ -206,6 +236,38 @@ export type RiffyOptions = {
     }) => void;
     defaultSearchPlatform?: SearchPlatform;
     restVersion?: Version;
+
+    /**
+     * Auto Migrate Players on/when (??? something 🙃🥲)
+     * 
+     * Default: false
+     * @default false
+     */
+    autoMigratePlayers?: boolean
+
+    /**
+     * Auto Migration of Players when the Node Disconnects.
+     * 
+     * Default: false
+     * @default false
+     */
+    migrateOnDisconnect?: boolean
+
+    /**
+     * Auto Migration of Players when The Node Fails (receives an Error in the Websocket Connection)
+     * 
+     * Default: false
+     * @default false
+     */
+    migrateOnFailure?: boolean
+
+    /**
+     * Migration Strategy Function, takes a player and availableNodes returns the Best Node for the given player.
+     * Could be used for custom Strategies i.e Priority Nodes for Certain Players.
+     * Default to {@link Riffy._defaultMigrationStrategy} that filters nodes which are Connected, not same (Node) as given player's Node, {@link Node.penalties penalties}
+     */
+    migrationStrategyFn?: Function;
+
     plugins?: Array<Plugin>;
     /**
      * @description Default is false (only one track) 
@@ -215,7 +277,7 @@ export type RiffyOptions = {
      * @description Used to bypass few checks that throw Errors (Only Possible ones are listed below)
      */
     bypassChecks: {
-      nodeFetchInfo: boolean;
+        nodeFetchInfo: boolean;
     }
 } & Exclude<NodeOptions, "sessionId">
 
@@ -227,6 +289,8 @@ export declare const enum RiffyEventType {
     NodeCreate = "nodeCreate",
     NodeDestroy = "nodeDestroy",
     NodeError = "nodeError",
+    NodeMigrated = "nodeMigrated",
+    NodeMigrationFailed = "nodeMigrationFailed",
     SocketClosed = "socketClosed",
 
     // Track Events
@@ -240,6 +304,8 @@ export declare const enum RiffyEventType {
     PlayerDisconnect = "playerDisconnect",
     PlayerMove = "playerMove",
     PlayerUpdate = "playerUpdate",
+    PlayerMigrationFailed = "playerMigrationFailed",
+    PlayerMigrated = "playerMigrated",
     QueueEnd = "queueEnd",
 
     // Misc Events
@@ -298,6 +364,23 @@ export type RiffyEvents = {
      */
     "socketClosed": (player: Player, payload: any) => void;
 
+    /**
+     * Emitted When a Node Has been Migrated.
+     * Migration means moving all resources (i.e players) from One Node to Another.
+     * @param node 
+     * @param players 
+     * @returns {void}
+     */
+    "nodeMigrated": (node: Node, players: Player[]) => void;
+
+    /**
+     * Emitted When a Node Migration Has Failed.
+     * @param node 
+     * @param error Humanly written Error/Reason why that happened (humanly :upside_down_emoji:).
+     * @returns {void}
+     */
+    "nodeMigrationFailed": (node: Node, error: Error) => void;
+
     // Track Events
 
     /**
@@ -345,7 +428,7 @@ export type RiffyEvents = {
      * @param player The player that was created.
      */
     "playerCreate": (player: Player) => void;
-    
+
     /**
      * Emitted when a player disconnects
      * @param player The player that disconnected.
@@ -366,6 +449,23 @@ export type RiffyEvents = {
      * @param payload The payload of the player update.
      */
     "playerUpdate": (player: Player, payload: any) => void;
+
+    /**
+     * Emitted when a Player's Migration has Failed (🥲 sad life no music for them)
+     * @param player For The Player that Migration Failed.
+     * @param error Error/Reason why that happened (humanly :upside_down:).
+     * @returns 
+     */
+    "playerMigrationFailed": (player: Player, error: Error) => void;
+
+    /**
+     * Emitted When a Player was Migrated (😃👏 More Music for them)
+     * @param player The Player that was migrated (Gotta know them 🙃)
+     * @param oldNode Node that the Player was migrated From. (Poor Node ⚒️)
+     * @param newNode To the Node which the Player Migrated. (😃👏)
+     * @returns 
+     */
+    "playerMigrated": (player: Player, oldNode: Node, newNode: Node) => void;
 
     /**
      * Emitted when a player's queue ends
@@ -395,13 +495,74 @@ export declare class Riffy extends EventEmitter {
     public nodeMap: Map<k, Node>;
     public players: Map<k, Player>;
     public options: RiffyOptions;
-    public clientId: string;
+    public clientId: string?;
     public initiated: boolean;
-    public send: RiffyOptions["send"];
+    public send: RiffyOptions["send"] | null;
+    /**
+     * Auto Migrate Players on/when (??? something 🙃🥲)
+     */
+    public readonly autoMigratePlayers: boolean
+    /**
+     * Auto Migration of Players when the Node Disconnects.
+     */
+    public readonly migrateOnDisconnect: boolean
+    /**
+     * Auto Migration of Players when The Node Fails (receives an Error in the Websocket Connection)
+     */
+    public readonly migrateOnFailure: boolean
+    /**
+     * Migration Strategy Function, takes a player and availableNodes returns the Best Node for the given player.
+     * Could be used for custom Strategies i.e Priority Nodes for Certain Players.
+     * Default to {@link _defaultMigrationStrategy} that filters nodes which are Connected, not same (Node) as given player's Node, {@link Node.penalties penalties}
+     */
+    public readonly migrationStrategyFn?: Function;
     public defaultSearchPlatform: string;
+    
     public restVersion: RiffyOptions["restVersion"];
 
+    /**
+     * @description The Tracks from last search/load tracks (Riffy.resolve) result **OR** Empty Array if none.
+     */
+    public tracks: Track[];
+
+    /**
+     * Lavalink Load Types
+     * - V3 -> "TRACK_LOADED", "PLAYLIST_LOADED", "SEARCH_RESULT", "NO_MATCHES", "LOAD_FAILED"
+     * - V4 -> "track", "playlist", "search", "error"
+     * 
+     * `null` in-case where Lavalink doesn't return them (due to Error or so.)
+     */
+    public loadType: nodeResponse["loadType"];
+
+    /**
+     * @description playlistInfo from last search/load tracks (Riffy.resolve) result, OR is `null` if none.
+     */
+    public playlistInfo: nodeResponse["playlistInfo"]
+
+    /**
+     * @description `pluginInfo` from last search/load tracks (Riffy.resolve) result, OR is `null` if none. 
+     */
+    public pluginInfo: nodeResponse["pluginInfo"];
+
+    /**
+     * @description (Read-Only) Array of Riffy Plugins, as provided (added) in Riffy Options/Constructor
+     * @readonly
+     */
+    public readonly plugins: RiffyOptions["plugins"]
+
+    /**
+     * @description Current Version of Riffy.
+     */
+    public readonly version: string
+
+    private readonly _defaultMigrationStrategy(player: Player, availableNodes: Node[]): Node | undefined | null
+
     public readonly leastUsedNodes: Array<Node>;
+
+    /**
+     * @description A Single Best Node is returned After Filtering All connected Nodes by {@link Node.penalties penalties}
+     */
+    public readonly bestNode(): Node | null | undefined;
 
     public init(clientId: string): this;
 
@@ -413,17 +574,17 @@ export declare class Riffy extends EventEmitter {
 
     public fetchRegion(region: string): Array<LavalinkNode>;
 
-   /**
-   * Creates a connection based on the provided options.
-   *
-   * @param {Object} options - The options for creating the connection.
-   * @param {string} options.guildId - The ID of the guild.
-   * @param {string} [options.region] - The region for the connection.
-   * @param {number} [options.defaultVolume] - The default volume of the player. **By-Default**: **100**
-   * @param {LoopOption} [options.loop] - The loop mode of the player.
-   * @throws {Error} Throws an error if Riffy is not initialized or no nodes are available.
-   * @return {Player} The created player.
-   */
+    /**
+    * Creates a connection based on the provided options.
+    *
+    * @param {Object} options - The options for creating the connection.
+    * @param {string} options.guildId - The ID of the guild.
+    * @param {string} [options.region] - The region for the connection.
+    * @param {number} [options.defaultVolume] - The default volume of the player. **By-Default**: **100**
+    * @param {LoopOption} [options.loop] - The loop mode of the player.
+    * @throws {Error} Throws an error if Riffy is not initialized or no nodes are available.
+    * @return {Player} The created player.
+    */
     public createConnection(options: {
         guildId: string;
         voiceChannel: string;
@@ -445,6 +606,17 @@ export declare class Riffy extends EventEmitter {
 
     public createPlayer(node: Node, options: PlayerOptions): Player;
 
+    /**
+     * @description Destroys the player for given guildId (if present)
+     */
+    public destroyPlayer(guildId): void;
+
+    /**
+    * Migrates a player or a node to a new node.
+    * @param {import("./Player").Player | import("./Node").Node} target The player or node to migrate.
+    * @param {import("./Node").Node} [destinationNode] The node to migrate to.
+    */
+    public migrate(target: Node | Player, destinationNode?: Node): Players[]
     public removeConnection(guildId: string): void;
 
     /**
@@ -463,6 +635,10 @@ export declare class Riffy extends EventEmitter {
     }): Promise<nodeResponse>;
 
 
+    /**
+     * @description Get a Player by it's given `guildId`
+     * @throws {Error} Throws an Error if player is not found.
+     */
     public get(guildId: string): Player;
 }
 
@@ -488,7 +664,7 @@ export type LavalinkNode = {
      * @default false 
      */
     secure?: boolean;
-    
+
     /**
      * Voice Regions for the Node
      */
@@ -591,7 +767,7 @@ export type LyricPluginWithoutLavaLyricsResult = {
         }[] | null;
     };
     source: string;
-} | { 
+} | {
     type: "text";
     text: string;
 } | {
@@ -606,27 +782,27 @@ export type LyricPluginWithoutLavaLyricsResult = {
 }
 
 export interface NodeLyricsResult {
-  /** The name of the source */
-  sourceName: string;
-  /** The name of the provider */
-  provider: string;
-  /** The Lyrics Text */
-  text: Nullable<string>;
-  /** The Lyrics Lines */
-  lines: Array<NodeLyricsLine>;
-  /** Additional plugin related Information */
-  plugin: object
+    /** The name of the source */
+    sourceName: string;
+    /** The name of the provider */
+    provider: string;
+    /** The Lyrics Text */
+    text: Nullable<string>;
+    /** The Lyrics Lines */
+    lines: Array<NodeLyricsLine>;
+    /** Additional plugin related Information */
+    plugin: object
 }
 
 interface NodeLyricsLine {
-  /** timestamp of the line in ms(milliseconds) */
-  timestamp: number;
-  /** Duration of the line in ms(milliseconds) */
-  duration: number;
-  /** The Lyric String */
-  line: string;
-  /** Additional plugin related Information */
-  plugin: object
+    /** timestamp of the line in ms(milliseconds) */
+    timestamp: number;
+    /** Duration of the line in ms(milliseconds) */
+    duration: number;
+    /** The Lyric String */
+    line: string;
+    /** Additional plugin related Information */
+    plugin: object
 }
 
 export declare class Node {
@@ -663,9 +839,9 @@ export declare class Node {
 
     public connected: boolean;
     public reconnecting: boolean;
-     /**
-     * Lavalink Info fetched While/After connecting.
-     */
+    /**
+    * Lavalink Info fetched While/After connecting.
+    */
     public info: NodeInfo | null;
     public stats: {
         players: 0,
@@ -724,7 +900,7 @@ export declare class Node {
          * @param {boolean} skipTrackSource skips the Track Source & fetches from highest priority source (configured on Lavalink Server) 
          * @param {string} [plugin] The Plugin to use(**Only required if you have too many known (i.e java-lyrics-plugin, lavalyrics-plugin) Lyric Plugins**)
          */
-        getCurrentTrack: <TPlugin extends LyricPluginWithoutLavaLyrics | (string & {})>(guildId: string, skipTrackSource: boolean, plugin?: TPlugin) => Promise<TPlugin extends LyricPluginWithoutLavaLyrics ? LyricPluginWithoutLavaLyricsResult : NodeLyricsResult | null>;
+        getCurrentTrack: <TPlugin extends LyricPluginWithoutLavaLyrics | (string & {}) >(guildId: string, skipTrackSource: boolean, plugin?: TPlugin) => Promise<TPlugin extends LyricPluginWithoutLavaLyrics ? LyricPluginWithoutLavaLyricsResult : NodeLyricsResult | null>;
     }
 
     public connect(): void;

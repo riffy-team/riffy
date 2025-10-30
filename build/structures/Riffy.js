@@ -22,6 +22,14 @@ class Riffy extends EventEmitter {
     this.initiated = false;
     this.send = options.send || null;
     this.defaultSearchPlatform = options.defaultSearchPlatform || "ytmsearch";
+    this.autoMigratePlayers = options.autoMigratePlayers ?? false;
+    this.migrateOnDisconnect = options.migrateOnDisconnect ?? false;
+    this.migrateOnFailure = options.migrateOnFailure ?? false;
+    /**
+     * Migration Strategy Function, takes a player and availableNodes returns the Best Node for the given player.
+     * Could be used for custom Strategies i.e Priority Nodes for Certain Players.
+     */
+    this.migrationStrategyFn = options.migrationStrategyFn || this._defaultMigrationStrategy;
     this.restVersion = options.restVersion || "v3";
     this.tracks = [];
     this.loadType = null;
@@ -36,10 +44,22 @@ class Riffy extends EventEmitter {
     if (this.restVersion && !versions.includes(this.restVersion)) throw new RangeError(`${this.restVersion} is not a valid version`);
   }
 
+  _defaultMigrationStrategy(player, availableNodes) {
+    return availableNodes
+      .filter(n => n.connected && n !== player.node)
+      .sort((a, b) => a.penalties - b.penalties)[0];
+  }
+
   get leastUsedNodes() {
     return [...this.nodeMap.values()]
       .filter((node) => node.connected)
       .sort((a, b) => a.rest.calls - b.rest.calls);
+  }
+
+  get bestNode() {
+    return [...this.nodeMap.values()]
+        .filter(node => node.connected)
+        .sort((a, b) => a.penalties - b.penalties)[0];
   }
 
   init(clientId) {
@@ -156,6 +176,90 @@ class Riffy extends EventEmitter {
     this.players.delete(guildId);
 
     this.emit("playerDestroy", player);
+  }
+
+  /**
+   * Migrates a player or a node to a new node.
+   * @param {import("./Player").Player | import("./Node").Node} target The player or node to migrate.
+   * @param {import("./Node").Node} [destinationNode] The node to migrate to.
+   */
+  async migrate(target, destinationNode = null) {
+    if (target instanceof Player) {
+        const player = target;
+        let node;
+
+        if (destinationNode) {
+            node = destinationNode;
+        } else {
+            const availableNodes = [...this.nodeMap.values()].filter(n => n.connected && n !== player.node);
+            node = this.migrationStrategyFn(player, availableNodes);
+        }
+
+        if (!node) {
+            this.emit("playerMigrationFailed", player, new Error("No other nodes are available to migrate to."));
+            throw new Error("No other nodes are available to migrate to.");
+        }
+        if (player.node === node) {
+            this.emit("playerMigrationFailed", player, new Error("Player is already on the destination node."));
+            throw new Error("Player is already on the destination node.");
+        }
+
+        try {
+            const oldNode = player.node;
+            await player.moveTo(node);
+            this.emit("playerMigrated", player, oldNode, node);
+            return player;
+        } catch (error) {
+            this.emit("playerMigrationFailed", player, error);
+            throw error;
+        }
+    }
+
+    if (target instanceof Node) {
+        const nodeToMigrate = target;
+        const playersToMigrate = [...this.players.values()].filter(p => p.node === nodeToMigrate);
+        if (!playersToMigrate.length) {
+            return [];
+        }
+
+        const availableNodes = [...this.nodeMap.values()]
+            .filter(n => n.connected && n !== nodeToMigrate)
+            .sort((a, b) => a.penalties - b.penalties);
+
+        if (!availableNodes.length) {
+            this.emit("nodeMigrationFailed", nodeToMigrate, new Error("No other nodes are available to migrate to."));
+            throw new Error("No other nodes are available to migrate to.");
+        }
+
+        const migratedPlayers = [];
+        let migrationFailed = false;
+        for (const player of playersToMigrate) {
+            const bestNode = this.migrationStrategyFn(player, availableNodes);
+            if (!bestNode) {
+                this.emit("debug", `Could not migrate player ${player.guildId}, no suitable node found using migration strategy.`);
+                this.emit("playerMigrationFailed", player, new Error("No suitable node found for migration."));
+                migrationFailed = true;
+                continue;
+            }
+            try {
+                const oldNode = player.node;
+                await player.moveTo(bestNode);
+                migratedPlayers.push(player);
+                this.emit("playerMigrated", player, oldNode, bestNode);
+            } catch (error) {
+                this.emit("debug", `Failed to migrate player ${player.guildId}: ${error.message}`);
+                this.emit("playerMigrationFailed", player, error);
+                migrationFailed = true;
+            }
+        }
+
+        if (migrationFailed) {
+            this.emit("nodeMigrationFailed", nodeToMigrate, new Error("Some players failed to migrate."));
+        } else {
+            this.emit("nodeMigrated", nodeToMigrate, migratedPlayers);
+        }
+        return migratedPlayers;
+    }
   }
 
   removeConnection(guildId) {

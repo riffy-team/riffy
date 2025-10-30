@@ -1,6 +1,7 @@
-const { Client, GatewayDispatchEvents, AttachmentBuilder } = require("discord.js");
-const { Riffy } = require("../build/index.js");
-const { inspect } = require("node:util")
+const { Client, GatewayDispatchEvents, AttachmentBuilder, EmbedBuilder } = require("discord.js");
+const { Riffy } = require("../build/index");
+const { inspect } = require("node:util");
+const winston = require('winston');
 /**
  * @type {import("discord.js").Client & { riffy: Riffy}}
  */
@@ -17,12 +18,55 @@ const client = new Client({
 
 const nodes = [
   {
+    name: "The-Failing-Node-0",
     host: "localhost",
     password: "youshallnotpass",
     port: 2333,
     secure: false,
   },
+  // {
+  //   name: "Migration-Node-0",
+  //   host: "lava-v4.ajieblogs.eu.org",
+  //   port: 443,
+  //   password: "https://dsc.gg/ajidevserver",
+  //   secure: true
+  // }
 ];
+
+const logger = winston.createLogger({
+  levels: winston.config.npm.levels,
+  level: "debug",
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.errors({ stack: true }),
+    winston.format.printf(({ timestamp, level, message }) => {
+      return `[${timestamp}] ${level.toUpperCase()}: ${message}`;
+    })
+  ),
+  transports: [
+    new winston.transports.Console({
+      format: winston.format.combine(
+        winston.format.timestamp(),
+        winston.format.colorize(),
+        winston.format.printf(({ timestamp, level, message }) => {
+          return `[${timestamp}] ${level}: ${message}`;
+        })
+      )
+    }),
+    new winston.transports.File({ filename: 'riffy-test.log' })
+  ]
+});
+
+// Add custom colors for different log levels
+winston.addColors({
+  error: 'red',
+  warn: 'yellow',
+  info: 'green',
+  http: 'magenta',
+  verbose: 'cyan',
+  debug: 'blue',
+  silly: 'gray'
+});
 
 client.riffy = new Riffy(client, nodes, {
   send: (payload) => {
@@ -35,7 +79,7 @@ client.riffy = new Riffy(client, nodes, {
 
 client.on("ready", () => {
   client.riffy.init(client.user.id);
-  console.log(`Logged in as ${client.user.tag}`);
+  logger.info(`[CLIENT] Logged in as ${client.user.tag}`);
 });
 
 client.on("messageCreate", async (message) => {
@@ -44,6 +88,42 @@ client.on("messageCreate", async (message) => {
   const args = message.content.slice(1).trim().split(" ");
   const command = args.shift().toLowerCase();
 
+  if (command === "search") {
+    let searchQuery = args.join(" ");
+
+    if(!/http(s)?:\/\//.test(searchQuery)) {
+      // -> ['ytmsearch:the fat rat', 'ytmsearch:', 'the fat rat']
+      searchQuery = /(?<source>.+:)(?<query>.+)/g.exec(searchQuery)
+    }
+
+    if (!searchQuery) return message.react("❎");
+
+    const resolveTracks = await client.riffy.resolve({ query: `${searchQuery?.[2] || searchQuery}`, source: `${searchQuery?.[1]?.slice(0, searchQuery?.[1].length-1)}`, requester: message.member });
+
+    if (resolveTracks.loadType !== "error" || resolveTracks.loadType !== "empty") {
+      const formattedTracks = resolveTracks.tracks.flatMap((track, i) => {
+
+        return {
+          name: `[${track.info.sourceName}] [${track.info.title}](${track.info.uri})`,
+          value: `by ${track?.pluginInfo?.artistUrl ? `[${track.info.author}](${track.info.artistUrl})]` : track.info.author.substring(0, 20) + "..."} - \`${track.info.length}\``
+        }
+      })
+
+      const embed = new EmbedBuilder()
+        .setAuthor({ name: client.user.username, iconURL: client.user.displayAvatarURL() })
+        .setColor("DarkButNotBlack")
+        .setFields(formattedTracks.length > 25 ? formattedTracks.splice(24) : formattedTracks)
+
+      return message.reply({ embeds: [embed] });
+    } else {
+
+      message.reply({ content: `No tracks found, loadType: \`${resolveTracks.loadType}\`` })
+
+      return;
+    }
+
+  }
+
   if (command === "play") {
     const query = args.join(" ");
 
@@ -51,7 +131,7 @@ client.on("messageCreate", async (message) => {
       guildId: message.guild.id,
       voiceChannel: message.member.voice.channel.id,
       textChannel: message.channel.id,
-      deaf: true
+      deaf: true,
     });
 
     const resolve = await client.riffy.resolve({ query: query, requester: message.author });
@@ -137,11 +217,35 @@ client.on("messageCreate", async (message) => {
     message.channel.send({ embeds: [embed] });
   }
 
+  if (command === "autoplay" || command === "ap") {
+    const player = client.riffy.players.get(message.guild.id);
+    if (!player) return message.channel.send("No player found.");
+    const state = args[0];
+
+    if (!state || !["on", "off"].includes(state))
+      return message.channel.send(
+        "Please Provide an valid option: `on` or `off`"
+      ).then((msg) => setTimeout(msg.delete, 5_000))
+
+    if (state === "on") {
+      player.isAutoplay = player.autoplay;
+    }
+
+    logger.debug("[AUTOPLAY] after if check, before isAutoPlay final assignment: player=" + inspect(player) + ", isAutoplay=" + player.isAutoplay + ", autoplay=" + player.autoplay);
+
+    player.isAutoplay = (state === "on");
+    logger.debug("[AUTOPLAY] after if check, AFTER isAutoPlay final assignment: player=" + inspect(player) + ", isAutoplay=" + player.isAutoplay + ", autoplay=" + player.autoplay);
+
+    player.set("autoplay_state", state === "on")
+
+    message.channel.send("Player's autoplay is set to `" + state + "`")
+  }
+
   if (command === "nowplaying") {
     const player = client.riffy.players.get(message.guild.id);
     if (!player) return message.channel.send("No player found.");
 
-    console.log(player)
+    logger.debug(`[NOWPLAYING] Player data: ${inspect(player)}`);
     const track = player.current;
 
     if (!track) return message.channel.send("No song currently playing.");
@@ -306,6 +410,24 @@ client.on("messageCreate", async (message) => {
     // console.log(player.filters);
   }
 
+  if (command === "livelyrics" || command === "ll") {
+    const player = client.riffy.players.get(message.guild.id);
+    if (!player) return message.channel.send("No player found.");
+
+    const toggle = args[0];
+
+    if (!["on", "off"].includes(toggle)) {
+      return message.reply("Please specify `on` or `off` i.e `<prefix>livelyrics on`")
+    }
+
+    if (toggle === "on") await player.node.rest.makeRequest("POST", `/v4/sessions/${player.node.sessionId}/players/${player.guildId}/lyrics/subscribe?skipTrackSource=true`)
+    else if (toggle === "off") await player.node.rest.makeRequest("DELETE", `/v4/sessions/${player.node.sessionId}/players/${player.guildId}/lyrics/subscribe?skipTrackSource=true`)
+
+    player.set("liveLyrics", true);
+
+    return message.reply({ content: `Live lyric is ${player.get('liveLyrics') ? "✅" : "❌"}` })
+  }
+
   if (command === "eval" && args[0]) {
     try {
       let evaled = await eval(args.join(" "));
@@ -329,17 +451,15 @@ client.on("messageCreate", async (message) => {
 })
 
 client.riffy.on("nodeConnect", (node) => {
-  console.log(
-    `Node "${node.name}" connected, with sessionId ${node.sessionId}`
-  );
+  logger.info(`[NODE] Node "${node.name}" connected, with sessionId ${node.sessionId}`);
 });
 
 client.riffy.on("nodeError", (node, error) => {
-  console.log(`Node "${node.name}" encountered an error: ${error}`);
+  logger.error(`[NODE] Node "${node.name}" encountered an error: ${error.message || error}`);
 });
 
 client.riffy.on("nodeReconnect", (node) => {
-  console.log(`Node "${node.name}" reconnecting.`);
+  logger.info(`[NODE] Node "${node.name}" reconnecting.`);
 });
 
 client.riffy.on("trackStart", async (player, track) => {
@@ -353,9 +473,11 @@ client.riffy.on("trackStart", async (player, track) => {
 client.riffy.on("queueEnd", async (player) => {
   const channel = client.channels.cache.get(player.textChannel);
 
-  const autoplay = false;
+  const autoplay = player.get("autoplay_state") ?? false;
 
-  if (autoplay) {
+  logger.debug(`[QUEUE] QUEUE END :: player :: ${inspect(player, false, 2, true)}, isAutoplay=${player.isAutoplay}, autoplay=${player.autoplay}`);
+
+  if (player.isAutoplay) {
     player.autoplay(player);
   } else {
     player.destroy();
@@ -363,15 +485,19 @@ client.riffy.on("queueEnd", async (player) => {
   }
 });
 
+client.riffy.on("raw", (type, payload) => {
+  if (!["LyricsFoundEvent", "LyricsNotFoundEvent", "LyricsLineEvent"].includes(payload.type)) return;
+
+  logger.debug(`[RAW] :: ${type} :: payload: ${inspect(payload)}`);
+
+
+})
+
 process.on("uncaughtException", (err, origin) =>
-  console.log(
-    `[UNCAUGHT ERRORS Reporting - Exception] >> origin: ${origin} | Error: ${err.stack ?? err}`
-  )
+  logger.error(`[EXCEPTION] [UNCAUGHT ERRORS Reporting - Exception] >> origin: ${origin} | Error: ${err.stack ?? err}`)
 );
 process.on("unhandledRejection", (err, _) =>
-  console.log(
-    `[unhandled ERRORS Reporting - Rejection] >> ${err}, Promise: ignored/not included`
-  )
+  logger.error(`[EXCEPTION] [unhandled ERRORS Reporting - Rejection] >> ${err}, Promise: ignored/not included`)
 );
 
 client.on("raw", (d) => {
@@ -386,7 +512,7 @@ client.on("raw", (d) => {
 });
 
 client.riffy.on("debug", (...m) => {
-  console.log(`[DEBUG - RIFFY]`, ...m);
+  logger.debug(`[RIFFY] ${m.join(' ')}`);
 });
 
-client.login("<DISCORD TOKEN>");
+client.login();
