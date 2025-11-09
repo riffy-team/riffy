@@ -103,25 +103,58 @@ class Player extends EventEmitter {
      * @returns 
      */
     async autoplay(player) {
-        if (!player) {
-            if (player == null) {
-                this.isAutoplay = false;
-                return this;
-            } else if (player == false) {
-                this.isAutoplay = false;
-                return this;
-            } else throw new Error("Missing argument. Quick Fix: player.autoplay(player)");
+    if (!player) {
+        if (player == null) {
+            this.isAutoplay = false;
+            return this;
+        } else if (player == false) {
+            this.isAutoplay = false;
+            return this;
+        } else throw new Error("Missing argument. Quick Fix: player.autoplay(player)");
+    }
+
+    this.isAutoplay = true;
+
+    // If ran on queueEnd event
+    if (player.previous) {
+        if (!this.playedIdentifiers) {
+            this.playedIdentifiers = new Set();
         }
+        const previousIdentifier = player.previous.info.identifier || player.previous.info.uri;
+        this.playedIdentifiers.add(previousIdentifier);
+        if (this.playedIdentifiers.size > 50) {
+            const firstItem = this.playedIdentifiers.values().next().value;
+            this.playedIdentifiers.delete(firstItem);
+        }
+        if (player.previous.info.sourceName === "youtube") {
+            try {
+                let data = `https://www.youtube.com/watch?v=${player.previous.info.identifier}&list=RD${player.previous.info.identifier}`;
 
-        this.isAutoplay = true;
+                let response = await this.riffy.resolve({ query: data, source: "ytmsearch", requester: player.previous.info.requester });
 
-        // If ran on queueEnd event
-        if (player.previous) {
-            if (player.previous.info.sourceName === "youtube") {
-                try {
-                    let data = `https://www.youtube.com/watch?v=${player.previous.info.identifier}&list=RD${player.previous.info.identifier}`;
-
-                    let response = await this.riffy.resolve({ query: data, source: "ytmsearch", requester: player.previous.info.requester });
+                if (this.node.rest.version === "v4") {
+                    if (!response || !response.tracks || ["error", "empty"].includes(response.loadType)) return this.stop();
+                } else {
+                    if (!response || !response.tracks || ["LOAD_FAILED", "NO_MATCHES"].includes(response.loadType)) return this.stop();
+                }
+                let availableTracks = response.tracks.filter(track => {
+                    const trackId = track.info.identifier || track.info.uri;
+                    return !this.playedIdentifiers.has(trackId);
+                });
+                if (availableTracks.length === 0) {
+                    availableTracks = response.tracks;
+                }
+                let track = availableTracks[Math.floor(Math.random() * availableTracks.length)];
+                this.queue.push(track);
+                this.play();
+                return this;
+            } catch (e) {
+                return this.stop();
+            }
+        } else if (player.previous.info.sourceName === "soundcloud") {
+            try {
+                scAutoPlay(player.previous.info.uri).then(async (data) => {
+                    let response = await this.riffy.resolve({ query: data, source: "scsearch", requester: player.previous.info.requester });
 
                     if (this.node.rest.version === "v4") {
                         if (!response || !response.tracks || ["error", "empty"].includes(response.loadType)) return this.stop();
@@ -129,90 +162,88 @@ class Player extends EventEmitter {
                         if (!response || !response.tracks || ["LOAD_FAILED", "NO_MATCHES"].includes(response.loadType)) return this.stop();
                     }
 
-                    let track = response.tracks[Math.floor(Math.random() * Math.floor(response.tracks.length))];
-                    this.queue.push(track);
-                    this.play();
-                    return this
-                } catch (e) {
-                    return this.stop();
-                }
-            } else if (player.previous.info.sourceName === "soundcloud") {
-                try {
-                    scAutoPlay(player.previous.info.uri).then(async (data) => {
-                        let response = await this.riffy.resolve({ query: data, source: "scsearch", requester: player.previous.info.requester });
-
-                        if (this.node.rest.version === "v4") {
-                            if (!response || !response.tracks || ["error", "empty"].includes(response.loadType)) return this.stop();
-                        } else {
-                            if (!response || !response.tracks || ["LOAD_FAILED", "NO_MATCHES"].includes(response.loadType)) return this.stop();
-                        }
-
-                        let track = response.tracks[Math.floor(Math.random() * Math.floor(response.tracks.length))];
-
-                        this.queue.push(track);
-                        this.play();
-                        return this;
-                    })
-                } catch (e) {
-                    console.log(e);
-                    return this.stop();
-                }
-            } else if (player.previous.info.sourceName === "spotify") {
-                try {
-                    // Use Spotify search for recommendations
-                    const artist = player.previous.info.author || '';
-                    const title = player.previous.info.title || '';
-
-                    // Create search query for similar tracks
-                    let searchQuery;
-                    if (artist && title) {
-                        // Search for similar tracks by the same artist or similar artists
-                        searchQuery = `${artist} similar tracks`;
-                    } else if (title) {
-                        searchQuery = `${title} similar songs`;
-                    } else {
-                        searchQuery = `${artist} recommendations`;
-                    }
-
-                    let response = await this.riffy.resolve({
-                        query: searchQuery,
-                        source: "spsearch", // we can change this to ytmsearch if needed but the result will be youtube so it's better to keep it spsearch
-                        requester: player.previous.info.requester
+                    // Filter tracks yang belum pernah diputar
+                    let availableTracks = response.tracks.filter(track => {
+                        const trackId = track.info.identifier || track.info.uri;
+                        return !this.playedIdentifiers.has(trackId);
                     });
 
-                    if (this.node.rest.version === "v4") {
-                        if (!response || !response.tracks || ["error", "empty"].includes(response.loadType)) {
-                            return this.stop();
-                        }
-                    } else {
-                        if (!response || !response.tracks || ["LOAD_FAILED", "NO_MATCHES"].includes(response.loadType)) {
-                            return this.stop();
-                        }
+                    // Jika semua track sudah pernah diputar, reset dan gunakan semua track
+                    if (availableTracks.length === 0) {
+                        availableTracks = response.tracks;
                     }
 
-                    // Filter out very short tracks (keep tracks over 1 minute)
-                    let validTracks = response.tracks.filter(track => {
-                        const duration = track.info.length || track.info.duration || 0;
-                        return duration >= 60000; // At least 1 minute
-                    });
-
-                    if (validTracks.length === 0) {
-                        return this.stop();
-                    }
-
-                    // Select a random track from valid results
-                    let track = validTracks[Math.floor(Math.random() * validTracks.length)];
+                    let track = availableTracks[Math.floor(Math.random() * availableTracks.length)];
 
                     this.queue.push(track);
                     this.play();
                     return this;
+                });
+            } catch (e) {
+                console.log(e);
+                return this.stop();
+            }
+        } else if (player.previous.info.sourceName === "spotify") {
+            try {
+                const artist = player.previous.info.author || '';
+                const title = player.previous.info.title || '';
 
-                } catch (error) {
+                let searchQuery;
+                if (artist && title) {
+                    searchQuery = `${artist} similar tracks`;
+                } else if (title) {
+                    searchQuery = `${title} similar songs`;
+                } else {
+                    searchQuery = `${artist} recommendations`;
+                }
+
+                let response = await this.riffy.resolve({
+                    query: searchQuery,
+                    source: "spsearch",
+                    requester: player.previous.info.requester
+                });
+
+                if (this.node.rest.version === "v4") {
+                    if (!response || !response.tracks || ["error", "empty"].includes(response.loadType)) {
+                        return this.stop();
+                    }
+                } else {
+                    if (!response || !response.tracks || ["LOAD_FAILED", "NO_MATCHES"].includes(response.loadType)) {
+                        return this.stop();
+                    }
+                }
+
+                // Filter out very short tracks dan tracks yang sudah pernah diputar
+                let validTracks = response.tracks.filter(track => {
+                    const duration = track.info.length || track.info.duration || 0;
+                    const trackId = track.info.identifier || track.info.uri;
+                    return duration >= 60000 && !this.playedIdentifiers.has(trackId);
+                });
+
+                // Jika tidak ada valid tracks, coba tanpa filter identifier
+                if (validTracks.length === 0) {
+                    validTracks = response.tracks.filter(track => {
+                        const duration = track.info.length || track.info.duration || 0;
+                        return duration >= 60000;
+                    });
+                }
+
+                if (validTracks.length === 0) {
                     return this.stop();
                 }
+
+                let track = validTracks[Math.floor(Math.random() * validTracks.length)];
+
+                this.queue.push(track);
+                this.play();
+                return this;
+
+            } catch (error) {
+                return this.stop();
             }
-        } else return this;
-    }
+        }
+    } else return this;
+}
 
     connect(options = this) {
         const { guildId, voiceChannel, deaf = true, mute = false } = options;
