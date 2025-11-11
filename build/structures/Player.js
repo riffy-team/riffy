@@ -159,55 +159,79 @@ class Player extends EventEmitter {
                 }
             } else if (player.previous.info.sourceName === "spotify") {
                 try {
-                    // Use Spotify search for recommendations
-                    const artist = player.previous.info.author || '';
-                    const title = player.previous.info.title || '';
+                    // First, search for the Spotify track on YouTube
+                    const ytQuery = `${player.previous.info.title} ${player.previous.info.author} official video`;
 
-                    // Create search query for similar tracks
-                    let searchQuery;
-                    if (artist && title) {
-                        // Search for similar tracks by the same artist or similar artists
-                        searchQuery = `${artist} similar tracks`;
-                    } else if (title) {
-                        searchQuery = `${title} similar songs`;
-                    } else {
-                        searchQuery = `${artist} recommendations`;
-                    }
-
-                    let response = await this.riffy.resolve({
-                        query: searchQuery,
-                        source: "spsearch", // we can change this to ytmsearch if needed but the result will be youtube so it's better to keep it spsearch
-                        requester: player.previous.info.requester
-                    });
+                    const ytResponse = await this.riffy.resolve({ query: ytQuery, source: "ytsearch", requester: player.previous.info.requester });
 
                     if (this.node.rest.version === "v4") {
-                        if (!response || !response.tracks || ["error", "empty"].includes(response.loadType)) {
-                            return this.stop();
-                        }
+                        if (!ytResponse || !ytResponse.tracks || ["error", "empty"].includes(ytResponse.loadType)) return this.stop();
                     } else {
-                        if (!response || !response.tracks || ["LOAD_FAILED", "NO_MATCHES"].includes(response.loadType)) {
-                            return this.stop();
+                        if (!ytResponse || !ytResponse.tracks || ["LOAD_FAILED", "NO_MATCHES"].includes(ytResponse.loadType)) return this.stop();
+                    }
+
+                    const ytTrack = ytResponse.tracks[0]; // Pick the first result
+
+                    // Use YouTube's RD list to get recommendations
+                    const rdUrl = `https://www.youtube.com/watch?v=${ytTrack.info.identifier}&list=RD${ytTrack.info.identifier}`;
+                    const rdResponse = await this.riffy.resolve({ query: rdUrl, source: "ytsearch", requester: player.previous.info.requester });
+
+                    if (this.node.rest.version === "v4") {
+                        if (!rdResponse || !rdResponse.tracks || ["error", "empty"].includes(rdResponse.loadType)) return this.stop();
+                    } else {
+                        if (!rdResponse || !rdResponse.tracks || ["LOAD_FAILED", "NO_MATCHES"].includes(rdResponse.loadType)) return this.stop();
+                    }
+
+                    const recommendedTrack = rdResponse.tracks[Math.floor(Math.random() * Math.floor(rdResponse.tracks.length))];
+
+                    let songTitle = recommendedTrack.info.title || "";
+                    let artist = recommendedTrack.info.author || "";
+
+                    // If title looks like "Artist - Title" or "ARTIST - TITLE", prefer parsing that
+                    const dashMatch = songTitle.match(/^\s*(.+?)\s*-\s*(.+)\s*$/);
+                    if (dashMatch) {
+                        // If author is generic (like channel name), use parsed artist
+                        const parsedArtist = dashMatch[1].trim();
+                        const parsedTitle = dashMatch[2].trim();
+                        // Use parsed values but only if parsedArtist is not the same as parsedTitle
+                        if (parsedArtist && parsedTitle && parsedArtist.toLowerCase() !== parsedTitle.toLowerCase()) {
+                            artist = parsedArtist;
+                            songTitle = parsedTitle;
                         }
                     }
 
-                    // Filter out very short tracks (keep tracks over 1 minute)
-                    let validTracks = response.tracks.filter(track => {
-                        const duration = track.info.length || track.info.duration || 0;
-                        return duration >= 60000; // At least 1 minute
-                    });
+                    // Normalize separators and remove common noisy suffixes
+                    // Remove content in parentheses/brackets anywhere in the title (e.g., (Official Video), [Lyrics])
+                    songTitle = songTitle.replace(/\s*[\[(][^\])]+[\])]/g, "").trim();
 
-                    if (validTracks.length === 0) {
-                        return this.stop();
+                    // Remove common descriptors like 'official music video', 'official video', 'lyrics', 'audio', 'hd', 'mv', 'clip'
+                    songTitle = songTitle.replace(/\b(official\s+music\s+video|official\s+video|official|music\s+video|lyrics|lyric|audio|hd|mv|clip)\b/ig, "").trim();
+
+                    // Remove stray separators like '|' or ':' and trailing text after them (keep left-most segment)
+                    if (songTitle.includes("|") || songTitle.includes(":")) {
+                        songTitle = songTitle.split(/\||:/)[0].trim();
                     }
 
-                    // Select a random track from valid results
-                    let track = validTracks[Math.floor(Math.random() * validTracks.length)];
+                    // Collapse multiple spaces
+                    songTitle = songTitle.replace(/\s{2,}/g, " ");
 
+                    const spotifyQuery = `${songTitle} ${artist}`.trim();
+
+                    // Search for the recommended track on Spotify
+                    const response = await this.riffy.resolve({ query: spotifyQuery, source: "spsearch", requester: player.previous.info.requester });
+
+                    if (this.node.rest.version === "v4") {
+                        if (!response || !response.tracks || ["error", "empty"].includes(response.loadType)) return this.stop();
+                    } else {
+                        if (!response || !response.tracks || ["LOAD_FAILED", "NO_MATCHES"].includes(response.loadType)) return this.stop();
+                    }
+
+                    let track = response.tracks[0]; // Pick the most relevant result instead of random
                     this.queue.push(track);
                     this.play();
                     return this;
-
-                } catch (error) {
+                } catch (e) {
+                    console.log(e);
                     return this.stop();
                 }
             }
