@@ -103,25 +103,58 @@ class Player extends EventEmitter {
      * @returns 
      */
     async autoplay(player) {
-        if (!player) {
-            if (player == null) {
-                this.isAutoplay = false;
-                return this;
-            } else if (player == false) {
-                this.isAutoplay = false;
-                return this;
-            } else throw new Error("Missing argument. Quick Fix: player.autoplay(player)");
+    if (!player) {
+        if (player == null) {
+            this.isAutoplay = false;
+            return this;
+        } else if (player == false) {
+            this.isAutoplay = false;
+            return this;
+        } else throw new Error("Missing argument. Quick Fix: player.autoplay(player)");
+    }
+
+    this.isAutoplay = true;
+
+    // If ran on queueEnd event
+    if (player.previous) {
+        if (!this.playedIdentifiers) {
+            this.playedIdentifiers = new Set();
         }
+        const previousIdentifier = player.previous.info.identifier || player.previous.info.uri;
+        this.playedIdentifiers.add(previousIdentifier);
+        if (this.playedIdentifiers.size > 50) {
+            const firstItem = this.playedIdentifiers.values().next().value;
+            this.playedIdentifiers.delete(firstItem);
+        }
+        if (player.previous.info.sourceName === "youtube") {
+            try {
+                let data = `https://www.youtube.com/watch?v=${player.previous.info.identifier}&list=RD${player.previous.info.identifier}`;
 
-        this.isAutoplay = true;
+                let response = await this.riffy.resolve({ query: data, source: "ytmsearch", requester: player.previous.info.requester });
 
-        // If ran on queueEnd event
-        if (player.previous) {
-            if (player.previous.info.sourceName === "youtube") {
-                try {
-                    let data = `https://www.youtube.com/watch?v=${player.previous.info.identifier}&list=RD${player.previous.info.identifier}`;
-
-                    let response = await this.riffy.resolve({ query: data, source: "ytmsearch", requester: player.previous.info.requester });
+                if (this.node.rest.version === "v4") {
+                    if (!response || !response.tracks || ["error", "empty"].includes(response.loadType)) return this.stop();
+                } else {
+                    if (!response || !response.tracks || ["LOAD_FAILED", "NO_MATCHES"].includes(response.loadType)) return this.stop();
+                }
+                let availableTracks = response.tracks.filter(track => {
+                    const trackId = track.info.identifier || track.info.uri;
+                    return !this.playedIdentifiers.has(trackId);
+                });
+                if (availableTracks.length === 0) {
+                    availableTracks = response.tracks;
+                }
+                let track = availableTracks[Math.floor(Math.random() * availableTracks.length)];
+                this.queue.push(track);
+                this.play();
+                return this;
+            } catch (e) {
+                return this.stop();
+            }
+        } else if (player.previous.info.sourceName === "soundcloud") {
+            try {
+                scAutoPlay(player.previous.info.uri).then(async (data) => {
+                    let response = await this.riffy.resolve({ query: data, source: "scsearch", requester: player.previous.info.requester });
 
                     if (this.node.rest.version === "v4") {
                         if (!response || !response.tracks || ["error", "empty"].includes(response.loadType)) return this.stop();
@@ -129,30 +162,23 @@ class Player extends EventEmitter {
                         if (!response || !response.tracks || ["LOAD_FAILED", "NO_MATCHES"].includes(response.loadType)) return this.stop();
                     }
 
-                    let track = response.tracks[Math.floor(Math.random() * Math.floor(response.tracks.length))];
+                    // Filter tracks that have never been played
+                    let availableTracks = response.tracks.filter(track => {
+                        const trackId = track.info.identifier || track.info.uri;
+                        return !this.playedIdentifiers.has(trackId);
+                    });
+
+                    // If all tracks have been played, reset and use all tracks. If all tracks have been played, reset and use all tracks.
+                    if (availableTracks.length === 0) {
+                        availableTracks = response.tracks;
+                    }
+
+                    let track = availableTracks[Math.floor(Math.random() * availableTracks.length)];
+
                     this.queue.push(track);
                     this.play();
-                    return this
-                } catch (e) {
-                    return this.stop();
-                }
-            } else if (player.previous.info.sourceName === "soundcloud") {
-                try {
-                    scAutoPlay(player.previous.info.uri).then(async (data) => {
-                        let response = await this.riffy.resolve({ query: data, source: "scsearch", requester: player.previous.info.requester });
-
-                        if (this.node.rest.version === "v4") {
-                            if (!response || !response.tracks || ["error", "empty"].includes(response.loadType)) return this.stop();
-                        } else {
-                            if (!response || !response.tracks || ["LOAD_FAILED", "NO_MATCHES"].includes(response.loadType)) return this.stop();
-                        }
-
-                        let track = response.tracks[Math.floor(Math.random() * Math.floor(response.tracks.length))];
-
-                        this.queue.push(track);
-                        this.play();
-                        return this;
-                    })
+                    return this;
+                })
                 } catch (e) {
                     console.log(e);
                     return this.stop();
@@ -226,12 +252,31 @@ class Player extends EventEmitter {
                         if (!response || !response.tracks || ["LOAD_FAILED", "NO_MATCHES"].includes(response.loadType)) return this.stop();
                     }
 
-                    let track = response.tracks[0]; // Pick the most relevant result instead of random
+                    // Filter out very short tracks and tracks that have already been played.
+                    let validTracks = response.tracks.filter(track => {
+                        const duration = track.info.length || track.info.duration || 0;
+                        const trackId = track.info.identifier || track.info.uri;
+                        return duration >= 60000 && !this.playedIdentifiers.has(trackId);
+                    });
+
+                    // If there are no valid tracks, try without the identifier filter.
+                    if (validTracks.length === 0) {
+                        validTracks = response.tracks.filter(track => {
+                            const duration = track.info.length || track.info.duration || 0;
+                            return duration >= 60000;
+                        });
+                    }
+
+                    if (validTracks.length === 0) {
+                        return this.stop();
+                    }
+
+                    let track = validTracks.tracks[0]; // Pick the most relevant result instead of random
                     this.queue.push(track);
                     this.play();
                     return this;
                 } catch (e) {
-                    console.log(e);
+                    console.error(`[Riffy (${this.riffy.version}) autoplay :: source: "spotify"] Error: `, e);
                     return this.stop();
                 }
             }
