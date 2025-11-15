@@ -138,7 +138,10 @@ export declare class Player extends EventEmitter {
     public ping: number;
     public isAutoplay: boolean;
     public migrating: boolean;
-
+    /**
+     * @warn Lazily (defined; Only when autoplay is called/used.) Initialized. 
+     */
+    public readonly playedIdentifiers: Set<String> | undefined;
     /**
      * @description gets the Previously played Track
      */
