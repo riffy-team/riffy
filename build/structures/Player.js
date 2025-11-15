@@ -271,7 +271,7 @@ class Player extends EventEmitter {
                         return this.stop();
                     }
 
-                    let track = validTracks.tracks[0]; // Pick the most relevant result instead of random
+                    let track = validTracks[0]; // Pick the most relevant result instead of random
                     this.queue.push(track);
                     this.play();
                     return this;
