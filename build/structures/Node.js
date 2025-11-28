@@ -78,7 +78,6 @@ class Node {
          * @throws {RangeError} If the plugins are missing.
          */
         checkAvailable: async (eitherOne=true,...plugins) => {
-            console.log("checkAvailable - plugins", ...plugins)
             if (!this.sessionId) throw new Error(`Node (${this.name}) is not Ready/Connected.`)
             if (!plugins.length) plugins = ["lavalyrics-plugin", "java-lyrics-plugin", "lyrics"];
 
@@ -265,7 +264,7 @@ class Node {
         if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
 
         this.connected = true;
-        this.riffy.emit('debug', this.name, `Connection with Lavalink established on ${this.wsUrl}`);
+        this.riffy.emit('debug', `[Node: ${this.name}] Websocket connection established on ${this.wsUrl}`);
 
         this.info = await this.fetchInfo().then((info) => this.info = info).catch((e) => (console.error(`Node (${this.name}) Failed to fetch info (${this.restVersion}/info) on WS-OPEN: ${e}`), null));
 
@@ -285,6 +284,7 @@ class Node {
     error(event) {
         if (!event) return;
         this.riffy.emit("nodeError", this, event);
+        this.riffy.emit("debug", `[Node: ${this.name}] Websocket Error: ${event.message || event}`);
         if (this.riffy.migrateOnFailure) {
             this.riffy.migrate(this).catch(err => {
                 this.riffy.emit("debug", `Failed to auto-migrate players from node ${this.name} on error: ${err.message}`);
@@ -300,7 +300,7 @@ class Node {
         if (!payload.op) return;
 
         this.riffy.emit("raw", "Node", payload);
-        this.riffy.emit("debug", this.name, `Lavalink Node Update : ${JSON.stringify(payload)}`);
+        this.riffy.emit("debug", `[Node: ${this.name}] Received OP: ${payload.op} | Payload: ${JSON.stringify(payload)}`);
 
         if (payload.op === "stats") {
             this.stats = { ...payload };
@@ -315,17 +315,17 @@ class Node {
 
             this.riffy.emit("nodeConnect", this);
 
-            this.riffy.emit("debug", this.name, `Ready Payload received ${JSON.stringify(payload)}`);
+            this.riffy.emit("debug", `[Node: ${this.name}] Ready (Ready Payload received)! Session ID: ${payload.sessionId}`);
 
             if (this.restVersion === "v4") {
                 if (this.sessionId) {
                     this.rest.makeRequest(`PATCH`, `/${this.rest.version}/sessions/${this.sessionId}`, { resuming: true, timeout: this.resumeTimeout });
-                    this.riffy.emit("debug", this.name, `Resuming configured on Lavalink`);
+                    this.riffy.emit("debug", `[Node: ${this.name}] Resuming configured (v4).`);
                 }
             } else {
                 if (this.resumeKey) {
                     this.rest.makeRequest(`PATCH`, `/${this.rest.version}/sessions/${this.sessionId}`, { resumingKey: this.resumeKey, timeout: this.resumeTimeout });
-                    this.riffy.emit("debug", this.name, `Resuming configured on Lavalink`);
+                    this.riffy.emit("debug", `[Node: ${this.name}] Resuming configured (v3).`);
                 }
             }
         }
@@ -361,6 +361,7 @@ class Node {
             this.ws?.removeAllListeners();
             this.ws = null;
             this.riffy.emit("nodeReconnect", this);
+            this.riffy.emit("debug", `[Node: ${this.name}] Reconnecting... Attempt ${this.reconnectAttempted}/${this.reconnectTries}`);
             this.connect();
             this.reconnectAttempted++;
         }, this.reconnectTimeout);
@@ -407,6 +408,7 @@ class Node {
         clearTimeout(this.reconnectAttempt);
 
         this.riffy.emit("nodeDestroy", this);
+        this.riffy.emit("debug", `[Node: ${this.name}] Destroyed.`);
 
         this.riffy.nodeMap.delete(this.name);
         this.connected = false;

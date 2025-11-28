@@ -126,6 +126,8 @@ class Player extends EventEmitter {
             const firstItem = this.playedIdentifiers.values().next().value;
             this.playedIdentifiers.delete(firstItem);
         }
+        this.riffy.emit("debug", `[Player ${this.guildId}] Autoplay initiated. Previous Source: ${player.previous.info.sourceName}`);
+
         if (player.previous.info.sourceName === "youtube") {
             try {
                 let data = `https://www.youtube.com/watch?v=${player.previous.info.identifier}&list=RD${player.previous.info.identifier}`;
@@ -294,7 +296,7 @@ class Player extends EventEmitter {
 
         this.connected = true
 
-        this.riffy.emit("debug", this.guildId, `Player has informed the Discord Gateway to Establish Voice Connectivity in ${voiceChannel} Voice Channel, Awaiting Confirmation(Via Voice State Update & Voice Server Update events)`);
+        this.riffy.emit("debug", `[Player ${this.guildId}] Player has informed the Discord Gateway to Establish Voice Connectivity in ${voiceChannel} Voice Channel, Awaiting Confirmation(Via Voice State Update & Voice Server Update events)`);
     }
 
     stop() {
@@ -404,7 +406,7 @@ class Player extends EventEmitter {
         this.node.rest.destroyPlayer(this.guildId);
 
         this.riffy.emit("playerDisconnect", this);
-        this.riffy.emit("debug", this.guildId, "Destroyed the player");
+        this.riffy.emit("debug", `[Player ${this.guildId}] Destroyed!`);
 
         this.riffy.players.delete(this.guildId);
     }
