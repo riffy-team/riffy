@@ -102,7 +102,7 @@ class Player extends EventEmitter {
 
         // Final check: if still not connected, throw error.
         if (!this.connected) throw new Error("Player connection is not initiated. Kindly use Riffy.createConnection() and establish a connection, TIP: Check if Guild Voice States intent is set/provided & 'updateVoiceState' is used in the raw(Gateway Raw) event");
-        if (!this.queue.length) return;
+        if (!this.queue.length) throw new Error(`Unable to play for Player with Guild Id ${this.guildId}, Queue is empty (length: ${this.queue.length})!`);
 
         this.current = this.queue.shift();
 
