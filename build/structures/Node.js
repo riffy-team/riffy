@@ -4,8 +4,8 @@ const { Track } = require("./Track");
 
 class Node {
     /**
-     * @param {import("./Riffy").Riffy} riffy 
-     * @param {} node 
+     * @param {import("./Riffy").Riffy} riffy
+     * @param {} node
      */
     constructor(riffy, node, options) {
         this.riffy = riffy
@@ -107,7 +107,7 @@ class Node {
 
         /**
          * Fetches lyrics for a given track or encoded track string.
-         * 
+         *
          * @param {Track|string} trackOrEncodedTrackStr - The track object or encoded track string.
          * @param {boolean} [skipTrackSource=false] - Whether to skip the track source and fetch from the highest priority source (configured on Lavalink Server).
          * @returns {Promise<Object|null>} The lyrics data or null if the plugin is unavailable Or If no lyrics were found OR some Http request error occured.
@@ -122,9 +122,9 @@ class Node {
             return await this.rest.makeRequest("GET",`/v4/lyrics?skipTrackSource=${skipTrackSource}&track=${encodedTrackStr}`);
         },
 
-        /** @description fetches Lyrics for Currently playing Track 
+        /** @description fetches Lyrics for Currently playing Track
          * @param {string} guildId The Guild Id of the Player
-         * @param {boolean} skipTrackSource skips the Track Source & fetches from highest priority source (configured on Lavalink Server) 
+         * @param {boolean} skipTrackSource skips the Track Source & fetches from highest priority source (configured on Lavalink Server)
          * @param {string} [plugin] The Plugin to use(**Only required if you have too many known (i.e java-lyrics-plugin, lavalyrics-plugin) Lyric Plugins**)
          */
         getCurrentTrack: async (guildId, skipTrackSource=false, plugin) => {
@@ -133,7 +133,7 @@ class Node {
 
             const nodePlugins = this.info?.plugins;
             let requestURL = `/v4/sessions/${this.sessionId}/players/${guildId}/track/lyrics?skipTrackSource=${skipTrackSource}&plugin=${plugin}`
-            
+
             // If no `plugin` param is specified, check for `java-lyrics-plugin` or `lyrics` (also if lavalyrics-plugin is not available)
             if(!plugin && (nodePlugins.find((p) => p.name === "java-lyrics-plugin") || nodePlugins.find((p) => p.name === "lyrics")) && !(nodePlugins.find((p) => p.name === DEFAULT_PLUGIN))) {
                 requestURL = `/v4/sessions/${this.sessionId}/players/${guildId}/lyrics?skipTrackSource=${skipTrackSource}`
@@ -150,8 +150,8 @@ class Node {
      * @typedef {Object} fetchInfoOptions
      * @property {import("..").Version} [restVersion] The Rest Version to fetch info the from, Default: one set in the constructor(Node.restVersion)
      * @property {boolean} [includeHeaders=false] Whether to include headers in the response returned.
-     * 
-     * @param {fetchInfoOptions} options 
+     *
+     * @param {fetchInfoOptions} options
      */
     async fetchInfo(options = { restVersion: this.restVersion, includeHeaders: false }) {
 
@@ -261,7 +261,11 @@ class Node {
     }
 
     async open() {
-        if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
+        if (this.reconnectTimeout) {
+          clearTimeout(this.reconnectTimeout);
+          this.reconnectAttempted = 1;
+          this.reconnectTimeout = null;
+        }
 
         this.connected = true;
         this.riffy.emit('debug', `[Node: ${this.name}] Websocket connection established on ${this.wsUrl}`);
@@ -369,7 +373,7 @@ class Node {
 
 /**
  * Destroys the node connection and cleans up resources.
- * 
+ *
  * @param {boolean} [clean=false] - Determines if a clean destroy should be performed.
  *                                  ### If `clean` is `true`
  *                                  it removes all listeners and nullifies the websocket,
