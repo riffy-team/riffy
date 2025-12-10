@@ -1,6 +1,6 @@
 class Connection {
     /**
-     * @param {import("../index").Player} player 
+     * @param {import("../index").Player} player
      */
     constructor(player) {
         this.player = player;
@@ -14,12 +14,79 @@ class Connection {
         this.self_deaf = false;
         this.self_mute = false;
         this.voiceChannel = player.voiceChannel;
+
+        // Tracks the promise for the initial connection (credentials)
+        this.deferred = null;
+        // Tracks the promise for the active REST update to the Node
+        this.pendingUpdate = null;
+        // Tracks if we have sent credentials and are waiting for Node confirmation
+        this.establishing = false;
     }
+
+    /**
+     * Checks if we have all necessary voice credentials.
+     */
+    get isReady() {
+      return this.voice.sessionId && this.voice.endpoint && this.voice.token;
+    }
+
+    /**
+    * Waits for the connection to be ready and for any active voice updates to the Node to complete.
+    * Optimization: Returns immediately if ready and idle to save resources.
+    */
+    async resolve() {
+        // Case 1: Fully ready and no active updates. Return instantly (no Promise created).
+        if (this.isReady && !this.pendingUpdate) return;
+
+        // Case 2: Credentials present, but we are waiting for Node to acknowledge the voice update.
+        if (this.pendingUpdate) {
+            await this.pendingUpdate;
+            return;
+        }
+
+        // Case 3: Waiting for Discord credentials. Create a deferred promise if one doesn't exist.
+        if (!this.deferred) {
+            let resolveFn;
+            const promise = new Promise((resolve) => {
+                resolveFn = resolve;
+            });
+            this.deferred = { promise, resolve: resolveFn };
+        }
+
+        return this.deferred.promise;
+    }
+
+    /**
+    * Checks if ready, performs the update, and manages the resolution flow.
+    */
+    async checkAndSend() {
+        if (this.isReady) {
+            // Track the active update request
+            this.pendingUpdate = this.updatePlayerVoiceData();
+
+            try {
+                // Wait for the Node to acknowledge the update
+                await this.pendingUpdate;
+            } catch (error) {
+                this.player.riffy.emit("debug", `[Player ${this.player.guildId} - CONNECTION] Voice update failed: ${error.message}`);
+            } finally {
+                // Clear the pending flag
+                this.pendingUpdate = null;
+
+                // If play() was waiting on the deferred promise, resolve it now
+                if (this.deferred) {
+                    this.deferred.resolve();
+                    this.deferred = null;
+                }
+            }
+        }
+    }
+
 
     setServerUpdate(data) {
         const { endpoint, token } = data;
         if (!endpoint) throw new Error(`Missing 'endpoint' property in VOICE_SERVER_UPDATE packet/payload, Wait for some time Or Disconnect the Bot from Voice Channel and Try Again.`);
-        
+
         const previousVoiceRegion = this.region;
 
         this.voice.endpoint = endpoint;
@@ -37,7 +104,7 @@ class Connection {
             this.player.pause(false);
         }
 
-        this.updatePlayerVoiceData();
+        this.checkAndSend();
     }
 
     setStateUpdate(data) {
@@ -60,13 +127,17 @@ class Connection {
         this.self_deaf = self_deaf;
         this.self_mute = self_mute;
         this.voice.sessionId = session_id || null;
+
+        this.checkAndSend();
     }
 
     updatePlayerVoiceData() {
+        this.establishing = true;
+
         this.player.riffy.emit("debug", this.player.node.name, `[Rest Manager] Sending an Update Player request with data: ${JSON.stringify({ voice: this.voice })}`)
-        this.player.node.rest.updatePlayer({
+        return this.player.node.rest.updatePlayer({
             guildId: this.player.guildId,
-            data: Object.assign({ 
+            data: Object.assign({
                 voice: this.voice,
                 /**
                  * Need a better way so that we don't the volume each time.

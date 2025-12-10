@@ -1,4 +1,4 @@
-const { EventEmitter } = require("events");
+const { EventEmitter, once } = require("events");
 const { Connection } = require("./Connection");
 const { Filters } = require("./Filters");
 const { Queue } = require("./Queue");
@@ -33,11 +33,24 @@ class Player extends EventEmitter {
         this.isAutoplay = false;
         this.migrating = false;
 
+        Object.defineProperty(this, "connectionTimeout", {
+          value: 10000,
+          configurable: false,
+          writable: false,
+          enumerable: false
+        });
+
         this.on("playerUpdate", (packet) => {
             (this.connected = packet.state.connected),
                 (this.position = packet.state.position),
                 (this.ping = packet.state.ping);
             this.timestamp = packet.state.time;
+
+            if(this.establishing && packet.state.connected) {
+                this.establishing = false;
+                this.riffy.emit("debug", this.node.name, `[Player ${this.guildId}] (received Confirmation) Successfully established voice Connectivity with Node (playerUpdate connected = ${packet.state.connected})`);
+                this.emit("connectionRestored", "connected");
+            }
 
             this.riffy.emit("playerUpdate", this, packet);
         });
@@ -59,18 +72,35 @@ class Player extends EventEmitter {
     addToPreviousTrack(track) {
       if (Number.isInteger(this.riffy.options.multipleTrackHistory) && this.previousTracks.length >= this.riffy.options.mutipleTrackHistory)       {
       this.previousTracks.splice(this.riffy.options.multipleTrackHistory, this.previousTracks.length)
-      } 
+      }
       // If its falsy Save Only last Played Track.
       else if(!this.riffy.options.multipleTrackHistory) {
        this.previousTracks[0] = track;
        return;
       }
-       
+
       this.previousTracks.unshift(track)
     }
 
 
     async play() {
+        // Waits for Discord credentials AND for the Node to acknowledge the voice update.
+        // Returns immediately if everything is already set up.
+        await this.connection.resolve();
+        // Handle Node Connection State (Node (Lavalink/Nodelink) WebSocket)
+        // If not connected, but we are in the middle of establishing, wait for it.
+        if (!this.connected && this.connection.establishing) {
+          this.riffy.emit("debug", `[Player ${this.guildId}] Waiting for Node voice connection to stabilize...`);
+
+          try {
+            await once(this, "connectionRestored", { signal: AbortSignal.timeout(this.connectionTimeout) });
+          } catch (error) {
+              this.riffy.emit("debug", `[Player ${this.guildId}] Timed out waiting (${this.connectionTimeout} ms) for Node voice connection to stabilize.`);
+              // We don't throw here; we let the standard check below decide if we should crash or try anyway.
+          }
+        }
+
+        // Final check: if still not connected, throw error.
         if (!this.connected) throw new Error("Player connection is not initiated. Kindly use Riffy.createConnection() and establish a connection, TIP: Check if Guild Voice States intent is set/provided & 'updateVoiceState' is used in the raw(Gateway Raw) event");
         if (!this.queue.length) return;
 
@@ -98,9 +128,9 @@ class Player extends EventEmitter {
     }
 
     /**
-     * 
-     * @param {this} player 
-     * @returns 
+     *
+     * @param {this} player
+     * @returns
      */
     async autoplay(player) {
     if (!player) {
@@ -466,7 +496,7 @@ class Player extends EventEmitter {
     trackEnd(player, track, payload) {
         this.addToPreviousTrack(track)
         const previousTrack = this.previous;
-        // By using lower case We handle both Lavalink Versions(v3, v4) Smartly 😎, 
+        // By using lower case We handle both Lavalink Versions(v3, v4) Smartly 😎,
         // If reason is replaced do nothing expect User do something hopefully else RIP.
         if(payload.reason.toLowerCase() === "replaced") return this.riffy.emit("trackEnd", player, track, payload);
 
@@ -474,7 +504,7 @@ class Player extends EventEmitter {
         // This avoids track that got cleaned-up or failed to load to be played again (Via Loop Mode).
         if(["loadfailed", "cleanup"].includes(payload.reason.replace("_", "").toLowerCase())) {
 
-            if(player.queue.length === 0) { 
+            if(player.queue.length === 0) {
                 this.playing = false;
                 this.riffy.emit("debug", `Player (${player.guildId}) Track-Ended(${track.info.title}) with reason: ${payload.reason}, emitting queueEnd instead of trackEnd as queue is empty/finished`);
                 return this.riffy.emit("queueEnd", player);
@@ -556,7 +586,7 @@ class Player extends EventEmitter {
 
     /**
     * @description clears All custom Data set on the Player
-    */ 
+    */
     clearData() {
       for (const key in this.data) {
         if (this.data.hasOwnProperty(key)) {
@@ -597,7 +627,7 @@ class Player extends EventEmitter {
                     sessionId: this.connection.voice.sessionId,
                 }
             };
-            
+
             if(oldNode.connected) {
                 await oldNode.rest.destroyPlayer(this.guildId);
             }
