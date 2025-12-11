@@ -139,6 +139,13 @@ export declare class Player extends EventEmitter {
     public isAutoplay: boolean;
     public migrating: boolean;
     /**
+     * @default 10000
+     * @readonly
+     * @since 1.0.9
+     */
+    public readonly connectionTimeout: number;
+    
+    /**
      * @warn Lazily (defined; Only when autoplay is called/used.) Initialized. 
      */
     public readonly playedIdentifiers: Set<String> | undefined;
@@ -1146,6 +1153,44 @@ export declare class Connection {
     public self_deaf: boolean;
     public self_mute: boolean;
     public voiceChannel: string;
+
+    /**
+     * Tracks the promise for the initial connection (credentials)
+     * @private
+     * @since 1.0.9
+     */
+    private deferred: { 
+      promise: Promise<void>; 
+      resolve: (value?: void | PromiseLike<void>) => void 
+    } | null;
+  
+    /**
+     * Tracks the promise for the active REST update to the Node
+     * @private
+     * @since 1.0.9
+     */
+    private pendingUpdate: Promise<void> | null;
+    /**
+     * @default false
+     * @since 1.0.9
+     */
+    public establishing: boolean;
+    
+    /**
+     * Checks if we have all necessary voice credentials.
+     */
+    get isReady(): boolean;
+    
+    /**
+    * Waits for the connection to be ready and for any active voice updates to the Node to complete.
+    * Optimization: Returns immediately if ready and idle to save resources.
+    */
+    public resolve(): Promise<any>;
+    
+    /**
+    * Checks if ready, performs the update, and manages the resolution flow.
+    */
+    private checkAndSend(): Promise<void>;
 
     public setServerUpdate(data: { endpoint: string; token: string }): void;
 

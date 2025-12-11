@@ -46,8 +46,8 @@ class Player extends EventEmitter {
                 (this.ping = packet.state.ping);
             this.timestamp = packet.state.time;
 
-            if(this.establishing && packet.state.connected) {
-                this.establishing = false;
+            if(this.connection.establishing && packet.state.connected) {
+                this.connection.establishing = false;
                 this.riffy.emit("debug", this.node.name, `[Player ${this.guildId}] (received Confirmation) Successfully established voice Connectivity with Node (playerUpdate connected = ${packet.state.connected})`);
                 this.emit("connectionRestored", "connected");
             }
