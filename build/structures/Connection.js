@@ -38,11 +38,23 @@ class Connection {
         // Case 1: Fully ready and no active updates. Return instantly (no Promise created).
         if (this.isReady && !this.pendingUpdate) return;
 
+        // Helper to race a promise against a timeout
+        const waitFor = (promise, label) => {
+            let timer;
+            return Promise.race([
+                promise,
+                new Promise((_, reject) => {
+                    timer = setTimeout(() => reject(new Error(`Connection timed out (${timeoutMs}ms) waiting for ${label}`)), timeoutMs);
+                })
+            ]).finally(() => clearTimeout(timer));
+        }
+
         // Case 2: Credentials present, but we are waiting for Node to acknowledge the voice update.
         if (this.pendingUpdate) {
-            await this.pendingUpdate;
+            await waitFor(this.pendingUpdate);
             return;
         }
+
 
         // Case 3: Waiting for Discord credentials. Create a deferred promise if one doesn't exist.
         if (!this.deferred) {
@@ -53,7 +65,7 @@ class Connection {
             this.deferred = { promise, resolve: resolveFn };
         }
 
-        return this.deferred.promise;
+        return waitFor(this.deferred.promise);
     }
 
     /**
