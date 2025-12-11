@@ -86,7 +86,13 @@ class Player extends EventEmitter {
     async play() {
         // Waits for Discord credentials AND for the Node to acknowledge the voice update.
         // Returns immediately if everything is already set up.
-        await this.connection.resolve();
+        try {
+            await this.connection.resolve();
+        } catch (error) {
+            // If resolve times out, we cannot play.
+          this.connected = false;
+          this.riffy.emit("debug", `[Player ${this.guildId} - play() CONNECTION CHECK Error] ${error.message}`);
+        }
         // Handle Node Connection State (Node (Lavalink/Nodelink) WebSocket)
         // If not connected, but we are in the middle of establishing, wait for it.
         if (!this.connected && this.connection.establishing) {
@@ -95,7 +101,9 @@ class Player extends EventEmitter {
           try {
             await once(this, "connectionRestored", { signal: AbortSignal.timeout(this.connectionTimeout) });
           } catch (error) {
-              this.riffy.emit("debug", `[Player ${this.guildId}] Timed out waiting (${this.connectionTimeout} ms) for Node voice connection to stabilize.`);
+              // No need to emit debug message if connection is already restored,
+              // And we didn't receive the notifying event for some reason.
+              !this.connected && this.riffy.emit("debug", `[Player ${this.guildId}] Timed out waiting (${this.connectionTimeout} ms) for Node voice connection to stabilize.`);
               // We don't throw here; we let the standard check below decide if we should crash or try anyway.
           }
         }

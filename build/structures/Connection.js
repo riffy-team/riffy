@@ -38,8 +38,10 @@ class Connection {
         // Case 1: Fully ready and no active updates. Return instantly (no Promise created).
         if (this.isReady && !this.pendingUpdate) return;
 
+        const playerTimeoutMs = this.player?.connectionTimeout || 10000;
+
         // Helper to race a promise against a timeout
-        const waitFor = (promise, label) => {
+        const waitFor = (promise, label, timeoutMs) => {
             let timer;
             return Promise.race([
                 promise,
@@ -51,7 +53,7 @@ class Connection {
 
         // Case 2: Credentials present, but we are waiting for Node to acknowledge the voice update.
         if (this.pendingUpdate) {
-            await waitFor(this.pendingUpdate);
+            await waitFor(this.pendingUpdate, "Node to acknowledge the voice update", playerTimeoutMs);
             return;
         }
 
@@ -65,7 +67,7 @@ class Connection {
             this.deferred = { promise, resolve: resolveFn };
         }
 
-        return waitFor(this.deferred.promise);
+        return waitFor(this.deferred.promise, "Discord voice credentials to arrive", playerTimeoutMs);
     }
 
     /**
@@ -81,6 +83,8 @@ class Connection {
                 await this.pendingUpdate;
             } catch (error) {
                 this.player.riffy.emit("debug", `[Player ${this.player.guildId} - CONNECTION] Voice update failed: ${error.message}`);
+                // If update failed, reset establishing flag
+                this.establishing = false;
             } finally {
                 // Clear the pending flag
                 this.pendingUpdate = null;
