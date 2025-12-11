@@ -1,4 +1,4 @@
-# Riffy [![NPM version](https://img.shields.io/npm/v/riffy.svg?style=flat-square&color=informational)](https://npmjs.com/package/riffy)
+# Riffy [![NPM version](https://img.shields.io/npm/v/riffy.svg?style=flat-square&color=informational)](https://npmjs.com/package/riffy) [![NPM Downloads](https://img.shields.io/npm/dy/riffy.svg?style=flat-square)](https://npmjs.com/package/riffy)
 
 A lavalink client for Node.JS, designed to be simple and easy to use. Compatible with all Discord libraries (discord.js, Eris, etc.).
 

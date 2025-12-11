@@ -1,5 +1,46 @@
 # Changelog
 
+## v1.0.9 (2025-12-11)
+This Release adds optimised Voice Connectivity Detection conditionally (when needed) between Riffy Receiving & Node Voice Connectivity.
+Also, Features First-Party Support for Nodelink, Being a Dev for Nodelink too.
+### Breaking Change
+* add!: throw error when queue is empty
+
+### Features & Improvement
+* add: waiting for Node's voice connectivity
+* fix: reconnection count not resetting.
+* add helper to race against a connection timeout
+* add: timeouts and improve connection/resolve error handling
+* add: typings, fix .establishing usage in player.
+* feat: [NodeLink] Add Audio Mixer
+* Bump v1.0.9
+
+## v1.0.8 (2025-11-15)
+
+### What's Changed
+* feat: add Custom Spotify autoplay by @senusen in https://github.com/riffy-team/riffy/pull/28
+* feat: add player and node migration 🚀 by @1Lucas1apk in https://github.com/riffy-team/riffy/pull/30
+* feat: Spotify Autoplay using YT as a recommendation bridge by @senusen in https://github.com/riffy-team/riffy/pull/29
+* Add duplicate track prevention in autoplay function by @SatzzDev in https://github.com/riffy-team/riffy/pull/31
+----
+* [chore(types): enhance RiffyEvents type definitions with detailed comments](https://github.com/riffy-team/riffy/commit/a28f2c9438cf3c0c56946b5b77bd85d27b034bb2) 
+
+
+  - Add comprehensive JSDoc documentation for all event types
+  - Include references to Lavalink API documentation
+* [fix: CI issues(PR are same type!), requestNode not defined](https://github.com/riffy-team/riffy/commit/cb35d4e2b83436b5c9d509b92964380c1008a601)
+* [fix: requestNode not defined](https://github.com/riffy-team/riffy/commit/bab16dfd77bcd42cedc392b46ed48970323160cd)
+* [fix(types): Correct type definitions and add plugin info to track](https://github.com/riffy-team/riffy/commit/f6e48993662e152c068b2f902a3d518739b45df0)
+* [Lyrics] [style(types): format node getCurrentTrack function](https://github.com/riffy-team/riffy/commit/d4bacce775262d20d3d8edc978f68f13c553a50b)
+- feat(types): enhance type definitions with Prettify utilities and update clientId type in Riffy
+
+### New Contributors
+* @senusen made their first contribution in https://github.com/riffy-team/riffy/pull/28
+* @1Lucas1apk made their first contribution in https://github.com/riffy-team/riffy/pull/30
+* @SatzzDev made their first contribution in https://github.com/riffy-team/riffy/pull/31
+
+**Full Changelog**: https://github.com/riffy-team/riffy/compare/v1.0.7...v1.0.8
+
 ## v1.0.7 (2025-06-10)
 
 ### What's Changed
