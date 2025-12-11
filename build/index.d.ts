@@ -762,6 +762,13 @@ type NodeInfo = {
         name: string;
         version: string;
     }>;
+} | {
+    node: string;
+    voice: {
+      name: string;
+      version: string;
+    };
+    isNodelink: boolean;
 }
 
 type NodeInfoSemanticVersionObj = {
@@ -769,6 +776,8 @@ type NodeInfoSemanticVersionObj = {
     major: number;
     minor: number;
     patch: number;
+    prerelease: string[] | string | null,
+    build: string | null,
 }
 
 type LyricPluginWithoutLavaLyrics = "java-lyrics-plugin" | "lyrics"
@@ -925,6 +934,35 @@ export declare class Node {
          */
         getCurrentTrack: <TPlugin extends LyricPluginWithoutLavaLyrics | (string & {}) >(guildId: string, skipTrackSource: boolean, plugin?: TPlugin) => Promise<TPlugin extends LyricPluginWithoutLavaLyrics ? LyricPluginWithoutLavaLyricsResult : NodeLyricsResult | null>;
     }
+    
+    /**
+     * Nodelink Mixer API (Works Only when Node is hosted with [Nodelink Server](https://nodelink.js.org))
+     * @description The Audio Mixer allows overlaying auxiliary audio tracks (like TTS, sound effects, or background music) on top of the main active track.
+     */
+    mixer: {
+      /**
+       * Check if Node is hosted with Nodelink Server
+       */
+       check: () => boolean;
+       /**
+        * Adds a new audio track to be mixed over the current playback.
+        * @param {string} guildId 
+        * @param {AddMixLayerOptions} mixLayerOptions 
+        */
+       addMixLayer: (guildId: string, mixLayerOptions: AddMixLayerOptions) => Promise<NodelinkMixLayer>;
+       /**
+        * Retrieves a list of currently active mix layers.
+        */
+       getActiveMixLayers: (guildId: string) => Promise<NodelinkMixLayer[]>;
+       /**
+        * Update Mix Layer Volume
+        */
+       updateMixLayerVolume: (guildId: string, mixId: string, volume: number) => Promise<void>;
+       /**
+        * Remove Mix Layer
+        */
+       removeMixLayer: (guildId: string, mixId: string) => Promise<void>;
+    }
 
     public connect(): void;
     public open(): void;
@@ -935,6 +973,45 @@ export declare class Node {
     public disconnect(): void;
     readonly penalties: number;
 }
+
+/**
+ * Options for adding a mix layer.
+ */
+export type AddMixLayerOptions = {
+  track: {
+    /** 
+     * Base64 encoded track string (optional if identifier provided) 
+     */
+    encoded?: string;
+
+    /** 
+     * Track identifier (optional if encoded provided) 
+     */
+    identifier?: string;
+
+    /** 
+     * (Optional) Track User Data 
+     */
+    userData?: string;
+  };
+
+  /** 
+   * Float 0.0 to 1.0 (Default: 0.8) 
+   */
+  volume?: number;
+};
+
+export type NodelinkMixLayer = {
+  id: string;
+  track: {
+    encoded: string;
+    identifier: string;
+    userData: string;
+  };
+  volume: number;
+  position?: number;
+  startTime?: number;
+};
 
 export type FilterOptions = {
     /**

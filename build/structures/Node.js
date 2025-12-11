@@ -145,6 +145,100 @@ class Node {
             return await this.rest.makeRequest("GET", `${requestURL}`)
         }
     }
+    
+    /**
+     * @since 1.0.9
+     */
+    mixer = {
+      check: () => {
+        return this.info?.isNodelink ?? false;
+      },
+      
+      /**
+       * @typedef {Object} addMixLayerOptions
+       * @property {string} track.encoded Base64 encoded track string (optional if identifier provided)
+       * @property {string?} track.identifier Track identifier (optional if encoded provided)
+       * @property {string?} track.userData (Optional) Track User Data.
+       * @property {number?} volume Float 0.0 to 1.0 (Default: 0.8)
+       * 
+       * @param {string} guildId 
+       * @param {addMixLayerOptions} mixLayerOptions 
+       * @returns 
+       */
+      addMixLayer: async (guildId, mixLayerOptions) => {
+        if(!this.mixer.check()) {
+          throw new Error("This node is not a Nodelink Server");
+        }
+        
+        if(mixLayerOptions && typeof mixLayerOptions !== "object") {
+          throw new TypeError("mixLayerOptions must be an object");
+        }
+        
+        if(mixLayerOptions.track && typeof mixLayerOptions.track !== "object") {
+          throw new TypeError("mixLayerOptions.track must be an object");
+        }
+        
+        if(mixLayerOptions.track.encoded && mixLayerOptions.track.identifier) {
+          throw new TypeError("mixLayerOptions.track.encoded and mixLayerOptions.track.identifier cannot be provided at the same time");
+        }
+        
+        if(mixLayerOptions.volume !== undefined && typeof mixLayerOptions.volume !== "number" || mixLayerOptions.volume < 0 || mixLayerOptions.volume > 1) {
+          throw new TypeError("mixLayerOptions.volume must be a number between 0 and 1");
+        }
+        
+        const body = {
+          track: mixLayerOptions.track
+        }
+        
+        if(mixLayerOptions.volume) {
+          body.volume = mixLayerOptions.volume;
+        }
+        
+        
+        return this.rest.makeRequest("POST", `/v4/sessions/${this.sessionId}/players/${guildId}/mix`,body)
+      },
+      
+      getActiveMixLayers: async (guildId) => {
+        if(!this.mixer.check()) {
+          throw new Error("Node is not hosted with Nodelink Server");
+        }
+        return await this.rest.makeRequest("GET", `/v4/sessions/${this.sessionId}/players/${guildId}/mix`);
+      },
+      
+      updateMixLayerVolume: async (guildId, mixId, volume) => {
+        if(!this.mixer.check()) {
+          throw new Error("Node is not hosted with Nodelink Server");
+        }
+        if(!guildId || !mixId || !volume) {
+          throw new TypeError("guildId, mixId and volume are required to Update Mix Volume");
+        }
+        
+        if(mixId !== undefined && typeof mixId !== "string") {
+          throw new TypeError("id must be a string");
+        }
+        
+        if(volume !== undefined && typeof volume !== "number" || volume < 0 || volume > 1) {
+          throw new TypeError("volume must be a number between 0 and 1");
+        }
+        
+        return await this.rest.makeRequest("PATCH", `/v4/sessions/${this.sessionId}/players/${guildId}/mix/${mixId}`, { volume });
+      },
+      
+      removeMixLayer: async (guildId, mixId) => {
+        if(!this.mixer.check()) {
+          throw new Error("Node is not hosted with Nodelink Server");
+        }
+        if(!guildId || !mixId) {
+          throw new TypeError("guildId and mixId are required to Remove the Mix Layer");
+        }
+        
+        if(mixId !== undefined && typeof mixId !== "string") {
+          throw new TypeError("id must be a string");
+        }
+        
+        return await this.rest.makeRequest("DELETE", `/v4/sessions/${this.sessionId}/players/${guildId}/mix/${mixId}`);
+      }
+    }
 
     /**
      * @typedef {Object} fetchInfoOptions
@@ -319,7 +413,7 @@ class Node {
 
             this.riffy.emit("nodeConnect", this);
 
-            this.riffy.emit("debug", `[Node: ${this.name}] Ready (Ready Payload received)! Session ID: ${payload.sessionId}`);
+            this.riffy.emit("debug", `[Node: ${this.name}] Ready (Ready Payload received)! Session ID: ${payload.sessionId}, ${this.info?.isNodelink ? `Nodelink ✨ (V${this.info?.version?.semver})` : ""}`);
 
             if (this.restVersion === "v4") {
                 if (this.sessionId) {
