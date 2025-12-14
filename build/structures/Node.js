@@ -437,11 +437,6 @@ class Node {
                 this.sessionId = payload.sessionId;
             }
 
-            /**
-             * Emitted when the node connects.
-             * @event Riffy#nodeConnect
-             * @param {Node} node - The node that connected.
-             */
             this.riffy.emit("nodeConnect", this);
 
             this.riffy.emit("debug", `[Node: ${this.name}] Ready (Ready Payload received)! Session ID: ${payload.sessionId}, ${this.info?.isNodelink ? `Nodelink ✨ (V${this.info?.version?.semver})` : ""}`);
@@ -471,14 +466,6 @@ class Node {
      * @returns {Promise<void>}
      */
     async close(event, reason) {
-        /**
-         * Emitted when the node disconnects.
-         * @event Riffy#nodeDisconnect
-         * @param {Node} node - The node that disconnected.
-         * @param {Object} data - The disconnect data.
-         * @param {number} data.event - The close code.
-         * @param {string} data.reason - The close reason.
-         */
         this.riffy.emit("nodeDisconnect", this, { event, reason });
         this.riffy.emit("debug", `Connection with Lavalink closed with Error code : ${event || "Unknown code"}, reason: ${reason || "Unknown reason"}`);
 
@@ -509,11 +496,6 @@ class Node {
 
             this.ws?.removeAllListeners();
             this.ws = null;
-            /**
-             * Emitted when the node attempts to reconnect.
-             * @event Riffy#nodeReconnect
-             * @param {Node} node - The node attempting reconnection.
-             */
             this.riffy.emit("nodeReconnect", this);
             this.riffy.emit("debug", `[Node: ${this.name}] Reconnecting... Attempt ${this.reconnectAttempted}/${this.reconnectTries}`);
             this.connect();
@@ -547,11 +529,6 @@ class Node {
         if(clean) {
             this.ws?.removeAllListeners();
             this.ws = null;
-        /**
-         * Emitted when the node is destroyed.
-         * @event Riffy#nodeDestroy
-         * @param {Node} node - The node that was destroyed.
-         */
         this.riffy.emit("nodeDestroy", this);
             this.riffy.nodes.delete(this.name);
             return;
@@ -590,11 +567,6 @@ class Node {
         this.ws = null;
         // Allowing to connect back.
         // this.riffy.nodeMap.delete(this.name);
-        /**
-         * Emitted when the node disconnects.
-         * @event Riffy#nodeDisconnect
-         * @param {Node} node - The node that disconnected.
-         */
         this.riffy.emit("nodeDisconnect", this);
         this.connected = false;
     }

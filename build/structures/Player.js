@@ -595,13 +595,6 @@ class Player extends EventEmitter {
         this.playing = true;
         this.paused = false;
         this.riffy.emit(`debug`, `Player (${player.guildId}) has started playing ${track.info.title} by ${track.info.author}`);
-        /**
-         * Emitted when a track starts playing.
-         * @event Player#trackStart
-         * @param {Player} player - The player instance.
-         * @param {Track} track - The track that started playing.
-         * @param {Object} payload - The event payload from Lavalink.
-         */
         this.riffy.emit("trackStart", player, track, payload);
     }
 
@@ -619,13 +612,6 @@ class Player extends EventEmitter {
         // By using lower case We handle both Lavalink Versions(v3, v4) Smartly 😎,
         // If reason is replaced do nothing expect User do something hopefully else RIP.
         if(payload.reason.toLowerCase() === "replaced") {
-            /**
-             * Emitted when a track ends.
-             * @event Player#trackEnd
-             * @param {Player} player - The player instance.
-             * @param {Track} track - The track that ended.
-             * @param {Object} payload - The event payload from Lavalink.
-             */
             return this.riffy.emit("trackEnd", player, track, payload);
         }
 
@@ -636,21 +622,9 @@ class Player extends EventEmitter {
             if(player.queue.length === 0) {
                 this.playing = false;
                 this.riffy.emit("debug", `Player (${player.guildId}) Track-Ended(${track.info.title}) with reason: ${payload.reason}, emitting queueEnd instead of trackEnd as queue is empty/finished`);
-                /**
-                 * Emitted when the queue ends.
-                 * @event Player#queueEnd
-                 * @param {Player} player - The player instance.
-                 */
                 return this.riffy.emit("queueEnd", player);
             }
 
-            /**
-             * Emitted when a track ends.
-             * @event Player#trackEnd
-             * @param {Player} player - The player instance.
-             * @param {Track} track - The track that ended.
-             * @param {Object} payload - The event payload from Lavalink.
-             */
             this.riffy.emit("trackEnd", player, track, payload);
             return player.play();
         }
@@ -660,13 +634,6 @@ class Player extends EventEmitter {
         if (this.loop === "track") {
             player.queue.unshift(previousTrack);
             this.riffy.emit("debug", `Player (${player.guildId}) looped track ${track.info.title} by ${track.info.author}, as loop mode is set to 'track'`);
-            /**
-             * Emitted when a track ends.
-             * @event Player#trackEnd
-             * @param {Player} player - The player instance.
-             * @param {Track} track - The track that ended.
-             * @param {Object} payload - The event payload from Lavalink.
-             */
             this.riffy.emit("trackEnd", player, track, payload);
             return player.play();
         }
@@ -674,24 +641,12 @@ class Player extends EventEmitter {
         else if (track && this.loop === "queue") {
             player.queue.push(previousTrack);
             this.riffy.emit("debug", `Player (${player.guildId}) looping Queue, as loop mode is set to 'queue'`);
-            /**
-             * Emitted when a track ends.
-             * @event Player#trackEnd
-             * @param {Player} player - The player instance.
-             * @param {Track} track - The track that ended.
-             * @param {Object} payload - The event payload from Lavalink.
-             */
             this.riffy.emit("trackEnd", player, track, payload);
             return player.play();
         }
 
         if (player.queue.length === 0) {
             this.playing = false;
-            /**
-             * Emitted when the queue ends.
-             * @event Player#queueEnd
-             * @param {Player} player - The player instance.
-             */
             return this.riffy.emit("queueEnd", player);
         }
 
@@ -726,13 +681,6 @@ class Player extends EventEmitter {
      */
     trackError(player, track, payload) {
         this.riffy.emit("debug", `Player (${player.guildId}) has an exception/error while playing ${track.info.title} by ${track.info.author} this track, exception received: ${inspect(payload.exception)}`);
-        /**
-         * Emitted when a track encounters an error.
-         * @event Player#trackError
-         * @param {Player} player - The player instance.
-         * @param {Track} track - The track that errored.
-         * @param {Object} payload - The event payload from Lavalink.
-         */
         this.riffy.emit("trackError", player, track, payload);
         this.stop();
     }
@@ -746,13 +694,6 @@ class Player extends EventEmitter {
      * @fires Player#trackStuck
      */
     trackStuck(player, track, payload) {
-        /**
-         * Emitted when a track gets stuck.
-         * @event Player#trackStuck
-         * @param {Player} player - The player instance.
-         * @param {Track} track - The track that is stuck.
-         * @param {Object} payload - The event payload from Lavalink.
-         */
         this.riffy.emit("trackStuck", player, track, payload);
         this.riffy.emit("debug", `Player (${player.guildId}) has been stuck track ${track.info.title} by ${track.info.author} for ${payload.thresholdMs}ms, skipping track...`);
         this.stop();
@@ -775,12 +716,6 @@ class Player extends EventEmitter {
             });
         }
 
-        /**
-         * Emitted when the voice connection socket closes.
-         * @event Player#socketClosed
-         * @param {Player} player - The player instance.
-         * @param {Object} payload - The event payload from Lavalink.
-         */
         this.riffy.emit("socketClosed", player, payload);
         this.pause(true);
         this.riffy.emit("debug", `Player (${player.guildId}) Voice Connection has been closed with code: ${payload.code}, Player paused(to any track playing). some possible causes: Voice channel deleted, Or Client(Bot) was kicked`);
@@ -829,45 +764,7 @@ class Player extends EventEmitter {
       return this;
     }
 
-    /**
-     * Whether the player is currently playing.
-     * @returns {boolean}
-     */
-    isPlaying() {
-      return this.playing === true;
-    }
 
-    /**
-     * Whether the player is currently paused.
-     * @returns {boolean}
-     */
-    isPaused() {
-      return this.paused === true;
-    }
-
-    /**
-     * Whether the player has tracks in the queue.
-     * @returns {boolean}
-     */
-    hasQueue() {
-      return this.queue.length > 0;
-    }
-
-    /**
-     * Gets the current track.
-     * @returns {Track|null}
-     */
-    currentTrack() {
-      return this.current;
-    }
-
-    /**
-     * Gets the size of the queue.
-     * @returns {number}
-     */
-    queueSize() {
-      return this.queue.length;
-    }
 
     /**
      * Moves the player to a new node.
