@@ -15,6 +15,46 @@ npm install riffy
 -   Compatible with all Discord libraries (discord.js, Eris, etc.).
 -   Works with all Lavalink filters.
 
+## Events
+
+- `trackStart` - Emitted when a track starts playing.
+- `trackEnd` - Emitted when a track ends.
+- `trackError` - Emitted when a track encounters an error.
+- `trackStuck` - Emitted when a track gets stuck.
+- `queueEnd` - Emitted when the queue ends.
+- `socketClosed` - Emitted when the voice connection socket closes.
+- `nodeConnect` - Emitted when a node connects.
+- `nodeDisconnect` - Emitted when a node disconnects.
+- `nodeError` - Emitted when a node encounters an error.
+- `nodeReconnect` - Emitted when a node attempts to reconnect.
+- `nodeDestroy` - Emitted when a node is destroyed.
+- `playerCreate` - Emitted when a player is created.
+- `playerDestroy` - Emitted when a player is destroyed.
+- `playerMigrated` - Emitted when a player is migrated to a new node.
+
+## Common Player Helpers
+
+- `player.isPlaying()` - Check if the player is currently playing.
+- `player.isPaused()` - Check if the player is paused.
+- `player.hasQueue()` - Check if the player has tracks in the queue.
+- `player.currentTrack()` - Get the current track.
+- `player.queueSize()` - Get the size of the queue.
+
+## Error Handling Tips
+
+- Always check if the player is connected before playing.
+- Handle `nodeError` and `trackError` events to provide user feedback.
+- Use try-catch blocks around resolve calls.
+
+## Examples
+
+See the `examples/` directory for real-world usage examples:
+- `basic-play.js` - Basic play command.
+- `playlist.js` - Playlist support.
+- `filters.js` - Audio filters.
+- `autoplay.js` - Autoplay feature.
+- `node-failover.js` - Node failover and migration.
+
 ## Example Project
 
 -   [Riffy Music Bot](https://github.com/riffy-team/riffy-music-bot)
