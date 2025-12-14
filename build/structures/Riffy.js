@@ -6,7 +6,17 @@ const { version: pkgVersion } = require("../../package.json")
 
 const versions = ["v3", "v4"];
 
+/**
+ * The main Riffy class for managing Lavalink connections.
+ * @extends EventEmitter
+ */
 class Riffy extends EventEmitter {
+  /**
+   * Creates a new Riffy instance.
+   * @param {*} client - The Discord client.
+   * @param {Array} nodes - Array of node configurations.
+   * @param {Object} options - Riffy options.
+   */
   constructor(client, nodes, options) {
     super();
     if (!client) throw new Error("Client is required to initialize Riffy");
@@ -44,24 +54,44 @@ class Riffy extends EventEmitter {
     if (this.restVersion && !versions.includes(this.restVersion)) throw new RangeError(`${this.restVersion} is not a valid version`);
   }
 
+  /**
+   * Default migration strategy for moving players between nodes.
+   * @private
+   * @param {Player} player - The player to migrate.
+   * @param {Node[]} availableNodes - Available nodes.
+   * @returns {Node|null}
+   */
   _defaultMigrationStrategy(player, availableNodes) {
     return availableNodes
       .filter(n => n.connected && n !== player.node)
       .sort((a, b) => a.penalties - b.penalties)[0];
   }
 
+  /**
+   * Gets the least used nodes sorted by call count.
+   * @returns {Node[]}
+   */
   get leastUsedNodes() {
     return [...this.nodeMap.values()]
       .filter((node) => node.connected)
       .sort((a, b) => a.rest.calls - b.rest.calls);
   }
 
+  /**
+   * Gets the best node based on penalties.
+   * @returns {Node|null}
+   */
   get bestNode() {
     return [...this.nodeMap.values()]
         .filter(node => node.connected)
         .sort((a, b) => a.penalties - b.penalties)[0];
   }
 
+  /**
+   * Initializes Riffy with the client ID.
+   * @param {string} clientId - The Discord client ID.
+   * @returns {Riffy} The Riffy instance.
+   */
   init(clientId) {
     if (this.initiated) return this;
     this.clientId = clientId;
@@ -79,6 +109,11 @@ class Riffy extends EventEmitter {
     }
   }
 
+  /**
+   * Creates a new node.
+   * @param {Object} options - Node options.
+   * @returns {Node} The created node.
+   */
   createNode(options) {
     const node = new Node(this, options, this.options);
     this.nodeMap.set(options.name || options.host, node);
@@ -88,6 +123,11 @@ class Riffy extends EventEmitter {
     return node;
   }
 
+  /**
+   * Destroys a node.
+   * @param {string} identifier - The node identifier.
+   * @returns {void}
+   */
   destroyNode(identifier) {
     const node = this.nodeMap.get(identifier);
     if (!node) return;
@@ -96,6 +136,11 @@ class Riffy extends EventEmitter {
     this.emit("nodeDestroy", node);
   }
 
+  /**
+   * Updates the voice state from Discord gateway packets.
+   * @param {Object} packet - The gateway packet.
+   * @returns {void}
+   */
   updateVoiceState(packet) {
     if (!["VOICE_STATE_UPDATE", "VOICE_SERVER_UPDATE"].includes(packet.t)) return;
     const player = this.players.get(packet.d.guild_id);
@@ -109,6 +154,11 @@ class Riffy extends EventEmitter {
     }
   }
 
+  /**
+   * Fetches nodes by region.
+   * @param {string} region - The region.
+   * @returns {Node[]}
+   */
   fetchRegion(region) {
     const nodesByRegion = [...this.nodeMap.values()]
       .filter((node) => node.connected && node.regions?.includes(region?.toLowerCase()))
@@ -157,6 +207,12 @@ class Riffy extends EventEmitter {
     return this.createPlayer(node, options);
   }
 
+  /**
+   * Creates a new player.
+   * @param {Node} node - The node for the player.
+   * @param {Object} options - Player options.
+   * @returns {Player} The created player.
+   */
   createPlayer(node, options) {
     const player = new Player(this, node, options);
     this.players.set(options.guildId, player);
@@ -169,6 +225,11 @@ class Riffy extends EventEmitter {
     return player;
   }
 
+  /**
+   * Destroys a player.
+   * @param {string} guildId - The guild ID.
+   * @returns {void}
+   */
   destroyPlayer(guildId) {
     const player = this.players.get(guildId);
     if (!player) return;
@@ -262,6 +323,11 @@ class Riffy extends EventEmitter {
     }
   }
 
+  /**
+   * Removes a connection.
+   * @param {string} guildId - The guild ID.
+   * @returns {void}
+   */
   removeConnection(guildId) {
     this.players.get(guildId)?.destroy();
     this.players.delete(guildId);
@@ -348,6 +414,12 @@ class Riffy extends EventEmitter {
     }
   }
 
+  /**
+   * Gets a player by guild ID.
+   * @param {string} guildId - The guild ID.
+   * @returns {Player} The player.
+   * @throws {Error} If no player found.
+   */
   get(guildId) {
     const player = this.players.get(guildId);
     if (!player) throw new Error(`Player not found for ${guildId} guildId`);

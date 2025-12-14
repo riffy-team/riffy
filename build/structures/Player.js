@@ -5,7 +5,24 @@ const { Queue } = require("./Queue");
 const { spAutoPlay, scAutoPlay } = require('../functions/autoPlay');
 const { inspect } = require("util");
 
+/**
+ * Represents a music player for a Discord guild.
+ * @extends EventEmitter
+ */
 class Player extends EventEmitter {
+    /**
+     * Creates a new Player instance.
+     * @param {import("./Riffy").Riffy} riffy - The Riffy instance.
+     * @param {import("./Node").Node} node - The Lavalink node.
+     * @param {Object} options - Player options.
+     * @param {string} options.guildId - The Discord guild ID.
+     * @param {string} options.textChannel - The text channel ID.
+     * @param {string} options.voiceChannel - The voice channel ID.
+     * @param {boolean} [options.mute=false] - Whether the player is muted.
+     * @param {boolean} [options.deaf=false] - Whether the player is deafened.
+     * @param {number} [options.defaultVolume=100] - The default volume.
+     * @param {string} [options.loop="none"] - The loop mode.
+     */
     constructor(riffy, node, options) {
         super();
         this.riffy = riffy;
@@ -60,14 +77,16 @@ class Player extends EventEmitter {
         });
     }
     /**
-     * @description gets the Previously played Track
+     * Gets the previously played track.
+     * @returns {Track|null} The previously played track or null.
      */
     get previous() {
-     return this.previousTracks?.[0]
+      return this.previousTracks?.[0]
     }
 
     /**
      * @private
+     * @param {Track} track - The track to add to previous tracks.
      */
     addToPreviousTrack(track) {
       if (Number.isInteger(this.riffy.options.multipleTrackHistory) && this.previousTracks.length >= this.riffy.options.mutipleTrackHistory)       {
@@ -83,6 +102,11 @@ class Player extends EventEmitter {
     }
 
 
+    /**
+     * Starts playing the next track in the queue.
+     * @returns {Player} The player instance.
+     * @throws {Error} If the player is not connected or the queue is empty.
+     */
     async play() {
         // Waits for Discord credentials AND for the Node to acknowledge the voice update.
         // Returns immediately if everything is already set up.
@@ -109,7 +133,7 @@ class Player extends EventEmitter {
         }
 
         // Final check: if still not connected, throw error.
-        if (!this.connected) throw new Error("Player connection is not initiated. Kindly use Riffy.createConnection() and establish a connection, TIP: Check if Guild Voice States intent is set/provided & 'updateVoiceState' is used in the raw(Gateway Raw) event");
+        if (!this.connected) throw new Error(`Player connection is not initiated for guild ${this.guildId}. Kindly use Riffy.createConnection() and establish a connection, TIP: Check if Guild Voice States intent is set/provided & 'updateVoiceState' is used in the raw(Gateway Raw) event`);
         if (!this.queue.length) throw new Error(`Unable to play for Player with Guild Id ${this.guildId}, Queue is empty (length: ${this.queue.length})!`);
 
         this.current = this.queue.shift();
@@ -136,9 +160,9 @@ class Player extends EventEmitter {
     }
 
     /**
-     *
-     * @param {this} player
-     * @returns
+     * Enables or disables autoplay for the player.
+     * @param {Player|null} player - The player instance or null to disable.
+     * @returns {Player} The player instance.
      */
     async autoplay(player) {
     if (!player) {
@@ -148,7 +172,7 @@ class Player extends EventEmitter {
         } else if (player == false) {
             this.isAutoplay = false;
             return this;
-        } else throw new Error("Missing argument. Quick Fix: player.autoplay(player)");
+        } else throw new Error(`Missing argument for autoplay in guild ${this.guildId}. Quick Fix: player.autoplay(player)`);
     }
 
     this.isAutoplay = true;
@@ -323,6 +347,15 @@ class Player extends EventEmitter {
         } else return this;
     }
 
+    /**
+     * Connects the player to a voice channel.
+     * @param {Object} [options=this] - Connection options.
+     * @param {string} options.guildId - The guild ID.
+     * @param {string} options.voiceChannel - The voice channel ID.
+     * @param {boolean} [options.deaf=true] - Whether to deafen the bot.
+     * @param {boolean} [options.mute=false] - Whether to mute the bot.
+     * @returns {void}
+     */
     connect(options = this) {
         const { guildId, voiceChannel, deaf = true, mute = false } = options;
         this.send({
@@ -337,6 +370,10 @@ class Player extends EventEmitter {
         this.riffy.emit("debug", `[Player ${this.guildId}] Player has informed the Discord Gateway to Establish Voice Connectivity in ${voiceChannel} Voice Channel, Awaiting Confirmation(Via Voice State Update & Voice Server Update events)`);
     }
 
+    /**
+     * Stops the current track and resets the position.
+     * @returns {Player} The player instance.
+     */
     stop() {
         this.position = 0;
         this.playing = false;
@@ -348,6 +385,11 @@ class Player extends EventEmitter {
         return this;
     }
 
+    /**
+     * Pauses or resumes the current track.
+     * @param {boolean} [toggle=true] - Whether to pause (true) or resume (false).
+     * @returns {Player} The player instance.
+     */
     pause(toggle = true) {
         this.node.rest.updatePlayer({
             guildId: this.guildId,
@@ -360,6 +402,11 @@ class Player extends EventEmitter {
         return this;
     }
 
+    /**
+     * Seeks to a specific position in the current track.
+     * @param {number} position - The position in milliseconds.
+     * @returns {void}
+     */
     seek(position) {
         const trackLength = this.current.info.length;
         this.position = Math.max(0, Math.min(trackLength, position));
@@ -367,9 +414,15 @@ class Player extends EventEmitter {
         this.node.rest.updatePlayer({ guildId: this.guildId, data: { position } });
     }
 
+    /**
+     * Sets the player volume.
+     * @param {number} volume - The volume level (0-1000).
+     * @returns {Player} The player instance.
+     * @throws {Error} If volume is out of range.
+     */
     setVolume(volume) {
         if (volume < 0 || volume > 1000) {
-            throw new Error("[Volume] Volume must be between 0 to 1000");
+            throw new Error(`[Volume] Volume must be between 0 to 1000 for guild ${this.guildId}`);
         }
 
         this.node.rest.updatePlayer({ guildId: this.guildId, data: { volume } });
@@ -377,30 +430,52 @@ class Player extends EventEmitter {
         return this;
     }
 
+    /**
+     * Sets the loop mode for the player.
+     * @param {string} mode - The loop mode ("none", "track", or "queue").
+     * @returns {Player} The player instance.
+     * @throws {Error} If mode is invalid.
+     */
     setLoop(mode) {
         if (!mode) {
-            throw new Error("You must provide the loop mode as an argument for setLoop");
+            throw new Error(`You must provide the loop mode as an argument for setLoop in guild ${this.guildId}`);
         }
 
         if (!["none", "track", "queue"].includes(mode)) {
-            throw new Error("setLoop arguments must be 'none', 'track', or 'queue'");
+            throw new Error(`setLoop arguments must be 'none', 'track', or 'queue' for guild ${this.guildId}`);
         }
 
         this.loop = mode;
         return this;
     }
 
+    /**
+     * Sets the text channel for the player.
+     * @param {string} channel - The text channel ID.
+     * @returns {Player} The player instance.
+     * @throws {TypeError} If channel is not a string.
+     */
     setTextChannel(channel) {
-        if (typeof channel !== "string") throw new TypeError("Channel must be a non-empty string.");
+        if (typeof channel !== "string") throw new TypeError(`Channel must be a non-empty string for guild ${this.guildId}.`);
         this.textChannel = channel;
         return this;
     }
 
+    /**
+     * Sets the voice channel for the player.
+     * @param {string} channel - The voice channel ID.
+     * @param {Object} [options] - Additional options.
+     * @param {boolean} [options.mute] - Whether to mute.
+     * @param {boolean} [options.deaf] - Whether to deafen.
+     * @returns {Player} The player instance.
+     * @throws {TypeError} If channel is not a string.
+     * @throws {ReferenceError} If already connected to the channel.
+     */
     setVoiceChannel(channel, options) {
-        if (typeof channel !== "string") throw new TypeError("Channel must be a non-empty string.");
+        if (typeof channel !== "string") throw new TypeError(`Channel must be a non-empty string for guild ${this.guildId}.`);
 
         if (this.connected && channel === this.voiceChannel) {
-            throw new ReferenceError(`Player is already connected to ${channel}`);
+            throw new ReferenceError(`Player is already connected to ${channel} in guild ${this.guildId}`);
         }
 
         this.voiceChannel = channel;
@@ -421,6 +496,10 @@ class Player extends EventEmitter {
         return this;
     }
 
+    /**
+     * Disconnects the player from the voice channel.
+     * @returns {Player} The player instance.
+     */
     disconnect() {
         if (!this.voiceChannel) {
             return;
@@ -438,6 +517,10 @@ class Player extends EventEmitter {
         return this;
     }
 
+    /**
+     * Destroys the player and cleans up resources.
+     * @returns {void}
+     */
     destroy() {
         this.disconnect();
 
@@ -449,6 +532,12 @@ class Player extends EventEmitter {
         this.riffy.players.delete(this.guildId);
     }
 
+    /**
+     * Handles events from the Lavalink node.
+     * @private
+     * @param {Object} payload - The event payload.
+     * @returns {void}
+     */
     async handleEvent(payload) {
         if (this.migrating) {
             this.riffy.emit("debug", `Player (${this.guildId}) is migrating, ignoring event: ${payload.type}`);
@@ -488,25 +577,57 @@ class Player extends EventEmitter {
                 break;
 
             default:
-                const error = new Error(`Node encountered an unknown event: '${payload.type}'`);
+                const error = new Error(`Player (${this.guildId}) Node encountered an unknown event: '${payload.type}'`);
                 this.riffy.emit("nodeError", this, error);
                 break;
         }
     }
 
+    /**
+     * Handles the track start event.
+     * @private
+     * @param {Player} player - The player instance.
+     * @param {Track} track - The track that started.
+     * @param {Object} payload - The event payload.
+     * @fires Player#trackStart
+     */
     trackStart(player, track, payload) {
         this.playing = true;
         this.paused = false;
         this.riffy.emit(`debug`, `Player (${player.guildId}) has started playing ${track.info.title} by ${track.info.author}`);
+        /**
+         * Emitted when a track starts playing.
+         * @event Player#trackStart
+         * @param {Player} player - The player instance.
+         * @param {Track} track - The track that started playing.
+         * @param {Object} payload - The event payload from Lavalink.
+         */
         this.riffy.emit("trackStart", player, track, payload);
     }
 
+    /**
+     * Handles the track end event.
+     * @private
+     * @param {Player} player - The player instance.
+     * @param {Track} track - The track that ended.
+     * @param {Object} payload - The event payload.
+     * @fires Player#trackEnd
+     */
     trackEnd(player, track, payload) {
         this.addToPreviousTrack(track)
         const previousTrack = this.previous;
         // By using lower case We handle both Lavalink Versions(v3, v4) Smartly 😎,
         // If reason is replaced do nothing expect User do something hopefully else RIP.
-        if(payload.reason.toLowerCase() === "replaced") return this.riffy.emit("trackEnd", player, track, payload);
+        if(payload.reason.toLowerCase() === "replaced") {
+            /**
+             * Emitted when a track ends.
+             * @event Player#trackEnd
+             * @param {Player} player - The player instance.
+             * @param {Track} track - The track that ended.
+             * @param {Object} payload - The event payload from Lavalink.
+             */
+            return this.riffy.emit("trackEnd", player, track, payload);
+        }
 
         // Replacing & to lower case it Again Smartly 😎, Handled Both Lavalink Versions.
         // This avoids track that got cleaned-up or failed to load to be played again (Via Loop Mode).
@@ -515,9 +636,21 @@ class Player extends EventEmitter {
             if(player.queue.length === 0) {
                 this.playing = false;
                 this.riffy.emit("debug", `Player (${player.guildId}) Track-Ended(${track.info.title}) with reason: ${payload.reason}, emitting queueEnd instead of trackEnd as queue is empty/finished`);
+                /**
+                 * Emitted when the queue ends.
+                 * @event Player#queueEnd
+                 * @param {Player} player - The player instance.
+                 */
                 return this.riffy.emit("queueEnd", player);
             }
 
+            /**
+             * Emitted when a track ends.
+             * @event Player#trackEnd
+             * @param {Player} player - The player instance.
+             * @param {Track} track - The track that ended.
+             * @param {Object} payload - The event payload from Lavalink.
+             */
             this.riffy.emit("trackEnd", player, track, payload);
             return player.play();
         }
@@ -527,6 +660,13 @@ class Player extends EventEmitter {
         if (this.loop === "track") {
             player.queue.unshift(previousTrack);
             this.riffy.emit("debug", `Player (${player.guildId}) looped track ${track.info.title} by ${track.info.author}, as loop mode is set to 'track'`);
+            /**
+             * Emitted when a track ends.
+             * @event Player#trackEnd
+             * @param {Player} player - The player instance.
+             * @param {Track} track - The track that ended.
+             * @param {Object} payload - The event payload from Lavalink.
+             */
             this.riffy.emit("trackEnd", player, track, payload);
             return player.play();
         }
@@ -534,36 +674,97 @@ class Player extends EventEmitter {
         else if (track && this.loop === "queue") {
             player.queue.push(previousTrack);
             this.riffy.emit("debug", `Player (${player.guildId}) looping Queue, as loop mode is set to 'queue'`);
+            /**
+             * Emitted when a track ends.
+             * @event Player#trackEnd
+             * @param {Player} player - The player instance.
+             * @param {Track} track - The track that ended.
+             * @param {Object} payload - The event payload from Lavalink.
+             */
             this.riffy.emit("trackEnd", player, track, payload);
             return player.play();
         }
 
         if (player.queue.length === 0) {
             this.playing = false;
+            /**
+             * Emitted when the queue ends.
+             * @event Player#queueEnd
+             * @param {Player} player - The player instance.
+             */
             return this.riffy.emit("queueEnd", player);
         }
 
         else if (player.queue.length > 0) {
+            /**
+             * Emitted when a track ends.
+             * @event Player#trackEnd
+             * @param {Player} player - The player instance.
+             * @param {Track} track - The track that ended.
+             * @param {Object} payload - The event payload from Lavalink.
+             */
             this.riffy.emit("trackEnd", player, track, payload);
             return player.play();
         }
 
         this.playing = false;
+        /**
+         * Emitted when the queue ends.
+         * @event Player#queueEnd
+         * @param {Player} player - The player instance.
+         */
         this.riffy.emit("queueEnd", player);
     }
 
+    /**
+     * Handles the track error event.
+     * @private
+     * @param {Player} player - The player instance.
+     * @param {Track} track - The track that errored.
+     * @param {Object} payload - The event payload.
+     * @fires Player#trackError
+     */
     trackError(player, track, payload) {
         this.riffy.emit("debug", `Player (${player.guildId}) has an exception/error while playing ${track.info.title} by ${track.info.author} this track, exception received: ${inspect(payload.exception)}`);
+        /**
+         * Emitted when a track encounters an error.
+         * @event Player#trackError
+         * @param {Player} player - The player instance.
+         * @param {Track} track - The track that errored.
+         * @param {Object} payload - The event payload from Lavalink.
+         */
         this.riffy.emit("trackError", player, track, payload);
         this.stop();
     }
 
+    /**
+     * Handles the track stuck event.
+     * @private
+     * @param {Player} player - The player instance.
+     * @param {Track} track - The track that is stuck.
+     * @param {Object} payload - The event payload.
+     * @fires Player#trackStuck
+     */
     trackStuck(player, track, payload) {
+        /**
+         * Emitted when a track gets stuck.
+         * @event Player#trackStuck
+         * @param {Player} player - The player instance.
+         * @param {Track} track - The track that is stuck.
+         * @param {Object} payload - The event payload from Lavalink.
+         */
         this.riffy.emit("trackStuck", player, track, payload);
         this.riffy.emit("debug", `Player (${player.guildId}) has been stuck track ${track.info.title} by ${track.info.author} for ${payload.thresholdMs}ms, skipping track...`);
         this.stop();
     }
 
+    /**
+     * Handles the socket closed event.
+     * @private
+     * @param {Player} player - The player instance.
+     * @param {Object} payload - The event payload.
+     * @fires Player#socketClosed
+     */
     socketClosed(player, payload) {
         if ([4015, 4009].includes(payload.code)) {
             this.send({
@@ -574,27 +775,51 @@ class Player extends EventEmitter {
             });
         }
 
+        /**
+         * Emitted when the voice connection socket closes.
+         * @event Player#socketClosed
+         * @param {Player} player - The player instance.
+         * @param {Object} payload - The event payload from Lavalink.
+         */
         this.riffy.emit("socketClosed", player, payload);
         this.pause(true);
         this.riffy.emit("debug", `Player (${player.guildId}) Voice Connection has been closed with code: ${payload.code}, Player paused(to any track playing). some possible causes: Voice channel deleted, Or Client(Bot) was kicked`);
     }
 
 
+    /**
+     * Sends data to the Discord gateway.
+     * @private
+     * @param {Object} data - The data to send.
+     * @returns {void}
+     */
     send(data) {
         this.riffy.send({ op: 4, d: data });
     }
 
+    /**
+     * Sets custom data on the player.
+     * @param {string} key - The key.
+     * @param {*} value - The value.
+     * @returns {*} The value.
+     */
     set(key, value) {
         return this.data[key] = value;
     }
 
+    /**
+     * Gets custom data from the player.
+     * @param {string} key - The key.
+     * @returns {*} The value.
+     */
     get(key) {
         return this.data[key];
     }
 
     /**
-    * @description clears All custom Data set on the Player
-    */
+     * Clears all custom data set on the player.
+     * @returns {Player} The player instance.
+     */
     clearData() {
       for (const key in this.data) {
         if (this.data.hasOwnProperty(key)) {
@@ -605,8 +830,49 @@ class Player extends EventEmitter {
     }
 
     /**
+     * Whether the player is currently playing.
+     * @returns {boolean}
+     */
+    isPlaying() {
+      return this.playing === true;
+    }
+
+    /**
+     * Whether the player is currently paused.
+     * @returns {boolean}
+     */
+    isPaused() {
+      return this.paused === true;
+    }
+
+    /**
+     * Whether the player has tracks in the queue.
+     * @returns {boolean}
+     */
+    hasQueue() {
+      return this.queue.length > 0;
+    }
+
+    /**
+     * Gets the current track.
+     * @returns {Track|null}
+     */
+    currentTrack() {
+      return this.current;
+    }
+
+    /**
+     * Gets the size of the queue.
+     * @returns {number}
+     */
+    queueSize() {
+      return this.queue.length;
+    }
+
+    /**
      * Moves the player to a new node.
-     * @param {import("./Node").Node} newNode The node to move the player to.
+     * @param {import("./Node").Node} newNode - The node to move the player to.
+     * @returns {Player} The player instance.
      * @throws {TypeError} If no `newNode` is provided.
      * @throws {Error} If `newNode` provided is not connected.
      * @throws {Error} If `newNode` provided is same as the Player's current Node.
