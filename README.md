@@ -55,6 +55,14 @@ See the `examples/` directory for real-world usage examples:
 - `autoplay.js` - Autoplay feature.
 - `node-failover.js` - Node failover and migration.
 
+### 📘 README Enhancements
+
+* Documented:
+  * Available events
+  * Common player helper methods
+  * Error-handling tips
+* Added references to new examples
+
 ## Example Project
 
 -   [Riffy Music Bot](https://github.com/riffy-team/riffy-music-bot)
