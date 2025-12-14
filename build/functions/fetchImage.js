@@ -1,5 +1,10 @@
 const undici = require("undici")
 
+/**
+ * Fetches the image URL for a track.
+ * @param {Object} info - Track info.
+ * @returns {Promise<string|null>} The image URL or null.
+ */
 async function getImageUrl(info) {
     if (info.sourceName === "spotify") {
         try {
