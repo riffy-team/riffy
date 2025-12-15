@@ -15,6 +15,7 @@ npm install riffy
 -   Compatible with all Discord libraries (discord.js, Eris, etc.).
 -   Works with all Lavalink filters.
 
+
 ## Example Project
 
 -   [Riffy Music Bot](https://github.com/riffy-team/riffy-music-bot)

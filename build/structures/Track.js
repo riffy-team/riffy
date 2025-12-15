@@ -1,7 +1,16 @@
 const { getImageUrl } = require("../functions/fetchImage");
 const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+/**
+ * Represents a Track for the Player
+ */
 class Track {
+    /**
+     * Creates a new Track instance.
+     * @param {Object} data - Track data from the Node.
+     * @param {*} requester
+     * @param {Node} node - The node.
+     */
     constructor(data, requester, node) {
         this.rawData = data;
         this.track = data.encoded;
@@ -41,6 +50,11 @@ class Track {
         this.pluginInfo = data.pluginInfo
     }
 
+    /**
+     * Resolves the track if it's not already resolved.
+     * @param {Riffy} riffy - The Riffy instance.
+     * @returns {Track} The track instance.
+     */
     async resolve(riffy) {
         const query = [this.info.author, this.info.title].filter((x) => !!x).join(" - ");
         const result = await riffy.resolve({ query, source: riffy.options.defaultSearchPlatform, requester: this.info.requester });

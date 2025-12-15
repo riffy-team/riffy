@@ -2,6 +2,11 @@ const undici = require('undici');
 const { JSDOM } = require('jsdom');
 const crypto = require('crypto');
 
+/**
+ * Fetches autoplay recommendations for SoundCloud.
+ * @param {string} url - The SoundCloud URL.
+ * @returns {Promise<string|null>} The recommended URL or null.
+ */
 async function scAutoPlay(url) {
     const res = await undici.fetch(`${url}/recommended`);
 
@@ -28,6 +33,11 @@ async function scAutoPlay(url) {
     });
 }
 
+/**
+ * Fetches autoplay recommendations for Spotify.
+ * @param {string} track_id - The Spotify track ID.
+ * @returns {Promise<null>} Always returns null.
+ */
 async function spAutoPlay(track_id) {
     // Since Spotify's recommendations API is deprecated and unreliable,
     // This approach is more reliable and it uses official YT recommendations API.

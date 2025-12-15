@@ -16,6 +16,79 @@ type PrettifyWithNullOrUndefined<T> =
     ? { [K in keyof T]: PrettifyWithNullOrUndefined<T[K]> } & {}
     : (null extends T ? (Exclude<T, null> | null) : (undefined extends T ? (Exclude<T, undefined> | undefined) : T));
 
+/**
+ * Payload for the trackStart event.
+ */
+export interface TrackStartEvent {
+  /** The operation type, always "event". */
+  op: "event";
+  /** The event type, "TrackStartEvent". */
+  type: "TrackStartEvent";
+  /** The Discord guild ID. */
+  guildId: string;
+  /** The base64 encoded track. */
+  track: string;
+  /** The start time in milliseconds. */
+  startTime: number;
+}
+
+/**
+ * Payload for the trackEnd event.
+ */
+export interface TrackEndEvent {
+  /** The operation type, always "event". */
+  op: "event";
+  /** The event type, "TrackEndEvent". */
+  type: "TrackEndEvent";
+  /** The Discord guild ID. */
+  guildId: string;
+  /** The base64 encoded track. */
+  track: string;
+  /** The reason the track ended. */
+  reason: "FINISHED" | "LOAD_FAILED" | "STOPPED" | "REPLACED" | "CLEANUP";
+}
+
+/**
+ * Payload for the queueEnd event.
+ */
+export interface QueueEndEvent {
+  /** The player instance. */
+  player: Player;
+}
+
+/**
+ * Payload for the nodeConnect event.
+ */
+export interface NodeConnectEvent {
+  /** The node that connected. */
+  node: Node;
+}
+
+/**
+ * Payload for the nodeDisconnect event.
+ */
+export interface NodeDisconnectEvent {
+  /** The node that disconnected. */
+  node: Node;
+  /** The disconnect data. */
+  data: {
+    /** The close code. */
+    event: number;
+    /** The close reason. */
+    reason: string;
+  };
+}
+
+/**
+ * Payload for the nodeError event.
+ */
+export interface NodeErrorEvent {
+  /** The node that encountered the error. */
+  node: Node;
+  /** The error that occurred. */
+  error: Error;
+}
+
 export declare class Track {
     constructor(data: any, requester: any, node: Node);
 
@@ -113,6 +186,11 @@ export interface PlayerOptions {
 
 export type LoopOption = "none" | "track" | "queue";
 
+/**
+ * Represents a music player for a Discord guild.
+ * Manages audio playback, queue, filters, and voice connection.
+ * @extends EventEmitter
+ */
 export declare class Player extends EventEmitter {
     constructor(riffy: Riffy, node: Node, options: PlayerOptions);
     public riffy: Riffy;
@@ -341,7 +419,8 @@ export type RiffyEvents = {
     // Node Events
 
     /**
-     * Emitted when a node connects
+     * Emitted when a node connects.
+     * Fired after a successful WebSocket connection and ready event from Lavalink.
      * @param node The node that connected.
      */
     "nodeConnect": (node: Node) => void;
@@ -352,11 +431,12 @@ export type RiffyEvents = {
      */
     "nodeReconnect": (node: Node) => void;
     /**
-     * Emitted when a node disconnects
+     * Emitted when a node disconnects.
+     * Fired when the WebSocket connection to Lavalink is closed.
      * @param node The node that disconnected.
-     * @param reason The reason for the disconnect.
+     * @param data The disconnect data containing close code and reason.
      */
-    "nodeDisconnect": (node: Node, reason: string) => void;
+    "nodeDisconnect": (node: Node, data: { event: number; reason: string }) => void;
 
     /**
      * Emitted when a node is created
@@ -371,7 +451,8 @@ export type RiffyEvents = {
     "nodeDestroy": (node: Node) => void;
 
     /**
-     * Emitted when a node encounters an error
+     * Emitted when a node encounters an error.
+     * Fired when the WebSocket connection encounters an error or reconnection fails.
      * @param node The node that encountered the error.
      * @param error The error that occurred.
      */
@@ -407,24 +488,27 @@ export type RiffyEvents = {
     // Track Events
 
     /**
-     * Emitted when a track starts playing
+     * Emitted when a track starts playing.
+     * Fired after the player successfully begins playback of a track.
      * @param player The player that started playing the track.
      * @param track The track that is playing.
-     * @param payload The payload of the track start.
-     * 
+     * @param payload The event payload from Lavalink.
+     *
      * @see https://lavalink.dev/api/websocket.html#trackstartevent
      */
-    "trackStart": (player: Player, track: Track, payload: any) => void;
+    "trackStart": (player: Player, track: Track, payload: TrackStartEvent) => void;
 
     /**
-     * Emitted when a track ends (Queue End is emitted when the queue ends i.e when the last track ends Instead of this.)
+     * Emitted when a track ends.
+     * Fired when a track finishes playing, is stopped, or encounters an error.
+     * Note: queueEnd is emitted separately when the queue is empty.
      * @param player The player that ended the track.
      * @param track The track that ended.
-     * @param payload The payload of the track end.
-     * 
+     * @param payload The event payload from Lavalink.
+     *
      * @see https://lavalink.dev/api/websocket.html#trackendevent
      */
-    "trackEnd": (player: Player, track: Track, payload: any) => void;
+    "trackEnd": (player: Player, track: Track, payload: TrackEndEvent) => void;
 
     /**
      * Emitted when a track encounters an error (Sent by Lavalink via [TrackExceptionEvent](https://lavalink.dev/api/websocket.html#trackexceptionevent))
@@ -491,7 +575,8 @@ export type RiffyEvents = {
     "playerMigrated": (player: Player, oldNode: Node, newNode: Node) => void;
 
     /**
-     * Emitted when a player's queue ends
+     * Emitted when a player's queue ends.
+     * Fired when the last track in the queue finishes and no more tracks are available.
      * @param player The player that had its queue end.
      */
     "queueEnd": (player: Player) => void;
@@ -504,6 +589,11 @@ export type RiffyEvents = {
 // k as `key`
 type k = string;
 
+/**
+ * The main Riffy class for managing Lavalink connections and players.
+ * Provides methods for creating players, searching tracks, and handling events.
+ * @extends EventEmitter
+ */
 export declare class Riffy extends EventEmitter {
     // Event Emitter overrides
     public on<K extends keyof RiffyEvents>(event: K, listener: RiffyEvents[K]): this;
@@ -837,6 +927,10 @@ interface NodeLyricsLine {
     plugin: object
 }
 
+/**
+ * Represents a Lavalink node for audio processing.
+ * Handles WebSocket connections, REST API calls, and load balancing.
+ */
 export declare class Node {
     constructor(riffy: Riffy, node: LavalinkNode, options: NodeOptions);
     public riffy: Riffy;

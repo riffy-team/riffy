@@ -2,10 +2,15 @@ const Websocket = require("ws");
 const { Rest } = require("./Rest");
 const { Track } = require("./Track");
 
+/**
+ * Represents a Lavalink node.
+ */
 class Node {
     /**
-     * @param {import("./Riffy").Riffy} riffy
-     * @param {} node
+     * Creates a new Node instance.
+     * @param {import("./Riffy").Riffy} riffy - The Riffy instance.
+     * @param {Object} node - Node configuration.
+     * @param {Object} options - Options.
      */
     constructor(riffy, node, options) {
         this.riffy = riffy
@@ -328,6 +333,10 @@ class Node {
     //     })
     // }
 
+    /**
+     * Connects to the Lavalink node.
+     * @returns {Promise<void>}
+     */
     async connect() {
         if (this.ws) this.ws.close()
         this.riffy.emit('debug', this.name, `Checking Node Version`);
@@ -354,6 +363,11 @@ class Node {
         this.ws.on("close", this.close.bind(this));
     }
 
+    /**
+     * Handles the WebSocket open event.
+     * @private
+     * @returns {Promise<void>}
+     */
     async open() {
         if (this.reconnectTimeout) {
           clearTimeout(this.reconnectTimeout);
@@ -379,6 +393,12 @@ class Node {
         }
     }
 
+    /**
+     * Handles WebSocket errors.
+     * @private
+     * @param {Error} event - The error event.
+     * @returns {void}
+     */
     error(event) {
         if (!event) return;
         this.riffy.emit("nodeError", this, event);
@@ -390,6 +410,12 @@ class Node {
         }
     }
 
+    /**
+     * Handles incoming WebSocket messages.
+     * @private
+     * @param {Buffer|ArrayBuffer} msg - The message.
+     * @returns {void}
+     */
     message(msg) {
         if (Array.isArray(msg)) msg = Buffer.concat(msg);
         else if (msg instanceof ArrayBuffer) msg = Buffer.from(msg);
@@ -432,6 +458,13 @@ class Node {
         if (payload.guildId && player) player.emit(payload.op, payload);
     }
 
+    /**
+     * Handles WebSocket close events.
+     * @private
+     * @param {number} event - The close code.
+     * @param {string} reason - The close reason.
+     * @returns {Promise<void>}
+     */
     async close(event, reason) {
         this.riffy.emit("nodeDisconnect", this, { event, reason });
         this.riffy.emit("debug", `Connection with Lavalink closed with Error code : ${event || "Unknown code"}, reason: ${reason || "Unknown reason"}`);
@@ -447,6 +480,11 @@ class Node {
         this.reconnect();
     }
 
+    /**
+     * Attempts to reconnect to the node.
+     * @private
+     * @returns {void}
+     */
     reconnect() {
         this.reconnectAttempt = setTimeout(() => {
             if (this.reconnectAttempted >= this.reconnectTries) {
@@ -482,6 +520,11 @@ class Node {
  *                                  - Deleting the node from the node map.
  *                                  - Setting the connected state to false.
  */
+    /**
+     * Destroys the node connection.
+     * @param {boolean} [clean=false] - Whether to perform a clean destroy.
+     * @returns {void}
+     */
     destroy(clean=false) {
         if(clean) {
             this.ws?.removeAllListeners();
@@ -512,6 +555,10 @@ class Node {
         this.connected = false;
     }
 
+    /**
+     * Disconnects from the node.
+     * @returns {void}
+     */
     disconnect() {
         if (!this.connected) return;
         this.riffy.players.forEach((player) => { if (player.node == this) { this.riffy.bestNode() ? player.moveTo(this.riffy.bestNode()) : true } });
@@ -524,6 +571,10 @@ class Node {
         this.connected = false;
     }
 
+    /**
+     * Gets the load balancing penalties for this node.
+     * @returns {number}
+     */
     get penalties() {
         let penalties = 0;
         if (!this.connected) return penalties;

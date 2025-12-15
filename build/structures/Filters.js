@@ -1,4 +1,12 @@
+/**
+ * Represents audio filters for a player.
+ */
 class Filters {
+    /**
+     * Creates a new Filters instance.
+     * @param {Player} player - The player.
+     * @param {Object} [options={}] - Filter options.
+     */
     constructor(player, options = {}) {
         this.player = player;
         this.volume = options.volume || 1
@@ -19,11 +27,10 @@ class Filters {
     }
 
     /**
-     * 
-     * @param {string[]} band
-     * @returns 
+     * Sets the equalizer bands.
+     * @param {Array<{ band: number; gain: number }>} band - Array of equalizer bands with band and gain properties
+     * @returns {Filters} The filters instance.
      */
-
     setEqualizer(band) {
         this.equalizer = band;
         this.updateFilters();
@@ -31,12 +38,11 @@ class Filters {
     }
 
     /**
-     * 
-     * @param {boolean} enabled 
-     * @param {*} options 
-     * @returns 
+     * Sets the karaoke filter.
+     * @param {boolean} enabled - Whether to enable karaoke.
+     * @param {Object} [options={}] - Karaoke options.
+     * @returns {Filters} The filters instance.
      */
-
     setKaraoke(enabled, options = {}) {
         if (!this.player) return;
 
