@@ -28,7 +28,7 @@ class Filters {
 
     /**
      * Sets the equalizer bands.
-     * @param {Array} band - The equalizer bands.
+     * @param {Array<{ band: number; gain: number }>} band - Array of equalizer bands with band and gain properties
      * @returns {Filters} The filters instance.
      */
     setEqualizer(band) {
