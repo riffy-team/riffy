@@ -2,7 +2,7 @@ const { getImageUrl } = require("../functions/fetchImage");
 const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /**
- * Represents a music track.
+ * Represents a Track for the Player
  */
 class Track {
     /**
