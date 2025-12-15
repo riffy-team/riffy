@@ -4,7 +4,7 @@
  */
 class Queue extends Array {
     /**
-     * Gets the size of the queue.
+     * Returns the size of the queue.
      * @returns {number}
      */
     get size() {
