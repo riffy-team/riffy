@@ -7,7 +7,7 @@ const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 class Track {
     /**
      * Creates a new Track instance.
-     * @param {Object} data - Track data from Lavalink.
+     * @param {Object} data - Track data from the Node.
      * @param {*} requester
      * @param {Node} node - The node.
      */
