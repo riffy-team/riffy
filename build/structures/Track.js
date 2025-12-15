@@ -8,7 +8,7 @@ class Track {
     /**
      * Creates a new Track instance.
      * @param {Object} data - Track data from Lavalink.
-     * @param {*} requester - The requester.
+     * @param {*} requester
      * @param {Node} node - The node.
      */
     constructor(data, requester, node) {
