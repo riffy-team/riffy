@@ -1,5 +1,5 @@
 /**
- * Represents a music queue.
+ * Represents a Queue for the Player
  * @extends Array
  */
 class Queue extends Array {
