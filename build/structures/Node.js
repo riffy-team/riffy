@@ -529,7 +529,7 @@ class Node {
         if(clean) {
             this.ws?.removeAllListeners();
             this.ws = null;
-        this.riffy.emit("nodeDestroy", this);
+            this.riffy.emit("nodeDestroy", this);
             this.riffy.nodes.delete(this.name);
             return;
         }
