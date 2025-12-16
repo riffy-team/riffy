@@ -1,39 +1,38 @@
-# Riffy [![NPM version](https://img.shields.io/npm/v/riffy.svg?style=flat-square&color=informational)](https://npmjs.com/package/riffy) [![NPM Downloads](https://img.shields.io/npm/dy/riffy.svg?style=flat-square)](https://npmjs.com/package/riffy)
+<div align="center">
 
-A lavalink client for Node.JS, designed to be simple and easy to use. Compatible with all Discord libraries (discord.js, Eris, etc.).
+<img src="https://raw.githubusercontent.com/kunalkandepatil/.github/refs/heads/main/assets/riffy/banner.svg" alt="riffy banner" />
+<br>
+<br>
 
-## Installation
 
-```shell
-npm install riffy
-```
+# **˗ˏˋ riffy ´ˎ˗**
+Riffy: Powerful Lavalink client, which is designed to be simple and easy to use, with a focus on stability and more features.
 
-## Features
+[![NPM Version](https://img.shields.io/npm/v/riffy?style=flat-square&color=%23FFAE00)](https://www.npmjs.com/package/riffy)
+[![NPM Downloads](https://img.shields.io/npm/dw/riffy?style=flat-square&color=%23FFAE00)](https://www.npmjs.com/package/riffy)
+[![NPM License](https://img.shields.io/npm/l/riffy?style=flat-square&color=%23FFAE00)](https://github.com/riffy-team/riffy/blob/main/LICENSE)
+[![GitHub Repo stars](https://img.shields.io/github/stars/riffy-team/riffy?style=flat-square&color=%23FFAE00)](https://github.com/riffy-team/riffy)
 
--   Supports versions 3 and 4 of the Lavalink protocols.
--   Autoplay support for YouTube, SoundCloud, and Spotify.
--   Compatible with all Discord libraries (discord.js, Eris, etc.).
--   Works with all Lavalink filters.
+<br>
 
-## Example Project
+<img src="https://raw.githubusercontent.com/kunalkandepatil/.github/refs/heads/main/assets/riffy/features.svg" alt="musicard features" />
 
--   [Riffy Music Bot](https://github.com/riffy-team/riffy-music-bot)
+<br>
 
-## Documentation
+</div>
 
--   [Documentation](https://riffy.js.org)
--   [Discord Server](https://discord.gg/TvjrWtEuyP)
 
-## Quick Start
+## 📄 Documentation 
+**See https://riffy.js.org/**
 
-First things first, you need to have a Lavalink node running. You can download the latest version of Lavalink from [here](https://github.com/lavalink-devs/Lavalink), or you can use [this nodes](https://riffy.js.org/resources) for free.
+### ╰┈1️⃣ Quick Start
+First, you’ll need a running Lavalink node. You can either **[download](https://github.com/lavalink-devs/Lavalink)** and host the latest Lavalink release yourself, or use one of the available free public **[Lavalink](https://riffy.js.org/resources)** nodes to get started quickly.
 
 > [!NOTE]
 > This project uses `MessageContent` intent, so make sure to enable it in your application settings.
 
-### Creating a Project
-
-We are using [discord.js](https://discord.js.org/) for this example, but you can use any Discord library you prefer.
+#### Creating a Project
+We are using **[discord.js](https://discord.js.org/)** for this example, but you can use any Discord library you prefer.
 
 Import the `Riffy` class from the `riffy` package.
 
@@ -44,7 +43,7 @@ const { Riffy } = require("riffy");
 import { Riffy } from "riffy";
 ```
 
-Below is an example of a basic Discord music bot using Discord.js and Riffy. (Lavalink V4)
+Below is an example of a basic Discord music bot built with Discord.js and Riffy, using Lavalink v4.
 
 ```js
 // index.js
@@ -187,42 +186,34 @@ client.on("raw", (d) => {
 client.login("Discord-Bot-Token-Here");
 ```
 
-### Running the Bot
-
+#### Start the Bot
 Now that we have created our project, we can run our bot by typing the following command in the terminal.
 
 ```shell
-# node.js
 node index.js
-# bun
-bun run index.js
 ```
 
-After running the bot, you can invite it to your server and use the `!play` command to play music.
+After running the bot, invite the bot in your server and run `!play` command to play music.
 
-### Conclusion
+---
 
-That's it! You have successfully created a discord music bot using riffy. If you have any questions, feel free to join our [discord server](https://discord.gg/TvjrWtEuyP).
+### ╰┈2️⃣ Our Team
 
-We have set this example by keeping in mind that you know the basics of discord.js or any other discord library you are using.
+- 🟦 Emmanuel Lobo: **[@unschooledgamer](https://github.com/unschooledgamer)**
+- 🟪 Priyanshu Jain: **[@elitex07](https://github.com/elitex07)**
+- 🟥 Kunal KandePatil : **[@kunalkandepatil](https://github.com/kunalkandepatil)**
 
-## Our Team
+---
 
-🟪 Elitex
+### ╰┈3️⃣ Example Projects
+- **[Riffy Music Bot](https://github.com/riffy-team/riffy-music-bot)** | Contribute to add yours.
 
--   Github: [@Elitex](https://github.com/Elitex07)
--   Discord: @elitex
+---
 
-🟥 FlameFace
+### ╰┈4️⃣ Official Plugins
+- **[riffy-spotify](https://github.com/riffy-team/riffy-spotify)** (Spotify Plugin for Riffy Client.)
 
--   Github: [@FlameFace](https://github.com/flam3face)
--   Discord: @flameface
+<p align="center">≪ ◦ ✦ ◦ ≫</p>
 
-🟦 UnschooledGamer
-
--   Github: [@UnschooledGamer](https://github.com/UnschooledGamer)
--   Discord: @unschooledgamer
-
-## License
-
-This project is licensed under the [MIT License](./LICENSE)
+## 🎧 Support Server
+<a href="https://discord.gg/W8wTjESM3t"><img src="https://raw.githubusercontent.com/kunalkandepatil/.github/refs/heads/main/assets/discord.svg" alt="support server" /></a>

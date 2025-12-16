@@ -1,6 +1,6 @@
 {
   "name": "riffy",
-  "description": "Riffy is a pro lavalink client. It is designed to be simple and easy to use, with a focus on stability and more features.",
+  "description": "Riffy: Powerful Lavalink client, which is designed to be simple and easy to use, with a focus on stability and more features.",
   "version": "1.0.9",
   "main": "build/index.js",
   "types": "build/index.d.ts",
@@ -25,9 +25,18 @@
     "eris"
   ],
   "contributors": [
-    "FlameFace (https://github.com/flameface)",
-    "Elitex (https://github.com/Elitex07)",
-    "UnschooledGamer (https://github.com/unschooledgamer/)"
+    {
+      "name": "Emmanuel Lobo",
+      "url": "https://github.com/unschooledgamer"
+    },
+    {
+      "name": "Priyanshu Jain",
+      "url": "https://github.com/elitex07"
+    },
+    {
+      "name": "Kunal KandePatil",
+      "url": "https://github.com/kunalkandepatil"
+    }
   ],
   "repository": {
     "type": "git",
