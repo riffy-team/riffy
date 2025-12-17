@@ -403,7 +403,8 @@ class Player extends EventEmitter {
             throw new ReferenceError(`Player is already connected to ${channel}`);
         }
 
-        this.voiceChannel = channel;
+        // Well, Don't Update it here, So that Riffy can detect the Voice Channel change based off VoiceState received from Discord and update it accordingly.
+        // this.voiceChannel = channel;
 
         if (options) {
             this.mute = options.mute ?? this.mute;
