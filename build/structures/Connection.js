@@ -1,7 +1,8 @@
 class Connection {
+    #lastSentVoice = null;
     /**
-     * @param {import("../index").Player} player
-     */
+-   * @param {import("../index").Player} player
+-   */
     constructor(player) {
         this.player = player;
         this.sessionId = null;
@@ -21,19 +22,32 @@ class Connection {
         this.pendingUpdate = null;
         // Tracks if we have sent credentials and are waiting for Node confirmation
         this.establishing = false;
+        // Track what credentials we last sent to avoid duplicates
+        this.#lastSentVoice = null;
     }
 
     /**
-     * Checks if we have all necessary voice credentials.
-     */
+-    * Checks if we have all necessary voice credentials.
+-    */
     get isReady() {
-      return this.voice.sessionId && this.voice.endpoint && this.voice.token;
+        return this.voice.sessionId && this.voice.endpoint && this.voice.token;
     }
 
     /**
-    * Waits for the connection to be ready and for any active voice updates to the Node to complete.
-    * Optimization: Returns immediately if ready and idle to save resources.
-    */
+     * Check if current credentials differ from what we last sent
+     */
+    _credentialsChanged() {
+        if (!this.#lastSentVoice) return true;
+
+        return this.#lastSentVoice.sessionId !== this.voice.sessionId ||
+            this.#lastSentVoice.endpoint !== this.voice.endpoint ||
+            this.#lastSentVoice.token !== this.voice.token;
+    }
+
+    /**
+     * Waits for the connection to be ready and for any active voice updates to the Node to complete.
+     * Optimization: Returns immediately if ready and idle to save resources.
+b    */
     async resolve() {
         // Case 1: Fully ready and no active updates. Return instantly (no Promise created).
         if (this.isReady && !this.pendingUpdate) return;
@@ -57,7 +71,6 @@ class Connection {
             return;
         }
 
-
         // Case 3: Waiting for Discord credentials. Create a deferred promise if one doesn't exist.
         if (!this.deferred) {
             let resolveFn;
@@ -70,36 +83,63 @@ class Connection {
         return waitFor(this.deferred.promise, "Discord voice credentials to arrive", playerTimeoutMs);
     }
 
-    /**
-    * Checks if ready, performs the update, and manages the resolution flow.
-    */
     async checkAndSend() {
-        if (this.isReady) {
-            // Track the active update request
-            this.pendingUpdate = this.updatePlayerVoiceData();
+        if (!this.isReady) return;
 
+        // CRITICAL: Check if credentials actually changed
+        if (!this._credentialsChanged()) {
+            this.player.riffy.emit("debug", `[Player ${this.player.guildId} - CONNECTION] Credentials unchanged, skipping redundant update`);
+            return;
+        }
+
+        // Wait for any existing update to complete first
+        if (this.pendingUpdate) {
+            this.player.riffy.emit("debug", `[Player ${this.player.guildId} - CONNECTION] New credentials received, waiting for previous update to complete`);
             try {
-                // Wait for the Node to acknowledge the update
                 await this.pendingUpdate;
             } catch (error) {
-                this.player.riffy.emit("debug", `[Player ${this.player.guildId} - CONNECTION] Voice update failed: ${error.message}`);
-                // If update failed, reset establishing flag
-                this.establishing = false;
-            } finally {
-                // Clear the pending flag
-                this.pendingUpdate = null;
+                this.player.riffy.emit("debug", `[Player ${this.player.guildId} - CONNECTION] Previous update failed: ${error.message}`);
+            }
 
-                // If play() was waiting on the deferred promise, resolve it now
-                if (this.deferred) {
-                    this.deferred.resolve();
-                    this.deferred = null;
-                }
+            // Re-check after waiting - credentials might have changed again or already been sent
+            if (!this._credentialsChanged()) {
+                this.player.riffy.emit("debug", `[Player ${this.player.guildId} - CONNECTION] Credentials already sent while waiting, skipping`);
+                return;
+            }
+        }
+
+        // Capture the credentials we're about to send
+        const voiceToSend = {
+            sessionId: this.voice.sessionId,
+            endpoint: this.voice.endpoint,
+            token: this.voice.token,
+        };
+
+        this.player.riffy.emit("debug", this.player.node.name, `[Rest Manager] Sending Update Player request with voice data: ${JSON.stringify(voiceToSend)}`);
+
+        this.pendingUpdate = this.updatePlayerVoiceData(voiceToSend);
+
+        try {
+            await this.pendingUpdate;
+            // Only update lastSentVoice after successful send
+            this.#lastSentVoice = voiceToSend;
+            this.player.riffy.emit("debug", `[Player ${this.player.guildId} - CONNECTION] Successfully sent voice update`);
+        } catch (error) {
+            this.player.riffy.emit("debug", `[Player ${this.player.guildId} - CONNECTION] Voice update failed: ${error.message}`);
+            // If update failed, reset establishing flag
+            this.establishing = false;
+        } finally {
+            // Clear the pending flag
+            this.pendingUpdate = null;
+            // If play() was waiting on the deferred promise, resolve it now
+            if (this.deferred) {
+                this.deferred.resolve();
+                this.deferred = null;
             }
         }
     }
 
-
-    setServerUpdate(data) {
+    async setServerUpdate(data) {
         const { endpoint, token } = data;
         if (!endpoint) throw new Error(`Missing 'endpoint' property in VOICE_SERVER_UPDATE packet/payload, Wait for some time Or Disconnect the Bot from Voice Channel and Try Again.`);
 
@@ -111,13 +151,14 @@ class Connection {
 
         this.player.riffy.emit("debug", `[Player ${this.player.guildId} - CONNECTION] Received voice server, ${previousVoiceRegion !== null ? `Changed Voice Region from(oldRegion) ${previousVoiceRegion} to(newRegion) ${this.region}` : `Voice Server: ${this.region}`}, Updating Node's Voice Data.`)
 
+        console.log("Paused Data", this.player.paused)
         if (this.player.paused) {
             this.player.riffy.emit(
                 "debug",
                 this.player.node.name,
                 `unpaused ${this.player.guildId} player, expecting it was paused while the player moved to ${this.voiceChannel}`
             );
-            this.player.pause(false);
+            await this.player.pause(false);
         }
 
         this.checkAndSend();
@@ -129,9 +170,10 @@ class Connection {
         this.player.riffy.emit("debug", `[Player ${this.player.guildId} - CONNECTION] Received Voice State Update Informing the player ${channel_id !== null ? `Connected to ${this.voiceChannel}` : `Disconnected from ${this.voiceChannel}`}`)
 
         // If player is manually disconnected from VC
-        if(channel_id == null) {
+        if (channel_id == null) {
             this.player.destroy();
             this.player.riffy.emit("playerDestroy", this.player);
+            return;
         }
 
         if (this.player.voiceChannel && channel_id && this.player.voiceChannel !== channel_id) {
@@ -147,19 +189,31 @@ class Connection {
         this.checkAndSend();
     }
 
-    updatePlayerVoiceData() {
+    updatePlayerVoiceData(voiceData) {
         this.establishing = true;
 
-        this.player.riffy.emit("debug", this.player.node.name, `[Rest Manager] Sending an Update Player request with data: ${JSON.stringify({ voice: this.voice })}`)
+        const updatePlayerBody = {
+            voice: voiceData,
+            /**
+-            * FIXME: Need a better way so that we don't the volume each time.
+-            */
+            volume: this.player.volume,
+        }
+
+        // Just In case...
+        if (this.player.paused) {
+            this.player.riffy.emit(
+                "debug",
+                this.player.node.name,
+                `unpaused ${this.player.guildId} player, expecting it was paused while the player moved to ${this.voiceChannel}`
+            )
+            updatePlayerBody["paused"] = false;
+        }
+
+
         return this.player.node.rest.updatePlayer({
             guildId: this.player.guildId,
-            data: Object.assign({
-                voice: this.voice,
-                /**
-                 * Need a better way so that we don't the volume each time.
-                 */
-                volume: this.player.volume,
-             }),
+            data: updatePlayerBody
         });
     }
 }

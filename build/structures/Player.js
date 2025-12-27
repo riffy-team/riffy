@@ -34,10 +34,10 @@ class Player extends EventEmitter {
         this.migrating = false;
 
         Object.defineProperty(this, "connectionTimeout", {
-          value: 10000,
-          configurable: false,
-          writable: false,
-          enumerable: false
+            value: 10000,
+            configurable: false,
+            writable: false,
+            enumerable: false
         });
 
         this.on("playerUpdate", (packet) => {
@@ -46,7 +46,7 @@ class Player extends EventEmitter {
                 (this.ping = packet.state.ping);
             this.timestamp = packet.state.time;
 
-            if(this.connection.establishing && packet.state.connected) {
+            if (this.connection.establishing && packet.state.connected) {
                 this.connection.establishing = false;
                 this.riffy.emit("debug", this.node.name, `[Player ${this.guildId}] (received Confirmation) Successfully established voice Connectivity with Node (playerUpdate connected = ${packet.state.connected})`);
                 this.emit("connectionRestored", "connected");
@@ -63,23 +63,23 @@ class Player extends EventEmitter {
      * @description gets the Previously played Track
      */
     get previous() {
-     return this.previousTracks?.[0]
+        return this.previousTracks?.[0]
     }
 
     /**
      * @private
      */
     addToPreviousTrack(track) {
-      if (Number.isInteger(this.riffy.options.multipleTrackHistory) && this.previousTracks.length >= this.riffy.options.mutipleTrackHistory)       {
-      this.previousTracks.splice(this.riffy.options.multipleTrackHistory, this.previousTracks.length)
-      }
-      // If its falsy Save Only last Played Track.
-      else if(!this.riffy.options.multipleTrackHistory) {
-       this.previousTracks[0] = track;
-       return;
-      }
+        if (Number.isInteger(this.riffy.options.multipleTrackHistory) && this.previousTracks.length >= this.riffy.options.mutipleTrackHistory) {
+            this.previousTracks.splice(this.riffy.options.multipleTrackHistory, this.previousTracks.length)
+        }
+        // If its falsy Save Only last Played Track.
+        else if (!this.riffy.options.multipleTrackHistory) {
+            this.previousTracks[0] = track;
+            return;
+        }
 
-      this.previousTracks.unshift(track)
+        this.previousTracks.unshift(track)
     }
 
 
@@ -90,22 +90,22 @@ class Player extends EventEmitter {
             await this.connection.resolve();
         } catch (error) {
             // If resolve times out, we cannot play.
-          this.connected = false;
-          this.riffy.emit("debug", `[Player ${this.guildId} - play() CONNECTION CHECK Error] ${error.message}`);
+            this.connected = false;
+            this.riffy.emit("debug", `[Player ${this.guildId} - play() CONNECTION CHECK Error] ${error.message}`);
         }
         // Handle Node Connection State (Node (Lavalink/Nodelink) WebSocket)
         // If not connected, but we are in the middle of establishing, wait for it.
         if (!this.connected && this.connection.establishing) {
-          this.riffy.emit("debug", `[Player ${this.guildId}] Waiting for Node voice connection to stabilize...`);
+            this.riffy.emit("debug", `[Player ${this.guildId}] Waiting for Node voice connection to stabilize...`);
 
-          try {
-            await once(this, "connectionRestored", { signal: AbortSignal.timeout(this.connectionTimeout) });
-          } catch (error) {
-              // No need to emit debug message if connection is already restored,
-              // And we didn't receive the notifying event for some reason.
-              !this.connected && this.riffy.emit("debug", `[Player ${this.guildId}] Timed out waiting (${this.connectionTimeout} ms) for Node voice connection to stabilize.`);
-              // We don't throw here; we let the standard check below decide if we should crash or try anyway.
-          }
+            try {
+                await once(this, "connectionRestored", { signal: AbortSignal.timeout(this.connectionTimeout) });
+            } catch (error) {
+                // No need to emit debug message if connection is already restored,
+                // And we didn't receive the notifying event for some reason.
+                !this.connected && this.riffy.emit("debug", `[Player ${this.guildId}] Timed out waiting (${this.connectionTimeout} ms) for Node voice connection to stabilize.`);
+                // We don't throw here; we let the standard check below decide if we should crash or try anyway.
+            }
         }
 
         // Final check: if still not connected, throw error.
@@ -141,60 +141,36 @@ class Player extends EventEmitter {
      * @returns
      */
     async autoplay(player) {
-    if (!player) {
-        if (player == null) {
-            this.isAutoplay = false;
-            return this;
-        } else if (player == false) {
-            this.isAutoplay = false;
-            return this;
-        } else throw new Error("Missing argument. Quick Fix: player.autoplay(player)");
-    }
-
-    this.isAutoplay = true;
-
-    // If ran on queueEnd event
-    if (player.previous) {
-        if (!this.playedIdentifiers) {
-            this.playedIdentifiers = new Set();
-        }
-        const previousIdentifier = player.previous.info.identifier || player.previous.info.uri;
-        this.playedIdentifiers.add(previousIdentifier);
-        if (this.playedIdentifiers.size > 50) {
-            const firstItem = this.playedIdentifiers.values().next().value;
-            this.playedIdentifiers.delete(firstItem);
-        }
-        this.riffy.emit("debug", `[Player ${this.guildId}] Autoplay initiated. Previous Source: ${player.previous.info.sourceName}`);
-
-        if (player.previous.info.sourceName === "youtube") {
-            try {
-                let data = `https://www.youtube.com/watch?v=${player.previous.info.identifier}&list=RD${player.previous.info.identifier}`;
-
-                let response = await this.riffy.resolve({ query: data, source: "ytmsearch", requester: player.previous.info.requester });
-
-                if (this.node.rest.version === "v4") {
-                    if (!response || !response.tracks || ["error", "empty"].includes(response.loadType)) return this.stop();
-                } else {
-                    if (!response || !response.tracks || ["LOAD_FAILED", "NO_MATCHES"].includes(response.loadType)) return this.stop();
-                }
-                let availableTracks = response.tracks.filter(track => {
-                    const trackId = track.info.identifier || track.info.uri;
-                    return !this.playedIdentifiers.has(trackId);
-                });
-                if (availableTracks.length === 0) {
-                    availableTracks = response.tracks;
-                }
-                let track = availableTracks[Math.floor(Math.random() * availableTracks.length)];
-                this.queue.push(track);
-                this.play();
+        if (!player) {
+            if (player == null) {
+                this.isAutoplay = false;
                 return this;
-            } catch (e) {
-                return this.stop();
+            } else if (player == false) {
+                this.isAutoplay = false;
+                return this;
+            } else throw new Error("Missing argument. Quick Fix: player.autoplay(player)");
+        }
+
+        this.isAutoplay = true;
+
+        // If ran on queueEnd event
+        if (player.previous) {
+            if (!this.playedIdentifiers) {
+                this.playedIdentifiers = new Set();
             }
-        } else if (player.previous.info.sourceName === "soundcloud") {
-            try {
-                scAutoPlay(player.previous.info.uri).then(async (data) => {
-                    let response = await this.riffy.resolve({ query: data, source: "scsearch", requester: player.previous.info.requester });
+            const previousIdentifier = player.previous.info.identifier || player.previous.info.uri;
+            this.playedIdentifiers.add(previousIdentifier);
+            if (this.playedIdentifiers.size > 50) {
+                const firstItem = this.playedIdentifiers.values().next().value;
+                this.playedIdentifiers.delete(firstItem);
+            }
+            this.riffy.emit("debug", `[Player ${this.guildId}] Autoplay initiated. Previous Source: ${player.previous.info.sourceName}`);
+
+            if (player.previous.info.sourceName === "youtube") {
+                try {
+                    let data = `https://www.youtube.com/watch?v=${player.previous.info.identifier}&list=RD${player.previous.info.identifier}`;
+
+                    let response = await this.riffy.resolve({ query: data, source: "ytmsearch", requester: player.previous.info.requester });
 
                     if (this.node.rest.version === "v4") {
                         if (!response || !response.tracks || ["error", "empty"].includes(response.loadType)) return this.stop();
@@ -208,17 +184,45 @@ class Player extends EventEmitter {
                         return !this.playedIdentifiers.has(trackId);
                     });
 
-                    // If all tracks have been played, reset and use all tracks. If all tracks have been played, reset and use all tracks.
+                    // If all tracks have been played, reset and use all tracks.
                     if (availableTracks.length === 0) {
                         availableTracks = response.tracks;
                     }
-
                     let track = availableTracks[Math.floor(Math.random() * availableTracks.length)];
-
                     this.queue.push(track);
                     this.play();
                     return this;
-                })
+                } catch (e) {
+                    return this.stop();
+                }
+            } else if (player.previous.info.sourceName === "soundcloud") {
+                try {
+                    scAutoPlay(player.previous.info.uri).then(async (data) => {
+                        let response = await this.riffy.resolve({ query: data, source: "scsearch", requester: player.previous.info.requester });
+
+                        if (this.node.rest.version === "v4") {
+                            if (!response || !response.tracks || ["error", "empty"].includes(response.loadType)) return this.stop();
+                        } else {
+                            if (!response || !response.tracks || ["LOAD_FAILED", "NO_MATCHES"].includes(response.loadType)) return this.stop();
+                        }
+
+                        // Filter tracks that have never been played
+                        let availableTracks = response.tracks.filter(track => {
+                            const trackId = track.info.identifier || track.info.uri;
+                            return !this.playedIdentifiers.has(trackId);
+                        });
+
+                        // If all tracks have been played, reset and use all tracks. If all tracks have been played, reset and use all tracks.
+                        if (availableTracks.length === 0) {
+                            availableTracks = response.tracks;
+                        }
+
+                        let track = availableTracks[Math.floor(Math.random() * availableTracks.length)];
+
+                        this.queue.push(track);
+                        this.play();
+                        return this;
+                    })
                 } catch (e) {
                     console.log(e);
                     return this.stop();
@@ -348,13 +352,13 @@ class Player extends EventEmitter {
         return this;
     }
 
-    pause(toggle = true) {
+    async pause(toggle = true) {
         this.node.rest.updatePlayer({
             guildId: this.guildId,
             data: { paused: toggle },
         });
 
-        this.playing = !toggle;
+        this.playing = this.playing ? false : this.playing;
         this.paused = toggle;
 
         return this;
@@ -414,7 +418,7 @@ class Player extends EventEmitter {
         this.connect({
             deaf: this.deaf,
             guildId: this.guildId,
-            voiceChannel: this.voiceChannel,
+            voiceChannel: channel,
             textChannel: this.textChannel,
             mute: this.mute,
         });
@@ -507,13 +511,13 @@ class Player extends EventEmitter {
         const previousTrack = this.previous;
         // By using lower case We handle both Lavalink Versions(v3, v4) Smartly 😎,
         // If reason is replaced do nothing expect User do something hopefully else RIP.
-        if(payload.reason.toLowerCase() === "replaced") return this.riffy.emit("trackEnd", player, track, payload);
+        if (payload.reason.toLowerCase() === "replaced") return this.riffy.emit("trackEnd", player, track, payload);
 
         // Replacing & to lower case it Again Smartly 😎, Handled Both Lavalink Versions.
         // This avoids track that got cleaned-up or failed to load to be played again (Via Loop Mode).
-        if(["loadfailed", "cleanup"].includes(payload.reason.replace("_", "").toLowerCase())) {
+        if (["loadfailed", "cleanup"].includes(payload.reason.replace("_", "").toLowerCase())) {
 
-            if(player.queue.length === 0) {
+            if (player.queue.length === 0) {
                 this.playing = false;
                 this.riffy.emit("debug", `Player (${player.guildId}) Track-Ended(${track.info.title}) with reason: ${payload.reason}, emitting queueEnd instead of trackEnd as queue is empty/finished`);
                 return this.riffy.emit("queueEnd", player);
@@ -565,7 +569,7 @@ class Player extends EventEmitter {
         this.stop();
     }
 
-    socketClosed(player, payload) {
+    async socketClosed(player, payload) {
         if ([4015, 4009].includes(payload.code)) {
             this.send({
                 guild_id: payload.guildId,
@@ -576,8 +580,8 @@ class Player extends EventEmitter {
         }
 
         this.riffy.emit("socketClosed", player, payload);
-        this.pause(true);
-        this.riffy.emit("debug", `Player (${player.guildId}) Voice Connection has been closed with code: ${payload.code}, Player paused(to any track playing). some possible causes: Voice channel deleted, Or Client(Bot) was kicked`);
+        if (!this.connection?.establishing) await this.pause(true);
+        this.riffy.emit("debug", `Player (${player.guildId}) Voice Connection has been closed with code: ${payload.code}, Player might be paused(to any avoid track playing). some possible causes: Voice channel deleted, Or Client(Bot) was kicked`);
     }
 
 
@@ -597,12 +601,12 @@ class Player extends EventEmitter {
     * @description clears All custom Data set on the Player
     */
     clearData() {
-      for (const key in this.data) {
-        if (this.data.hasOwnProperty(key)) {
-          delete this.data[key];
+        for (const key in this.data) {
+            if (this.data.hasOwnProperty(key)) {
+                delete this.data[key];
+            }
         }
-      }
-      return this;
+        return this;
     }
 
     /**
@@ -637,7 +641,7 @@ class Player extends EventEmitter {
                 }
             };
 
-            if(oldNode.connected) {
+            if (oldNode.connected) {
                 await oldNode.rest.destroyPlayer(this.guildId);
             }
 

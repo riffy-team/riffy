@@ -58,8 +58,8 @@ class Riffy extends EventEmitter {
 
   get bestNode() {
     return [...this.nodeMap.values()]
-        .filter(node => node.connected)
-        .sort((a, b) => a.penalties - b.penalties)[0];
+      .filter(node => node.connected)
+      .sort((a, b) => a.penalties - b.penalties)[0];
   }
 
   init(clientId) {
@@ -96,13 +96,13 @@ class Riffy extends EventEmitter {
     this.emit("nodeDestroy", node);
   }
 
-  updateVoiceState(packet) {
+  async updateVoiceState(packet) {
     if (!["VOICE_STATE_UPDATE", "VOICE_SERVER_UPDATE"].includes(packet.t)) return;
     const player = this.players.get(packet.d.guild_id);
     if (!player) return;
 
     if (packet.t === "VOICE_SERVER_UPDATE") {
-      player.connection.setServerUpdate(packet.d);
+      await player.connection.setServerUpdate(packet.d);
     } else if (packet.t === "VOICE_STATE_UPDATE") {
       if (packet.d.user_id !== this.clientId) return;
       player.connection.setStateUpdate(packet.d);
@@ -143,7 +143,7 @@ class Riffy extends EventEmitter {
     if (player) return player;
 
     if (this.leastUsedNodes.length === 0) throw new Error("No nodes are available");
-    
+
     let node;
     if (options.region) {
       const region = this.fetchRegion(options.region)[0];
@@ -185,80 +185,80 @@ class Riffy extends EventEmitter {
    */
   async migrate(target, destinationNode = null) {
     if (target instanceof Player) {
-        const player = target;
-        let node;
+      const player = target;
+      let node;
 
-        if (destinationNode) {
-            node = destinationNode;
-        } else {
-            const availableNodes = [...this.nodeMap.values()].filter(n => n.connected && n !== player.node);
-            node = this.migrationStrategyFn(player, availableNodes);
-        }
+      if (destinationNode) {
+        node = destinationNode;
+      } else {
+        const availableNodes = [...this.nodeMap.values()].filter(n => n.connected && n !== player.node);
+        node = this.migrationStrategyFn(player, availableNodes);
+      }
 
-        if (!node) {
-            this.emit("playerMigrationFailed", player, new Error("No other nodes are available to migrate to."));
-            throw new Error("No other nodes are available to migrate to.");
-        }
-        if (player.node === node) {
-            this.emit("playerMigrationFailed", player, new Error("Player is already on the destination node."));
-            throw new Error("Player is already on the destination node.");
-        }
+      if (!node) {
+        this.emit("playerMigrationFailed", player, new Error("No other nodes are available to migrate to."));
+        throw new Error("No other nodes are available to migrate to.");
+      }
+      if (player.node === node) {
+        this.emit("playerMigrationFailed", player, new Error("Player is already on the destination node."));
+        throw new Error("Player is already on the destination node.");
+      }
 
-        try {
-            const oldNode = player.node;
-            await player.moveTo(node);
-            this.emit("playerMigrated", player, oldNode, node);
-            return player;
-        } catch (error) {
-            this.emit("playerMigrationFailed", player, error);
-            throw error;
-        }
+      try {
+        const oldNode = player.node;
+        await player.moveTo(node);
+        this.emit("playerMigrated", player, oldNode, node);
+        return player;
+      } catch (error) {
+        this.emit("playerMigrationFailed", player, error);
+        throw error;
+      }
     }
 
     if (target instanceof Node) {
-        const nodeToMigrate = target;
-        const playersToMigrate = [...this.players.values()].filter(p => p.node === nodeToMigrate);
-        if (!playersToMigrate.length) {
-            return [];
-        }
+      const nodeToMigrate = target;
+      const playersToMigrate = [...this.players.values()].filter(p => p.node === nodeToMigrate);
+      if (!playersToMigrate.length) {
+        return [];
+      }
 
-        const availableNodes = [...this.nodeMap.values()]
-            .filter(n => n.connected && n !== nodeToMigrate)
-            .sort((a, b) => a.penalties - b.penalties);
+      const availableNodes = [...this.nodeMap.values()]
+        .filter(n => n.connected && n !== nodeToMigrate)
+        .sort((a, b) => a.penalties - b.penalties);
 
-        if (!availableNodes.length) {
-            this.emit("nodeMigrationFailed", nodeToMigrate, new Error("No other nodes are available to migrate to."));
-            throw new Error("No other nodes are available to migrate to.");
-        }
+      if (!availableNodes.length) {
+        this.emit("nodeMigrationFailed", nodeToMigrate, new Error("No other nodes are available to migrate to."));
+        throw new Error("No other nodes are available to migrate to.");
+      }
 
-        const migratedPlayers = [];
-        let migrationFailed = false;
-        for (const player of playersToMigrate) {
-            const bestNode = this.migrationStrategyFn(player, availableNodes);
-            if (!bestNode) {
-                this.emit("debug", `Could not migrate player ${player.guildId}, no suitable node found using migration strategy.`);
-                this.emit("playerMigrationFailed", player, new Error("No suitable node found for migration."));
-                migrationFailed = true;
-                continue;
-            }
-            try {
-                const oldNode = player.node;
-                await player.moveTo(bestNode);
-                migratedPlayers.push(player);
-                this.emit("playerMigrated", player, oldNode, bestNode);
-            } catch (error) {
-                this.emit("debug", `Failed to migrate player ${player.guildId}: ${error.message}`);
-                this.emit("playerMigrationFailed", player, error);
-                migrationFailed = true;
-            }
+      const migratedPlayers = [];
+      let migrationFailed = false;
+      for (const player of playersToMigrate) {
+        const bestNode = this.migrationStrategyFn(player, availableNodes);
+        if (!bestNode) {
+          this.emit("debug", `Could not migrate player ${player.guildId}, no suitable node found using migration strategy.`);
+          this.emit("playerMigrationFailed", player, new Error("No suitable node found for migration."));
+          migrationFailed = true;
+          continue;
         }
+        try {
+          const oldNode = player.node;
+          await player.moveTo(bestNode);
+          migratedPlayers.push(player);
+          this.emit("playerMigrated", player, oldNode, bestNode);
+        } catch (error) {
+          this.emit("debug", `Failed to migrate player ${player.guildId}: ${error.message}`);
+          this.emit("playerMigrationFailed", player, error);
+          migrationFailed = true;
+        }
+      }
 
-        if (migrationFailed) {
-            this.emit("nodeMigrationFailed", nodeToMigrate, new Error("Some players failed to migrate."));
-        } else {
-            this.emit("nodeMigrated", nodeToMigrate, migratedPlayers);
-        }
-        return migratedPlayers;
+      if (migrationFailed) {
+        this.emit("nodeMigrationFailed", nodeToMigrate, new Error("Some players failed to migrate."));
+      } else {
+        this.emit("nodeMigrated", nodeToMigrate, migratedPlayers);
+      }
+      return migratedPlayers;
     }
   }
 
@@ -278,7 +278,7 @@ class Riffy extends EventEmitter {
   async resolve({ query, source, requester, node }) {
     if (!this.initiated) throw new Error("You have to initialize Riffy in your ready event");
 
-    if(node && (typeof node !== "string" && !(node instanceof Node))) throw new Error(`'node' property must either be an node identifier/name('string') or an Node/Node Class, But Received: ${typeof node}`)
+    if (node && (typeof node !== "string" && !(node instanceof Node))) throw new Error(`'node' property must either be an node identifier/name('string') or an Node/Node Class, But Received: ${typeof node}`)
 
     const requestNode = (node && typeof node === 'string' ? this.nodeMap.get(node) : node) || this.leastUsedNodes[0];
     if (!requestNode) throw new Error("No nodes are available.");
@@ -322,7 +322,7 @@ class Riffy extends EventEmitter {
 
         this.emit("debug", `Search ${this.loadType !== "error" || this.loadType !== "LOAD_FAILED" ? "Success" : "Failed"} for "${query}" on node "${requestNode.name}", loadType: ${response.loadType} tracks: ${this.tracks.length}`);
       }
-      
+
       if (
         requestNode.rest.version === "v4" &&
         response.loadType === "playlist"
