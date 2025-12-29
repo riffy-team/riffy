@@ -38,7 +38,28 @@ class Track {
         };
 
 
-        this.pluginInfo = data.pluginInfo
+        this.pluginInfo = data.pluginInfo || {};
+        this.userData = data.userData || {};
+    }
+
+    /**
+     * @description Formats the track duration into a string (e.g. "05:23", "01:02:30")
+     * @returns {string}
+     */
+    get formattedDuration() {
+        if (!this.info.length) return "00:00";
+        
+        const milliseconds = this.info.length;
+        const seconds = Math.floor((milliseconds / 1000) % 60);
+        const minutes = Math.floor((milliseconds / (1000 * 60)) % 60);
+        const hours = Math.floor((milliseconds / (1000 * 60 * 60)) % 24);
+
+        const parts = [];
+        if (hours > 0) parts.push(hours.toString().padStart(2, '0'));
+        parts.push(minutes.toString().padStart(2, '0'));
+        parts.push(seconds.toString().padStart(2, '0'));
+
+        return parts.join(':');
     }
 
     async resolve(riffy) {

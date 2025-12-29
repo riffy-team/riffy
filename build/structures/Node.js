@@ -18,7 +18,6 @@ class Node {
     this.sessionId = node.sessionId || null;
     this.rest = new Rest(riffy, this);
     Object.defineProperty(this, "options", {
-      writable: false,
       get() {
         return options
       }
@@ -94,10 +93,7 @@ class Node {
 
         if (!p) {
           missingPlugins.push(plugin)
-          return false;
         }
-
-        return true;
       });
 
       const AllPluginsMissing = missingPlugins.length === plugins.length;
@@ -120,7 +116,12 @@ class Node {
      * @throws {TypeError} If `trackOrEncodedTrackStr` is not a `Track` or `string`.
      */
     get: async (trackOrEncodedTrackStr, skipTrackSource = false) => {
-      if (!(await this.lyrics.checkAvailable(false, "lavalyrics-plugin"))) return null;
+      try {
+        await this.lyrics.checkAvailable(false, "lavalyrics-plugin");
+      } catch (e) {
+        return null;
+      }
+      
       if (!(trackOrEncodedTrackStr instanceof Track) && typeof trackOrEncodedTrackStr !== "string") throw new TypeError(`Expected \`Track\` or \`string\` for \`trackOrEncodedTrackStr\` in "lyrics.get" but got \`${typeof trackOrEncodedTrackStr}\``)
 
       let encodedTrackStr = typeof trackOrEncodedTrackStr === "string" ? trackOrEncodedTrackStr : trackOrEncodedTrackStr.track;
@@ -135,7 +136,11 @@ class Node {
      */
     getCurrentTrack: async (guildId, skipTrackSource = false, plugin) => {
       const DEFAULT_PLUGIN = "lavalyrics-plugin"
-      if (!(await this.lyrics.checkAvailable())) return null;
+      try {
+        await this.lyrics.checkAvailable();
+      } catch (e) {
+        return null;
+      }
 
       const nodePlugins = this.info?.plugins;
       let requestURL = `/v4/sessions/${this.sessionId}/players/${guildId}/track/lyrics?skipTrackSource=${skipTrackSource}&plugin=${plugin}`
@@ -361,11 +366,11 @@ class Node {
   }
 
   async open() {
-    if (this.reconnectTimeout) {
-      clearTimeout(this.reconnectTimeout);
-      this.reconnectAttempted = 1;
-      this.reconnectTimeout = null;
+    if (this.reconnectAttempt) {
+      clearTimeout(this.reconnectAttempt);
+      this.reconnectAttempt = null;
     }
+    this.reconnectAttempted = 1;
 
     this.connected = true;
     this.riffy.emit('debug', `[Node: ${this.name}] Websocket connection established on ${this.wsUrl}`);
@@ -533,13 +538,13 @@ class Node {
   get penalties() {
     let penalties = 0;
     if (!this.connected) return penalties;
-    if (this.stats.players) {
+    if (this.stats?.players) {
       penalties += this.stats.players;
     }
-    if (this.stats.cpu && this.stats.cpu.systemLoad) {
+    if (this.stats?.cpu?.systemLoad) {
       penalties += Math.round(Math.pow(1.05, 100 * this.stats.cpu.systemLoad) * 10 - 10);
     }
-    if (this.stats.frameStats) {
+    if (this.stats?.frameStats) {
       if (this.stats.frameStats.deficit) {
         penalties += this.stats.frameStats.deficit;
       }

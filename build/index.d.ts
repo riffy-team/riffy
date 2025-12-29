@@ -39,7 +39,17 @@ export declare class Track {
         requester: any;
     };
 
+    /**
+     * @description Additional User Data
+     */
+    public userData: any;
+
     public resolve(riffy: Riffy): Promise<Track>;
+
+    /**
+     * @description Formats the track duration into a string (e.g. "05:23", "01:02:30")
+     */
+    public readonly formattedDuration: string;
 }
 
 export interface RestOptions {
@@ -87,11 +97,16 @@ export declare class Rest extends EventEmitter {
 export declare class Queue extends Array<Track> {
     get size(): number;
     get first(): Track | null;
+    /**
+     * Returns the total duration of the queue in milliseconds
+     */
+    get duration(): number;
 
     add(track: Track): this;
-    remove(index: number): Track;
+    remove(index: number, count?: number): Track | Track[];
+    move(from: number, to: number): this;
     clear(): void;
-    shuffle(): void;
+    shuffle(): this;
 }
 
 export declare class Plugin {
@@ -155,6 +170,16 @@ export declare class Player extends EventEmitter {
     get previous(): Track | undefined
 
     /**
+     * @description Returns whether the player is currently playing
+     */
+    get isPlaying(): boolean;
+
+    /**
+     * @description Returns whether the player is paused
+     */
+    get isPaused(): boolean;
+
+    /**
      * @private
      * @param track
      */
@@ -182,8 +207,21 @@ export declare class Player extends EventEmitter {
         deaf?: boolean;
     }): Player;
 
+    /**
+     * Fades the volume to a target level over a duration
+     * @param targetVolume The target volume level
+     * @param duration The duration of the fade in milliseconds
+     */
+    public fade(targetVolume: number, duration: number): this;
+
     public disconnect(): Player;
     public destroy(): void;
+    
+    public shuffle(): this;
+    public clearQueue(): this;
+    public jump(index: number): Player;
+    public remove(index: number): Track | Track[];
+
     private handleEvent(payload: any): void;
     private trackStart(player: Player, track: Track, payload: any): void;
     private trackEnd(player: Player, track: Track, payload: any): void;
@@ -654,7 +692,8 @@ export declare class Riffy extends EventEmitter {
         query: string;
         source?: string;
         requester: any;
-        node?: string | Node
+        node?: string | Node;
+        userData?: any;
     }): Promise<nodeResponse>;
 
 
@@ -1128,6 +1167,9 @@ export declare class Filters {
     public vaporwave: FilterOptions["vaporwave"];
     public _8d: FilterOptions["_8d"];
 
+    static Presets: { [key: string]: Array<{ band: number; gain: number }> };
+    public setPreset(preset: string): this;
+
     public setEquilizer(band: Array<{ band: number; gain: number }>): this;
 
     public setKaraoke(enabled: boolean, options?: {
@@ -1136,6 +1178,21 @@ export declare class Filters {
         filterBand: number;
         filterWidth: number;
     }): this;
+
+    /**
+     * Sets the speed of the audio (Timescale)
+     */
+    public setSpeed(speed: number): this;
+    
+    /**
+     * Sets the pitch of the audio (Timescale)
+     */
+    public setPitch(pitch: number): this;
+    
+    /**
+     * Sets the rate of the audio (Timescale)
+     */
+    public setRate(rate: number): this;
 
     public setTimescale(enabled: boolean, options?: {
         speed: number;
@@ -1200,6 +1257,11 @@ export declare class Filters {
     public set8D(enabled: boolean, options?: {
         rotationHz: number;
     }): this;
+
+    /**
+     * Clears all filters applied to the player
+     */
+    public clear(): this;
 
     public clearFilters(): this;
 

@@ -105,16 +105,9 @@ client.on("messageCreate", async (message) => {
         const resolve = await client.riffy.resolve({
             query: query,
             requester: message.author,
+            userData: { channelId: message.channel.id } // Attach custom data
         });
         const { loadType, tracks, playlistInfo } = resolve;
-
-        /**
-         * Important: If you are using Lavalink V3, here are the changes you need to make:
-         *
-         * 1. Replace "playlist" with "PLAYLIST_LOADED"
-         * 2. Replace "search" with "SEARCH_RESULT"
-         * 3. Replace "track" with "TRACK_LOADED"
-         */
 
         if (loadType === "playlist") {
             for (const track of resolve.tracks) {
@@ -123,7 +116,7 @@ client.on("messageCreate", async (message) => {
             }
 
             message.channel.send(
-                `Added: \`${tracks.length} tracks\` from \`${playlistInfo.name}\``
+                `Added: `${tracks.length} tracks` from `${playlistInfo.name}``
             );
             if (!player.playing && !player.paused) return player.play();
         } else if (loadType === "search" || loadType === "track") {
@@ -131,7 +124,7 @@ client.on("messageCreate", async (message) => {
             track.info.requester = message.author;
 
             player.queue.add(track);
-            message.channel.send(`Added: \`${track.info.title}\``);
+            message.channel.send(`Added: `${track.info.title}``);
             if (!player.playing && !player.paused) return player.play();
         } else {
             return message.channel.send("There are no results found.");
@@ -152,8 +145,10 @@ client.riffy.on("nodeError", (node, error) => {
 // This is the event handler for track start.
 client.riffy.on("trackStart", async (player, track) => {
     const channel = client.channels.cache.get(player.textChannel);
+    // Use the userData attached to the track!
+    // const channelId = track.userData.channelId; 
 
-    channel.send(`Now playing: \`${track.info.title}\` by \`${track.info.author}\`.`);
+    channel.send(`Now playing: `${track.info.title}` by `${track.info.author}` (${track.formattedDuration})`);
 });
 
 // This is the event handler for queue end.
@@ -216,4 +211,4 @@ After running the bot, invite the bot in your server and run `!play` command to 
 <p align="center">≪ ◦ ✦ ◦ ≫</p>
 
 ## 🎧 Support Server
-<a href="https://discord.gg/W8wTjESM3t"><img src="https://raw.githubusercontent.com/kunalkandepatil/.github/refs/heads/main/assets/discord.svg" alt="support server" /></a>
+<a href="https://discord.gg/W8wTjESM3t"><img src="https://raw.githubusercontent.com/kunalkandepatil/.github/refs/heads/main/assets/discord.svg" alt="support server" />

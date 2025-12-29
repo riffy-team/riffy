@@ -1,6 +1,5 @@
 // destructured, named undiciFetch for Better readability
 const { fetch: undiciFetch, Response } = require("undici");
-const nodeUtil = require("node:util")
 
 class Rest {
   constructor(riffy, options) {
@@ -24,33 +23,58 @@ class Rest {
       Authorization: this.password,
     };
 
+    const jsonBody = body ? JSON.stringify(body) : null;
+    const finalEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+
     const requestOptions = {
       method,
       headers,
-      body: body ? JSON.stringify(body) : null,
+      body: jsonBody,
     };
-    
-    const response = await undiciFetch(this.url + endpoint, requestOptions).catch((e) => {
-      
-      throw new Error(`There was an Error while Making Node Request(likely caused by Network Issue): ${method} ${this.url}${endpoint}`, { cause: e });
-    })
 
+    let response;
+    let attempt = 0;
+    const maxRetries = 3;
+    const retryDelay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    while (attempt <= maxRetries) {
+      try {
+        response = await undiciFetch(this.url + finalEndpoint, requestOptions);
+
+        if (response.ok || response.status === 204 || response.status < 500) {
+          break; // Success or client error (which shouldn't be retried)
+        }
+
+        throw new Error(`Status ${response.status}: ${response.statusText}`);
+      } catch (e) {
+        attempt++;
+        if (attempt > maxRetries) {
+          throw new Error(
+            `Failed to make request to ${method} ${this.url}${finalEndpoint} after ${maxRetries} attempts. Last error: ${e.message}`,
+            { cause: e }
+          );
+        }
+
+        const delay = 500 * Math.pow(2, attempt - 1);
+        this.riffy.emit("debug", `[Rest] Request failed (Attempt ${attempt}/${maxRetries}). Retrying in ${delay}ms... Error: ${e.message}`);
+        await retryDelay(delay);
+      }
+    }
+    
     this.calls++;
 
     // Parses The Request
     const data = await this.parseResponse(response);
 
     // Emit apiResponse event with important data and Response
-    this.riffy.emit("apiResponse", endpoint, response);
+    this.riffy.emit("apiResponse", finalEndpoint, response);
 
     this.riffy.emit(
       "debug",
-      `[Rest] ${requestOptions.method} ${
-        endpoint.startsWith("/") ? endpoint : `/${endpoint}`
-      } ${body ? `body: ${JSON.stringify(body)}` : ""} -> \n Status Code: ${
+      `[Rest] ${requestOptions.method} ${finalEndpoint} ${jsonBody ? `body: ${jsonBody}` : ""} -> \n Status Code: ${
         response.status
-      }(${response.statusText}) \n Response(body): ${JSON.stringify(await data)} \n Headers: ${
-        nodeUtil.inspect(response.headers)
+      }(${response.statusText}) \n Response(body): ${JSON.stringify(data)} \n Headers: ${
+        JSON.stringify(Object.fromEntries(response.headers.entries()))
       }`
     );
 
@@ -119,8 +143,7 @@ class Rest {
     );
   }
 
-  async decodeTrack(track, node) {
-    if (!node) node = this.leastUsedNodes[0];
+  async decodeTrack(track) {
     return this.makeRequest(
       `GET`,
       `/${this.version}/decodetrack?encodedTrack=${encodeURIComponent(track)}`
@@ -168,7 +191,8 @@ class Rest {
     }
 
     try {
-      return await req[req.headers.get("Content-Type").includes("text/plain") ? "text" : "json"]();
+      const contentType = req.headers.get("Content-Type");
+      return await req[contentType && contentType.includes("text/plain") ? "text" : "json"]();
     } catch (e) {
       this.riffy.emit(
         "debug",

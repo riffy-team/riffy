@@ -216,7 +216,7 @@ async function runTests() {
     await new Promise(resolve => setTimeout(resolve, 500));
 
     assert.strictEqual(playerA.node.name, 'Node-Real-2', 'Test 4 FAIL: Player A did not auto-migrate to Node-Real-2');
-    assert.strictEqual(nodeA.rest.destroyPlayer.callCount, 1, 'Test 4 FAIL: destroyPlayer not called for player on old node');
+    assert.strictEqual(nodeA.rest.destroyPlayer.callCount, 0, 'Test 4 FAIL: destroyPlayer SHOULD NOT be called for player on old node (since it is disconnected)');
     assert.strictEqual(playerMigratedSpy.callCount, 1, 'Test 4 FAIL: playerMigrated event not emitted once');
     assert.strictEqual(nodeMigratedSpy.callCount, 1, 'Test 4 FAIL: nodeMigrated event not emitted once');
     console.log('[Test 4] SUCCESS');

@@ -19,6 +19,60 @@ class Filters {
     }
 
     /**
+     * @typedef {Object} EqualizerBand
+     * @property {number} band
+     * @property {number} gain
+     */
+
+    /**
+     * Available Equalizer Presets
+     */
+    static Presets = {
+        BassBoost: [
+            { band: 0, gain: 0.6 }, { band: 1, gain: 0.67 }, { band: 2, gain: 0.67 }, { band: 3, gain: 0 }, { band: 4, gain: -0.5 },
+            { band: 5, gain: 0.15 }, { band: 6, gain: -0.45 }, { band: 7, gain: 0.23 }, { band: 8, gain: 0.35 }, { band: 9, gain: 0.45 },
+            { band: 10, gain: 0.55 }, { band: 11, gain: 0.6 }, { band: 12, gain: 0.55 }
+        ],
+        Soft: [
+            { band: 0, gain: 0 }, { band: 1, gain: 0 }, { band: 2, gain: 0 }, { band: 3, gain: 0 }, { band: 4, gain: 0 },
+            { band: 5, gain: 0 }, { band: 6, gain: 0 }, { band: 7, gain: 0 }, { band: 8, gain: -0.25 }, { band: 9, gain: -0.25 },
+            { band: 10, gain: -0.25 }, { band: 11, gain: -0.25 }, { band: 12, gain: -0.25 }
+        ],
+        TV: [
+            { band: 0, gain: 0 }, { band: 1, gain: 0 }, { band: 2, gain: 0 }, { band: 3, gain: 0 }, { band: 4, gain: 0 },
+            { band: 5, gain: 0 }, { band: 6, gain: 0 }, { band: 7, gain: 0 }, { band: 8, gain: 0 }, { band: 9, gain: 0 },
+            { band: 10, gain: 0 }, { band: 11, gain: 0 }, { band: 12, gain: 0 }
+        ],
+        TrebleBass: [
+            { band: 0, gain: 0.6 }, { band: 1, gain: 0.67 }, { band: 2, gain: 0.67 }, { band: 3, gain: 0 }, { band: 4, gain: -0.5 },
+            { band: 5, gain: 0.15 }, { band: 6, gain: -0.45 }, { band: 7, gain: 0.23 }, { band: 8, gain: 0.35 }, { band: 9, gain: 0.45 },
+            { band: 10, gain: 0.55 }, { band: 11, gain: 0.6 }, { band: 12, gain: 0.55 }
+        ],
+        Nightcore: [
+            { band: 0, gain: 0.3 }, { band: 1, gain: 0.3 }, { band: 2, gain: 0.3 }, { band: 3, gain: 0.3 }, { band: 4, gain: 0.3 },
+            { band: 5, gain: 0.3 }, { band: 6, gain: 0.3 }, { band: 7, gain: 0.3 }, { band: 8, gain: 0.3 }, { band: 9, gain: 0.3 },
+            { band: 10, gain: 0.3 }, { band: 11, gain: 0.3 }, { band: 12, gain: 0.3 }
+        ],
+        Vaporwave: [
+            { band: 0, gain: 0.3 }, { band: 1, gain: 0.3 }, { band: 2, gain: 0.3 }, { band: 3, gain: 0.3 }, { band: 4, gain: 0.3 },
+            { band: 5, gain: 0.3 }, { band: 6, gain: 0.3 }, { band: 7, gain: 0.3 }, { band: 8, gain: 0.3 }, { band: 9, gain: 0.3 },
+            { band: 10, gain: 0.3 }, { band: 11, gain: 0.3 }, { band: 12, gain: 0.3 }
+        ]
+    };
+
+    /**
+     * Applies a predefined equalizer preset
+     * @param {string} preset The name of the preset
+     * @returns {Filters}
+     */
+    setPreset(preset) {
+        if (!Filters.Presets[preset]) throw new Error(`Preset ${preset} not found. Available presets: ${Object.keys(Filters.Presets).join(", ")}`);
+        
+        this.setEqualizer(Filters.Presets[preset]);
+        return this;
+    }
+
+    /**
      * 
      * @param {string[]} band
      * @returns 
@@ -351,6 +405,66 @@ class Filters {
             this._8d = null;
             this.setRotation(false)
         }
+    }
+
+    /**
+     * Sets the speed of the audio (Timescale)
+     * @param {number} speed
+     */
+    setSpeed(speed) {
+        return this.setTimescale(true, {
+            speed,
+            pitch: this.timescale?.pitch || 1.0,
+            rate: this.timescale?.rate || 1.0
+        });
+    }
+
+    /**
+     * Sets the pitch of the audio (Timescale)
+     * @param {number} pitch
+     */
+    setPitch(pitch) {
+        return this.setTimescale(true, {
+            speed: this.timescale?.speed || 1.0,
+            pitch,
+            rate: this.timescale?.rate || 1.0
+        });
+    }
+
+    /**
+     * Sets the rate of the audio (Timescale)
+     * @param {number} rate
+     */
+    setRate(rate) {
+        return this.setTimescale(true, {
+            speed: this.timescale?.speed || 1.0,
+            pitch: this.timescale?.pitch || 1.0,
+            rate
+        });
+    }
+
+    /**
+     * Clears all filters applied to the player
+     * @returns {Filters}
+     */
+    async clear() {
+        this.equalizer = [];
+        this.karaoke = null;
+        this.timescale = null;
+        this.tremolo = null;
+        this.vibrato = null;
+        this.rotation = null;
+        this.distortion = null;
+        this.channelMix = null;
+        this.lowPass = null;
+        this.bassboost = null;
+        this.slowmode = null;
+        this.nightcore = null;
+        this.vaporwave = null;
+        this._8d = null;
+
+        await this.updateFilters();
+        return this;
     }
 
     async clearFilters() {
