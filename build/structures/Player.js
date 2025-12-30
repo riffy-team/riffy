@@ -197,7 +197,14 @@ class Player extends EventEmitter {
                 }
             } else if (player.previous.info.sourceName === "soundcloud") {
                 try {
-                    scAutoPlay(player.previous.info.uri).then(async (data) => {
+                    scAutoPlay(player.previous.info.uri).then(async (urls) => {
+                        if (!urls || !Array.isArray(urls) || urls.length === 0) return this.stop();
+
+                        let availableUrls = urls.filter(url => !this.playedIdentifiers?.has(url));
+                        if (availableUrls.length === 0) availableUrls = urls;
+
+                        const data = availableUrls[Math.floor(Math.random() * availableUrls.length)];
+
                         let response = await this.riffy.resolve({ query: data, source: "scsearch", requester: player.previous.info.requester });
 
                         if (this.node.rest.version === "v4") {
@@ -641,8 +648,10 @@ class Player extends EventEmitter {
                 }
             };
 
-            if (oldNode.connected) {
+            try {
                 await oldNode.rest.destroyPlayer(this.guildId);
+            } catch (e) {
+                this.riffy.emit("debug", `[Player ${this.guildId}] Error destroying player on old node during move: ${e.message}`);
             }
 
             this.node = newNode;
