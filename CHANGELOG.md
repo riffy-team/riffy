@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.0.10 (2026-01-01)
+
+This Release Fixes Voice Connectivity Issues caused in v1.0.9 Release, This Version deprecates v1.0.9. No Features for this, But anyways, Happy New Year to you all.
+
+### What's Changed
+- ✨ Slight Changes by @kunalkandepatil in https://github.com/riffy-team/riffy/pull/33
+- fix: Node bypass fetchInfo property access
+
+### Breaking Change
+- fix!: setVoiceChannel prematurely sets voiceChannel, failing move channel detection
+The setVoiceChannel sets this.voiceChannel to the new channel resulting in underlying code at Connection Module failing to detect moving of channels and The Player remains paused forever ♾️ until the Dev/User unpauses it
+- fix!: setVoiceChannel, channel changes, playing boolean (another att...)
+
+### New Contributors
+- @kunalkandepatil made their first contribution in https://github.com/riffy-team/riffy/pull/33
+
+**Full Changelog**: https://github.com/riffy-team/riffy/compare/v1.0.9...v1.0.10
+
 ## v1.0.9 (2025-12-11)
 This Release adds optimised Voice Connectivity Detection conditionally (when needed) between Riffy Receiving & Node Voice Connectivity.
 Also, Features First-Party Support for Nodelink, Being a Dev for Nodelink too.
