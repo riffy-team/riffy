@@ -18,14 +18,19 @@ async function scAutoPlay(url) {
     const sectionElement = secondNoscript.querySelector('section');
     const articleElements = sectionElement.querySelectorAll('article');
 
-    articleElements.forEach(articleElement => {
+    const tracks = [];
+    for (const articleElement of articleElements) {
         const h2Element = articleElement.querySelector('h2[itemprop="name"]');
+        if (!h2Element) continue;
 
         const aElement = h2Element.querySelector('a[itemprop="url"]');
-        const href = `https://soundcloud.com${aElement.getAttribute('href')}`
+        if (!aElement) continue;
 
-        return href;
-    });
+        const href = `https://soundcloud.com${aElement.getAttribute('href')}`;
+        tracks.push(href);
+    }
+
+    return tracks;
 }
 
 async function spAutoPlay(track_id) {
