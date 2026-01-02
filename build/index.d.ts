@@ -1280,3 +1280,15 @@ export declare class Connection {
 
     private updatePlayerVoiceData(): void;
 }
+
+export default {
+    Connection,
+    Filters,
+    Node,
+    Riffy,
+    Player,
+    Plugin,
+    Queue,
+    Rest,
+    Track
+};

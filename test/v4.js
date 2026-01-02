@@ -17,20 +17,20 @@ const client = new Client({
 });
 
 const nodes = [
-  {
-    name: "The-Failing-Node-0",
-    host: "localhost",
-    password: "youshallnotpass",
-    port: 2333,
-    secure: false,
-  },
   // {
-  //   name: "Migration-Node-0",
-  //   host: "lava-v4.ajieblogs.eu.org",
-  //   port: 443,
-  //   password: "https://dsc.gg/ajidevserver",
-  //   secure: true
-  // }
+  //   name: "The-Failing-Node-0",
+  //   host: "localhost",
+  //   password: "youshallnotpass",
+  //   port: 2333,
+  //   secure: false,
+  // },
+  {
+    name: "Migration-Node-0",
+    host: "lava-v4.ajieblogs.eu.org",
+    port: 443,
+    password: "https://dsc.gg/ajidevserver",
+    secure: true
+  }
 ];
 
 const logger = winston.createLogger({
@@ -91,14 +91,14 @@ client.on("messageCreate", async (message) => {
   if (command === "search") {
     let searchQuery = args.join(" ");
 
-    if(!/http(s)?:\/\//.test(searchQuery)) {
+    if (!/http(s)?:\/\//.test(searchQuery)) {
       // -> ['ytmsearch:the fat rat', 'ytmsearch:', 'the fat rat']
       searchQuery = /(?<source>.+:)(?<query>.+)/g.exec(searchQuery)
     }
 
     if (!searchQuery) return message.react("❎");
 
-    const resolveTracks = await client.riffy.resolve({ query: `${searchQuery?.[2] || searchQuery}`, source: `${searchQuery?.[1]?.slice(0, searchQuery?.[1].length-1)}`, requester: message.member });
+    const resolveTracks = await client.riffy.resolve({ query: `${searchQuery?.[2] || searchQuery}`, source: `${searchQuery?.[1]?.slice(0, searchQuery?.[1].length - 1)}`, requester: message.member });
 
     if (resolveTracks.loadType !== "error" || resolveTracks.loadType !== "empty") {
       const formattedTracks = resolveTracks.tracks.flatMap((track, i) => {
@@ -231,13 +231,8 @@ client.on("messageCreate", async (message) => {
       player.isAutoplay = player.autoplay;
     }
 
-    logger.debug("[AUTOPLAY] after if check, before isAutoPlay final assignment: player=" + inspect(player) + ", isAutoplay=" + player.isAutoplay + ", autoplay=" + player.autoplay);
-
     player.isAutoplay = (state === "on");
-    logger.debug("[AUTOPLAY] after if check, AFTER isAutoPlay final assignment: player=" + inspect(player) + ", isAutoplay=" + player.isAutoplay + ", autoplay=" + player.autoplay);
-
     player.set("autoplay_state", state === "on")
-
     message.channel.send("Player's autoplay is set to `" + state + "`")
   }
 
@@ -465,17 +460,14 @@ client.riffy.on("nodeReconnect", (node) => {
 client.riffy.on("trackStart", async (player, track) => {
   const channel = client.channels.cache.get(player.textChannel);
 
-  channel.send(
-    `Now playing: \`${track.info.title}\` by \`${track.info.author}\`.`
-  );
+  channel.send(`\`${track.info.title} by ${track.info.author}\``)
 });
 
 client.riffy.on("queueEnd", async (player) => {
   const channel = client.channels.cache.get(player.textChannel);
 
-  const autoplay = player.get("autoplay_state") ?? false;
-
-  logger.debug(`[QUEUE] QUEUE END :: player :: ${inspect(player, false, 2, true)}, isAutoplay=${player.isAutoplay}, autoplay=${player.autoplay}`);
+  // const autoplay = player.get("autoplay_state") ?? false;
+  // logger.debug(`[QUEUE] QUEUE END :: player :: ${inspect(player, false, 2, true)}, isAutoplay=${player.isAutoplay}, autoplay=${player.autoplay}`);
 
   if (player.isAutoplay) {
     player.autoplay(player);
@@ -489,8 +481,6 @@ client.riffy.on("raw", (type, payload) => {
   if (!["LyricsFoundEvent", "LyricsNotFoundEvent", "LyricsLineEvent"].includes(payload.type)) return;
 
   logger.debug(`[RAW] :: ${type} :: payload: ${inspect(payload)}`);
-
-
 })
 
 process.on("uncaughtException", (err, origin) =>
@@ -501,18 +491,10 @@ process.on("unhandledRejection", (err, _) =>
 );
 
 client.on("raw", (d) => {
-  if (
-    ![
-      GatewayDispatchEvents.VoiceStateUpdate,
-      GatewayDispatchEvents.VoiceServerUpdate,
-    ].includes(d.t)
-  )
-    return;
+  if (![GatewayDispatchEvents.VoiceStateUpdate, GatewayDispatchEvents.VoiceServerUpdate,].includes(d.t)) return;
   client.riffy.updateVoiceState(d);
 });
 
-client.riffy.on("debug", (...m) => {
-  logger.debug(`[RIFFY] ${m.join(' ')}`);
-});
+client.riffy.on("debug", (...m) => { logger.debug(`[RIFFY] ${m.join(' ')}`) });
 
-client.login();
+client.login("<DISCORD-TOKEN>");
