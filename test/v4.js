@@ -503,4 +503,5 @@ client.on("raw", (d) => {
 
 client.riffy.on("debug", (...m) => { logger.debug(`[RIFFY] ${m.join(' ')}`) });
 
-client.login("<DISCORD-TOKEN>");
+// Token is by default retrieved from process.env.DISCORD_TOKEN, Discord.js does this internally (if nothing is given)
+client.login();
