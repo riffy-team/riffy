@@ -370,10 +370,9 @@ class Node {
     this.connected = true;
     this.riffy.emit('debug', `[Node: ${this.name}] Websocket connection established on ${this.wsUrl}`);
 
-    this.info = await this.fetchInfo().then((info) => {
-      // this.riffy.emit('debug', `[Node: ${this.name}] Fetched Info: ${JSON.stringify(info)}`);
-      return this.info = info;
-    }).catch((e) => (console.error(`Node (${this.name}) Failed to fetch info (${this.restVersion}/info) on WS-OPEN: ${e}`), null));
+    this.info = await this.fetchInfo()
+       .then((info) => this.info = info)
+       .catch((e) => (console.error(`Node (${this.name}) Failed to fetch info (${this.restVersion}/info) on WS-OPEN: ${e}`), null));
 
     if (!this.info && !this.options.bypassChecks.nodeFetchInfo) {
       throw new Error(`Node (${this.name} - URL: ${this.restUrl}) Failed to fetch info on WS-OPEN`);
