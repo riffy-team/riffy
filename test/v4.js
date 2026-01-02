@@ -491,7 +491,13 @@ process.on("unhandledRejection", (err, _) =>
 );
 
 client.on("raw", (d) => {
-  if (![GatewayDispatchEvents.VoiceStateUpdate, GatewayDispatchEvents.VoiceServerUpdate,].includes(d.t)) return;
+  if (
+    ![
+      GatewayDispatchEvents.VoiceStateUpdate,
+      GatewayDispatchEvents.VoiceServerUpdate,
+    ].includes(d.t)
+  )
+    return;
   client.riffy.updateVoiceState(d);
 });
 
