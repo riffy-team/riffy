@@ -1,18 +1,18 @@
 import { EventEmitter } from "events";
 
 type Nullable<T> = T | null;
-type Prettify<T> = 
+type Prettify<T> =
     [T] extends [object]
-        ? { [K in keyof T]: Prettify<T[K]>}
-        : T;
+    ? { [K in keyof T]: Prettify<T[K]> }
+    : T;
 
-type PrettifyWithNull<T> = 
-  [T] extends [object]
+type PrettifyWithNull<T> =
+    [T] extends [object]
     ? { [K in keyof T]: PrettifyWithNullOrUndefined<T[K]> } & {}
     : (null extends T ? (Exclude<T, null> | null) : never);
 
 type PrettifyWithNullOrUndefined<T> =
-  [T] extends [object]
+    [T] extends [object]
     ? { [K in keyof T]: PrettifyWithNullOrUndefined<T[K]> } & {}
     : (null extends T ? (Exclude<T, null> | null) : (undefined extends T ? (Exclude<T, undefined> | undefined) : T));
 
@@ -144,7 +144,7 @@ export declare class Player extends EventEmitter {
      * @since 1.0.9
      */
     public readonly connectionTimeout: number;
-    
+
     /**
      * @warn Lazily (defined; Only when autoplay is called/used.) Initialized. 
      */
@@ -195,7 +195,7 @@ export declare class Player extends EventEmitter {
 
     /**
     * @description clears All custom Data set on the Player
-    */ 
+    */
     public clearData(): this;
     private send(data: any): void;
 
@@ -540,7 +540,7 @@ export declare class Riffy extends EventEmitter {
      */
     public readonly migrationStrategyFn?: Function;
     public defaultSearchPlatform: string;
-    
+
     public restVersion: RiffyOptions["restVersion"];
 
     /**
@@ -765,8 +765,8 @@ type NodeInfo = {
 } | {
     node: string;
     voice: {
-      name: string;
-      version: string;
+        name: string;
+        version: string;
     };
     isNodelink: boolean;
 }
@@ -934,34 +934,34 @@ export declare class Node {
          */
         getCurrentTrack: <TPlugin extends LyricPluginWithoutLavaLyrics | (string & {}) >(guildId: string, skipTrackSource: boolean, plugin?: TPlugin) => Promise<TPlugin extends LyricPluginWithoutLavaLyrics ? LyricPluginWithoutLavaLyricsResult : NodeLyricsResult | null>;
     }
-    
+
     /**
      * Nodelink Mixer API (Works Only when Node is hosted with [Nodelink Server](https://nodelink.js.org))
      * @description The Audio Mixer allows overlaying auxiliary audio tracks (like TTS, sound effects, or background music) on top of the main active track.
      */
     mixer: {
-      /**
-       * Check if Node is hosted with Nodelink Server
-       */
-       check: () => boolean;
-       /**
-        * Adds a new audio track to be mixed over the current playback.
-        * @param {string} guildId 
-        * @param {AddMixLayerOptions} mixLayerOptions 
-        */
-       addMixLayer: (guildId: string, mixLayerOptions: AddMixLayerOptions) => Promise<NodelinkMixLayer>;
-       /**
-        * Retrieves a list of currently active mix layers.
-        */
-       getActiveMixLayers: (guildId: string) => Promise<NodelinkMixLayer[]>;
-       /**
-        * Update Mix Layer Volume
-        */
-       updateMixLayerVolume: (guildId: string, mixId: string, volume: number) => Promise<void>;
-       /**
-        * Remove Mix Layer
-        */
-       removeMixLayer: (guildId: string, mixId: string) => Promise<void>;
+        /**
+         * Check if Node is hosted with Nodelink Server
+         */
+        check: () => boolean;
+        /**
+         * Adds a new audio track to be mixed over the current playback.
+         * @param {string} guildId 
+         * @param {AddMixLayerOptions} mixLayerOptions 
+         */
+        addMixLayer: (guildId: string, mixLayerOptions: AddMixLayerOptions) => Promise<NodelinkMixLayer>;
+        /**
+         * Retrieves a list of currently active mix layers.
+         */
+        getActiveMixLayers: (guildId: string) => Promise<NodelinkMixLayer[]>;
+        /**
+         * Update Mix Layer Volume
+         */
+        updateMixLayerVolume: (guildId: string, mixId: string, volume: number) => Promise<void>;
+        /**
+         * Remove Mix Layer
+         */
+        removeMixLayer: (guildId: string, mixId: string) => Promise<void>;
     }
 
     public connect(): void;
@@ -978,39 +978,39 @@ export declare class Node {
  * Options for adding a mix layer.
  */
 export type AddMixLayerOptions = {
-  track: {
-    /** 
-     * Base64 encoded track string (optional if identifier provided) 
-     */
-    encoded?: string;
+    track: {
+        /** 
+         * Base64 encoded track string (optional if identifier provided) 
+         */
+        encoded?: string;
+
+        /** 
+         * Track identifier (optional if encoded provided) 
+         */
+        identifier?: string;
+
+        /** 
+         * (Optional) Track User Data 
+         */
+        userData?: string;
+    };
 
     /** 
-     * Track identifier (optional if encoded provided) 
+     * Float 0.0 to 1.0 (Default: 0.8) 
      */
-    identifier?: string;
-
-    /** 
-     * (Optional) Track User Data 
-     */
-    userData?: string;
-  };
-
-  /** 
-   * Float 0.0 to 1.0 (Default: 0.8) 
-   */
-  volume?: number;
+    volume?: number;
 };
 
 export type NodelinkMixLayer = {
-  id: string;
-  track: {
-    encoded: string;
-    identifier: string;
-    userData: string;
-  };
-  volume: number;
-  position?: number;
-  startTime?: number;
+    id: string;
+    track: {
+        encoded: string;
+        identifier: string;
+        userData: string;
+    };
+    volume: number;
+    position?: number;
+    startTime?: number;
 };
 
 export type FilterOptions = {
@@ -1236,11 +1236,11 @@ export declare class Connection {
      * @private
      * @since 1.0.9
      */
-    private deferred: { 
-      promise: Promise<void>; 
-      resolve: (value?: void | PromiseLike<void>) => void 
+    private deferred: {
+        promise: Promise<void>;
+        resolve: (value?: void | PromiseLike<void>) => void
     } | null;
-  
+
     /**
      * Tracks the promise for the active REST update to the Node
      * @private
@@ -1252,18 +1252,18 @@ export declare class Connection {
      * @since 1.0.9
      */
     public establishing: boolean;
-    
+
     /**
      * Checks if we have all necessary voice credentials.
      */
     get isReady(): boolean;
-    
+
     /**
     * Waits for the connection to be ready and for any active voice updates to the Node to complete.
     * Optimization: Returns immediately if ready and idle to save resources.
     */
     public resolve(): Promise<any>;
-    
+
     /**
     * Checks if ready, performs the update, and manages the resolution flow.
     */
@@ -1280,15 +1280,3 @@ export declare class Connection {
 
     private updatePlayerVoiceData(): void;
 }
-
-export default {
-    Connection,
-    Filters,
-    Node,
-    Riffy,
-    Player,
-    Plugin,
-    Queue,
-    Rest,
-    Track
-};

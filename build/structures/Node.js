@@ -371,7 +371,7 @@ class Node {
     this.riffy.emit('debug', `[Node: ${this.name}] Websocket connection established on ${this.wsUrl}`);
 
     this.info = await this.fetchInfo().then((info) => {
-      this.riffy.emit('debug', `[Node: ${this.name}] Fetched Info: ${JSON.stringify(info)}`);
+      // this.riffy.emit('debug', `[Node: ${this.name}] Fetched Info: ${JSON.stringify(info)}`);
       return this.info = info;
     }).catch((e) => (console.error(`Node (${this.name}) Failed to fetch info (${this.restVersion}/info) on WS-OPEN: ${e}`), null));
 

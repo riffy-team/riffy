@@ -29,15 +29,14 @@ class Rest {
     };
 
     const response = await undiciFetch(this.url + endpoint, requestOptions).catch((e) => {
-
-      throw new Error(`There was an Error while Making Node Request(likely caused by Network Issue): ${method} ${this.url}${endpoint}`, { cause: e });
+      throw new Error(`There was an Error while Making Node Request (likely caused by Network Issue): ${method} ${this.url}${endpoint}`, { cause: e });
     })
 
     this.calls++;
 
-    if (response.status >= 500 && retryCount < 3) {
-      this.riffy.emit("debug", `[Rest] ${method} ${endpoint} failed with ${response.status}. Retrying... (${retryCount + 1}/3)`);
-      await new Promise(res => setTimeout(res, 1000 * (retryCount + 1)));
+    if (response.status >= 500 && retryCount < 5) {
+      this.riffy.emit("debug", `[Rest] ${method} ${endpoint} failed with ${response.status}. Retrying... (${retryCount + 1}/5)`);
+      await new Promise(res => setTimeout(res, 2000 * (retryCount + 1)));
       return this.makeRequest(method, endpoint, body, includeHeaders, retryCount + 1);
     }
 
@@ -47,14 +46,11 @@ class Rest {
     // Emit apiResponse event with important data and Response
     this.riffy.emit("apiResponse", endpoint, response);
 
-    const responseBody = JSON.stringify(await data);
-    const truncatedBody = responseBody.length > 1000 ? responseBody.substring(0, 1000) + "..." : responseBody;
-
     this.riffy.emit(
       "debug",
       `[Rest] ${requestOptions.method} ${endpoint.startsWith("/") ? endpoint : `/${endpoint}`
       } ${body ? `body: ${JSON.stringify(body)}` : ""} -> \n Status Code: ${response.status
-      }(${response.statusText}) \n Response(body): ${truncatedBody} \n Headers: ${nodeUtil.inspect(response.headers)
+      }(${response.statusText}) \n Response(body): ${JSON.stringify(await data)} \n Headers: ${nodeUtil.inspect(response.headers)
       }`
     );
 
@@ -171,17 +167,7 @@ class Rest {
     }
 
     try {
-      const contentType = req.headers.get("Content-Type");
-      if (contentType?.includes("application/json")) {
-        return await req.json();
-      }
-
-      const text = await req.text();
-      try {
-        return JSON.parse(text);
-      } catch (e) {
-        return text;
-      }
+      return await req[req.headers.get("Content-Type").includes("text/plain") ? "text" : "json"]();
     } catch (e) {
       this.riffy.emit(
         "debug",
