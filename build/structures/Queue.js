@@ -3,10 +3,6 @@ class Queue extends Array {
         return this.length;
     }
 
-    get isEmpty() {
-        return this.length === 0;
-    }
-
     get first() {
         return this.length ? this[0] : null;
     }
