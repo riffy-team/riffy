@@ -151,7 +151,7 @@ b    */
 
         this.player.riffy.emit("debug", `[Player ${this.player.guildId} - CONNECTION] Received voice server, ${previousVoiceRegion !== null ? `Changed Voice Region from(oldRegion) ${previousVoiceRegion} to(newRegion) ${this.region}` : `Voice Server: ${this.region}`}, Updating Node's Voice Data.`)
 
-        console.log("Paused Data", this.player.paused)
+        // console.log("Paused Data", this.player.paused)
         if (this.player.paused) {
             this.player.riffy.emit(
                 "debug",

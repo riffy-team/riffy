@@ -354,8 +354,22 @@ class Filters {
     }
 
     async clearFilters() {
-        Object.assign(this, new Filters(this.player))
-        
+        this.volume = 1;
+        this.equalizer = [];
+        this.karaoke = null;
+        this.timescale = null;
+        this.tremolo = null;
+        this.vibrato = null;
+        this.rotation = null;
+        this.distortion = null;
+        this.channelMix = null;
+        this.lowPass = null;
+        this.bassboost = null;
+        this.slowmode = null;
+        this.nightcore = null;
+        this.vaporwave = null;
+        this._8d = null;
+
         await this.updateFilters();
         return this;
     }

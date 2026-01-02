@@ -1,4 +1,4 @@
-const { EventEmitter } = require("events");
+const { EventEmitter } = require("node:events");
 const { Node } = require("./Node");
 const { Player } = require("./Player");
 const { Track } = require("./Track");

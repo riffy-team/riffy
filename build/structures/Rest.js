@@ -1,13 +1,11 @@
-// destructured, named undiciFetch for Better readability
-const { fetch: undiciFetch, Response } = require("undici");
-const nodeUtil = require("node:util")
+const { fetch: undiciFetch } = require("undici");
+const nodeUtil = require("node:util");
 
 class Rest {
   constructor(riffy, options) {
     this.riffy = riffy;
-    this.url = `http${options.secure ? "s" : ""}://${options.host}:${
-      options.port
-    }`;
+    this.url = `http${options.secure ? "s" : ""}://${options.host}:${options.port
+      }`;
     this.sessionId = options.sessionId;
     this.password = options.password;
     this.version = options.restVersion;
@@ -18,7 +16,7 @@ class Rest {
     this.sessionId = sessionId;
   }
 
-  async makeRequest(method, endpoint, body = null, includeHeaders = false) {
+  async makeRequest(method, endpoint, body = null, includeHeaders = false, retryCount = 0) {
     const headers = {
       "Content-Type": "application/json",
       Authorization: this.password,
@@ -29,13 +27,18 @@ class Rest {
       headers,
       body: body ? JSON.stringify(body) : null,
     };
-    
+
     const response = await undiciFetch(this.url + endpoint, requestOptions).catch((e) => {
-      
-      throw new Error(`There was an Error while Making Node Request(likely caused by Network Issue): ${method} ${this.url}${endpoint}`, { cause: e });
+      throw new Error(`There was an Error while Making Node Request (likely caused by Network Issue): ${method} ${this.url}${endpoint}`, { cause: e });
     })
 
     this.calls++;
+
+    if (response.status >= 500 && retryCount < 5) {
+      this.riffy.emit("debug", `[Rest] ${method} ${endpoint} failed with ${response.status}. Retrying... (${retryCount + 1}/5)`);
+      await new Promise(res => setTimeout(res, 2000 * (retryCount + 1)));
+      return this.makeRequest(method, endpoint, body, includeHeaders, retryCount + 1);
+    }
 
     // Parses The Request
     const data = await this.parseResponse(response);
@@ -45,12 +48,9 @@ class Rest {
 
     this.riffy.emit(
       "debug",
-      `[Rest] ${requestOptions.method} ${
-        endpoint.startsWith("/") ? endpoint : `/${endpoint}`
-      } ${body ? `body: ${JSON.stringify(body)}` : ""} -> \n Status Code: ${
-        response.status
-      }(${response.statusText}) \n Response(body): ${JSON.stringify(await data)} \n Headers: ${
-        nodeUtil.inspect(response.headers)
+      `[Rest] ${requestOptions.method} ${endpoint.startsWith("/") ? endpoint : `/${endpoint}`
+      } ${body ? `body: ${JSON.stringify(body)}` : ""} -> \n Status Code: ${response.status
+      }(${response.statusText}) \n Response(body): ${JSON.stringify(await data)} \n Headers: ${nodeUtil.inspect(response.headers)
       }`
     );
 
@@ -78,10 +78,9 @@ class Rest {
       (requestBody.encodedTrack && requestBody.identifier)
     )
       throw new Error(
-        `${
-          typeof requestBody.track !== "undefined"
-            ? `encoded And identifier`
-            : `encodedTrack And identifier`
+        `${typeof requestBody.track !== "undefined"
+          ? `encoded And identifier`
+          : `encodedTrack And identifier`
         } are mutually exclusive (Can't be provided together) in Update Player Endpoint`
       );
 
@@ -172,8 +171,7 @@ class Rest {
     } catch (e) {
       this.riffy.emit(
         "debug",
-        `[Rest - Error] There was an Error for ${
-          new URL(req.url).pathname
+        `[Rest - Error] There was an Error for ${new URL(req.url).pathname
         } ${e}`
       );
       return null;
