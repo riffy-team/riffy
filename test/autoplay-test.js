@@ -1,4 +1,4 @@
-const { autoPlay } = require("../../build/functions/autoPlay");
+const { autoPlay } = require("../build/functions/autoPlay");
 
 // autoPlay("https://open.spotify.com/track/4bMLBGnjAGVFpjAfIkD0UY", "spotify").then(x => {
 //     console.log(x)
