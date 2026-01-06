@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.0.11 (2026-01-06)
+
+### What's Changed
+- fixed `Invaild property descriptor. Cannot specify accessors and a value or a writable attribute.`
+- Added retries for 5xx errors
+- clearFilters() now actually clears things. No cloning voodoo 👻
+
+### Features & Improvements
+- Now autoplay works with Apple Music ❤️, Spotify 💚 & SoundCloud 💛, all handled by one front function.
+- add: core API structures for node, player, track, connection, REST, and audio filters type definitions.
+
 ## v1.0.10 (2026-01-01)
 
 This Release Fixes Voice Connectivity Issues caused in v1.0.9 Release, This Version deprecates v1.0.9. No Features for this, But anyways, Happy New Year to you all.
