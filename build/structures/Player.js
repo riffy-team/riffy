@@ -14,6 +14,7 @@ class Player extends EventEmitter {
         this.guildId = options.guildId;
         this.textChannel = options.textChannel;
         this.voiceChannel = options.voiceChannel;
+        // @ts-ignore this.connectionTimeout exists on the constructor.
         this.connection = new Connection(this);
         this.filters = new Filters(this);
         this.mute = options.mute ?? false;
@@ -99,10 +100,12 @@ class Player extends EventEmitter {
             this.riffy.emit("debug", `[Player ${this.guildId}] Waiting for Node voice connection to stabilize...`);
 
             try {
+                // @ts-ignore this.connectionTimeout exists on the constructor.
                 await once(this, "connectionRestored", { signal: AbortSignal.timeout(this.connectionTimeout) });
             } catch (error) {
                 // No need to emit debug message if connection is already restored,
                 // And we didn't receive the notifying event for some reason.
+                // @ts-ignore this.connectionTimeout exists on the constructor.
                 !this.connected && this.riffy.emit("debug", `[Player ${this.guildId}] Timed out waiting (${this.connectionTimeout} ms) for Node voice connection to stabilize.`);
                 // We don't throw here; we let the standard check below decide if we should crash or try anyway.
             }
@@ -145,6 +148,7 @@ class Player extends EventEmitter {
             if (player == null) {
                 this.isAutoplay = false;
                 return this;
+            // @ts-ignore
             } else if (player == false) {
                 this.isAutoplay = false;
                 return this;
@@ -296,7 +300,12 @@ class Player extends EventEmitter {
         } else return this;
     }
 
-    connect(options = this) {
+    connect(options = { 
+        guildId: this.guildId,
+        voiceChannel: this.voiceChannel,
+        deaf: this.deaf,
+        mute: this.mute
+    }) {
         const { guildId, voiceChannel, deaf = true, mute = false } = options;
         this.send({
             guild_id: guildId,

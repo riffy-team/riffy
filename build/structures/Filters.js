@@ -20,7 +20,7 @@ class Filters {
 
     /**
      * 
-     * @param {string[]} band
+     * @param {{ band: number; gain: number; }[]} band
      * @returns 
      */
 
@@ -255,7 +255,7 @@ class Filters {
             this.bassboost = options.value || 5;
             const num = (options.value || 5 - 1) * (1.25 / 9) - 0.25;
 
-            this.setEqualizer(Array(13).fill(0).map((n, i) => ({
+            this.setEqualizer(Array(13).fill(0).map((_n, i) => ({
                 band: i,
                 gain: num
             })));

@@ -16,8 +16,95 @@ type PrettifyWithNullOrUndefined<T> =
     ? { [K in keyof T]: PrettifyWithNullOrUndefined<T[K]> } & {}
     : (null extends T ? (Exclude<T, null> | null) : (undefined extends T ? (Exclude<T, undefined> | undefined) : T));
 
+export interface RestTrack {
+    encoded: string,
+    info: {
+        /**
+         * @description The unique identifier of the track.
+         */
+        identifier: string;
+        /**
+         * @description Whether the track is seekable.
+         */
+        isSeekable: boolean;
+        /**
+         * @description The author of the track.
+         */
+        author: string;
+        /**
+         * @description The length of the track in milliseconds.
+         */
+        length: number;
+        /**
+         * @description Whether the track is a stream.
+         */
+        isStream: boolean;
+        /**
+         * @description The source name of the track.
+         */
+        sourceName: string;
+        /**
+         * @description The title of the track.
+         */
+        title: string;
+        /**
+         * @description The URI of the track.
+         */
+        uri: string;
+        /**
+         * @description The artwork (thumbnail) URL of the track.
+         */
+        artworkUrl?: string;
+        /**
+         * @description The ISRC of the track.
+         */
+        isrc?: string;
+        /**
+         * @description The position of the track in milliseconds.
+         */ 
+        position: number;
+    }
+
+    /**
+     * Plugin Info
+     * ## Properties may not exist(Means Empty Object) if Lavalink/Node does not return/provide them
+     */
+    pluginInfo?: object
+    userData?: object
+}
+
+export interface RestPlaylistInfo {
+    /**
+     * The name of the playlist.
+     */
+    name: string;
+    /**
+     * The selected track of the playlist (-1 if no track is selected)
+     */
+    selectedTrack: number;
+}
+
+export type RestFilters = Omit<FilterOptions, '_8d'>
+/**
+ * A Player Object returned by the Node
+ */
+export interface RestPlayer {
+    guildId: string;
+    track: PrettifyWithNull<Nullable<RestTrack>>
+    volume: number;
+    paused: boolean;
+    state: {
+        time: number,
+        position: number,
+        connected: boolean,
+        ping: number,
+    },
+    voice: Voice,
+    filters: RestFilters,
+}
+
 export declare class Track {
-    constructor(data: any, requester: any, node: Node);
+    constructor(data: RestTrack, requester: any, node: Node);
 
     public track: string;
     public info: {
@@ -29,7 +116,8 @@ export declare class Track {
         sourceName: string;
         title: string;
         uri: string;
-        isrc: string | null
+        isrc: string | null;
+        position: number;
 
         /**
          * @description Caches the fetched (if any), reuses this. Instead of fetching them again.
@@ -38,6 +126,14 @@ export declare class Track {
         thumbnail: string | null;
         requester: any;
     };
+
+    /**
+     * Plugin Info
+     * ## Properties may not exist(Means Empty Object) if Lavalink/Node does not return/provide them
+     */
+    public pluginInfo: object;
+    public rawData: RestTrack;
+    public userData: object;
 
     public resolve(riffy: Riffy): Promise<Track>;
 }
@@ -51,13 +147,13 @@ export interface RestOptions {
     restVersion: string;
 }
 
-interface RequestOptions {
+interface playerUpdateOptions {
     guildId: string;
     data: any;
 }
 
-interface RestResponse {
-
+export interface RestResponse {
+    [key: string]: any;
 }
 
 export declare class Rest extends EventEmitter {
@@ -70,17 +166,17 @@ export declare class Rest extends EventEmitter {
     public calls: number;
 
     public setSessionId(sessionId: string): void;
-    public makeRequest(method: string, endpoint: string, body?: any): Promise<RestResponse | null>;
-    public getPlayers(): Promise<RestResponse | null>;
-    public updatePlayer(options: RequestOptions): Promise<void>;
-    public destroyPlayer(guildId: string): Promise<RestResponse | null>;
-    public getTracks(identifier: string): Promise<void>;
-    public decodeTrack(track: string, node?: any): Promise<void>;
-    public decodeTracks(tracks: any[]): Promise<void>;
-    public getStats(): Promise<void>;
-    public getInfo(): Promise<void>;
-    public getRoutePlannerStatus(): Promise<void>;
-    public getRoutePlannerAddress(address: string): Promise<void>;
+    public makeRequest(method: string, endpoint: string, body?: any, includeHeaders?: boolean, retryCount?: number): Promise<RestResponse | { data: RestResponse, headers: any } | null>;
+    public getPlayers(): Promise<RestPlayer[] | null>;
+    public updatePlayer(options: playerUpdateOptions): Promise<RestPlayer | null>;
+    public destroyPlayer(guildId: string): Promise<null>;
+    public getTracks(identifier: string): Promise<nodeResponse | null>;
+    public decodeTrack(track: string, node?: any): Promise<RestTrack | null>;
+    public decodeTracks(tracks: any[]): Promise<RestTrack[] | null>;
+    public getStats(): Promise<Prettify<Omit<Node["stats"], "frameStats"> & { frameStats: null }> | null>;
+    public getInfo(): Promise<NodeInfo | null>;
+    public getRoutePlannerStatus(): Promise<RestResponse | null>;
+    public getRoutePlannerAddress(address: string): Promise<RestResponse | null>;
     public parseResponse(req: any): Promise<RestResponse | null>;
 }
 
@@ -459,6 +555,12 @@ export type RiffyEvents = {
     "playerDisconnect": (player: Player) => void;
 
     /**
+     * Emitted when a player is Destroyed
+     * @param player The player that was Destroyed.
+     */
+    "playerDestroy": (player: Player) => void;
+
+    /**
      * Emitted when a player moves to a new voice channel
      * @param player The player that moved.
      * @param oldChannel The old voice channel.
@@ -632,7 +734,7 @@ export declare class Riffy extends EventEmitter {
     /**
      * @description Destroys the player for given guildId (if present)
      */
-    public destroyPlayer(guildId): void;
+    public destroyPlayer(guildId: string): void;
 
     /**
     * Migrates a player or a node to a new node.
@@ -728,13 +830,15 @@ export type NodeOptions = {
     reconnectTries?: number;
 }
 
-type NodeInfo = {
+type BaseNodeInfo = {
     /**
      * The Semantic Version Object of the node
      * @see https://lavalink.dev/api/rest.html#version-object
      */
     version: NodeInfoSemanticVersionObj;
+
     buildTime: number;
+
     /**
      * The git information of the node
      * @see https://lavalink.dev/api/rest.html#git-object
@@ -744,16 +848,21 @@ type NodeInfo = {
         commit: string;
         commitTime: string;
     };
+
     jvm: string;
+
     lavaplayer: string;
+
     /**
      * The available enabled source managers for the node
      */
     sourceManagers: string[];
+
     /**
      * The available filters (To apply For the Player)
      */
     filters: string[];
+
     /**
      * The enabled plugins of the Node
      * @see https://lavalink.dev/api/rest.html#plugin-object
@@ -762,16 +871,36 @@ type NodeInfo = {
         name: string;
         version: string;
     }>;
-} | {
-    node: string;
-    voice: {
-        name: string;
-        version: string;
-    };
-    isNodelink: boolean;
 }
 
-type NodeInfoSemanticVersionObj = {
+export type NodeInfo = BaseNodeInfo & (
+    | {
+        /**
+         * Whether the Node is hosted with Nodelink Server
+         */
+        isNodelink: true;
+
+        /**
+         * Node name (Used by Nodelink)
+         */
+        node: string;
+
+        /**
+         * Voice info (Used by Nodelink)
+         */
+        voice: {
+            name: string;
+            version: string;
+        };
+    }
+    | {
+        isNodelink?: false;
+        node?: never;
+        voice?: never;
+    }
+);
+
+export type NodeInfoSemanticVersionObj = {
     semver: string;
     major: number;
     minor: number;
@@ -870,7 +999,6 @@ export declare class Node {
     public reconnectAttempted: number;
 
     public connected: boolean;
-    public reconnecting: boolean;
     /**
     * Lavalink Info fetched While/After connecting.
     */
@@ -895,6 +1023,23 @@ export declare class Node {
             nulled: 0,
             deficit: 0,
         },
+
+        /**
+         * Nodelink specific stats
+         */
+        detailedStats: {
+            api: {
+                requests: Record<string, number>
+                errors: object
+            },
+            sources: Record<string, number>,
+            playback: {
+                events: {
+                    TrackStartEvent: number,
+                    TrackEndEvent: number,
+                } & Record<string, number>
+            }
+        } | null,
     };
     public lastStats: number
 
@@ -964,13 +1109,14 @@ export declare class Node {
         removeMixLayer: (guildId: string, mixId: string) => Promise<void>;
     }
 
-    public connect(): void;
-    public open(): void;
+    public connect(): Promise<void>;
+    public open(): Promise<void>;
     public error(event: any): void;
     public message(msg: any): void;
-    public close(event: any, reason: string): void;
+    public close(event: any, reason: string): Promise<void>;
     public reconnect(): void;
     public disconnect(): void;
+    public destroy(clean?: boolean): void;
     readonly penalties: number;
 }
 
@@ -1016,6 +1162,7 @@ export type NodelinkMixLayer = {
 export type FilterOptions = {
     /**
      * The volume of the player
+     * 0.0 to 5.0, where 1.0 is 100%. Values >1.0 may cause clipping
      */
     volume?: number;
     /**
@@ -1128,7 +1275,7 @@ export declare class Filters {
     public vaporwave: FilterOptions["vaporwave"];
     public _8d: FilterOptions["_8d"];
 
-    public setEquilizer(band: Array<{ band: number; gain: number }>): this;
+    public setEqualizer(band: Array<{ band: number; gain: number }>): this;
 
     public setKaraoke(enabled: boolean, options?: {
         level: number;
@@ -1278,5 +1425,5 @@ export declare class Connection {
         self_mute: boolean;
     }): void;
 
-    private updatePlayerVoiceData(): void;
+    private updatePlayerVoiceData(voiceData: any): Promise<RestResponse | null>;
 }

@@ -133,6 +133,7 @@ b    */
             this.pendingUpdate = null;
             // If play() was waiting on the deferred promise, resolve it now
             if (this.deferred) {
+                // @ts-ignore
                 this.deferred.resolve();
                 this.deferred = null;
             }
@@ -177,7 +178,7 @@ b    */
         }
 
         if (this.player.voiceChannel && channel_id && this.player.voiceChannel !== channel_id) {
-            this.player.riffy.emit("playerMove", this.player.voiceChannel, channel_id)
+            this.player.riffy.emit("playerMove", this.player, this.player.voiceChannel, channel_id)
             this.player.voiceChannel = channel_id;
             this.voiceChannel = channel_id
         }

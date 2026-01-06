@@ -2,6 +2,7 @@ const { EventEmitter } = require("node:events");
 const { Node } = require("./Node");
 const { Player } = require("./Player");
 const { Track } = require("./Track");
+// @ts-ignore It's JS 🙃, --resolveJsonModule doesn't apply here
 const { version: pkgVersion } = require("../../package.json")
 
 const versions = ["v3", "v4"];
@@ -273,7 +274,7 @@ class Riffy extends EventEmitter {
    * @param {*} param0.source  A source to search the query on example:ytmsearch for youtube music
    * @param {*} param0.requester the requester who's requesting 
    * @param {(string | Node)} [param0.node] the node to request the query on either use node identifier/name or the node class itself
-   * @returns {import("..").nodeResponse} returned properties values are nullable if lavalink doesn't give them
+   * @returns {Promise<import("..").nodeResponse>} returned properties values are nullable if lavalink doesn't give them
    * */
   async resolve({ query, source, requester, node }) {
     if (!this.initiated) throw new Error("You have to initialize Riffy in your ready event");

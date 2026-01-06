@@ -39,6 +39,7 @@ class Track {
 
 
         this.pluginInfo = data.pluginInfo
+        this.userData = data.userData
     }
 
     async resolve(riffy) {

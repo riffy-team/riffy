@@ -5,7 +5,7 @@ const { Track } = require("./Track");
 class Node {
   /**
    * @param {import("./Riffy").Riffy} riffy
-   * @param {} node
+   * @param {Node} node
    */
   constructor(riffy, node, options) {
     this.riffy = riffy
@@ -18,7 +18,6 @@ class Node {
     this.sessionId = node.sessionId || null;
     this.rest = new Rest(riffy, this);
     Object.defineProperty(this, "options", {
-      // writable: false,
       get() {
         return options
       }
@@ -35,7 +34,7 @@ class Node {
     this.regions = node.regions;
     /**
      * Lavalink Info fetched While/After connecting.
-     * @type {import("..").NodeInfo | null}
+     * @type {import("..").NodeInfo}
      */
     this.info = null;
     this.stats = {
@@ -58,6 +57,7 @@ class Node {
         nulled: 0,
         deficit: 0,
       },
+      detailedStats: null,
     };
 
     this.connected = false;
@@ -90,7 +90,7 @@ class Node {
       const missingPlugins = [];
 
       plugins.forEach((plugin) => {
-        const p = this.info.plugins.find((p) => p.name === plugin)
+        const p = this.info?.plugins?.find((p) => p.name === plugin)
 
         if (!p) {
           missingPlugins.push(plugin)
@@ -161,14 +161,8 @@ class Node {
     },
 
     /**
-     * @typedef {Object} addMixLayerOptions
-     * @property {string} track.encoded Base64 encoded track string (optional if identifier provided)
-     * @property {string?} track.identifier Track identifier (optional if encoded provided)
-     * @property {string?} track.userData (Optional) Track User Data.
-     * @property {number?} volume Float 0.0 to 1.0 (Default: 0.8)
-     * 
      * @param {string} guildId 
-     * @param {addMixLayerOptions} mixLayerOptions 
+     * @param {import("..").AddMixLayerOptions} mixLayerOptions 
      * @returns 
      */
     addMixLayer: async (guildId, mixLayerOptions) => {
@@ -258,13 +252,13 @@ class Node {
     return await this.rest.makeRequest("GET", `/${options.restVersion || this.restVersion}/info`, null, options.includeHeaders)
   }
 
-  /**
-   * Fetches Lavalink Node's Version and checks If it's supported by Riffy (v3 and v4)
-   * Destroys the Lavalink Node if it's not supported.
-   * @todo Probably to wait until version checks are completed before continuing to connnect to Lavalink.
-   * @todo Add option to skip the version checks in-case needed.
-   * @private
-   */
+  // /**
+  //  * Fetches Lavalink Node's Version and checks If it's supported by Riffy (v3 and v4)
+  //  * Destroys the Lavalink Node if it's not supported.
+  //  * @todo Probably to wait until version checks are completed before continuing to connnect to Lavalink.
+  //  * @todo Add option to skip the version checks in-case needed.
+  //  * @private
+  //  */
   // async #fetchAndCheckVersion() {
   //     console.log(this.restVersion == "v3" ? "v4" : "v3")
   //     await Promise.all([this.fetchInfo({ includeHeaders: true }), this.fetchInfo({ restVersion: this.restVersion == "v3" ? "v4" : "v3", includeHeaders: true })]).then(([restVersionRequest, flippedRestRequest]) => {
@@ -374,6 +368,8 @@ class Node {
        .then((info) => this.info = info)
        .catch((e) => (console.error(`Node (${this.name}) Failed to fetch info (${this.restVersion}/info) on WS-OPEN: ${e}`), null));
 
+    this.info
+    // @ts-ignore this.options exists on the constructor
     if (!this.info && !this.options.bypassChecks.nodeFetchInfo) {
       throw new Error(`Node (${this.name} - URL: ${this.restUrl}) Failed to fetch info on WS-OPEN`);
     }
@@ -495,7 +491,7 @@ class Node {
       this.ws?.removeAllListeners();
       this.ws = null;
       this.riffy.emit("nodeDestroy", this);
-      this.riffy.nodes.delete(this.name);
+      this.riffy.nodeMap.delete(this.name);
       return;
     }
 

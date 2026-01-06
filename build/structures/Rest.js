@@ -119,7 +119,7 @@ class Rest {
   }
 
   async decodeTrack(track, node) {
-    if (!node) node = this.leastUsedNodes[0];
+    if (!node) node = this.riffy.leastUsedNodes[0];
     return this.makeRequest(
       `GET`,
       `/${this.version}/decodetrack?encodedTrack=${encodeURIComponent(track)}`
@@ -159,7 +159,7 @@ class Rest {
   /**
    * @description Parses The Process Request and Performs necessary Checks(if statements)
    * @param {Response} req
-   * @returns {object | null}
+   * @returns {Promise<object | null>}
    */
   async parseResponse(req) {
     if (req.status === 204) {
