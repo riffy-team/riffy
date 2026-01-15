@@ -193,7 +193,7 @@ class Player extends EventEmitter {
                         availableTracks = response.tracks;
                     }
                     let track = availableTracks[Math.floor(Math.random() * availableTracks.length)];
-                    track.info.isAutoplay = true;
+                    track.isAutoplay = true;
                     this.queue.push(track);
                     this.play();
                     return this;
@@ -224,7 +224,7 @@ class Player extends EventEmitter {
                         }
 
                         let track = availableTracks[Math.floor(Math.random() * availableTracks.length)];
-                        track.info.isAutoplay = true;
+                        track.isAutoplay = true;
                         this.queue.push(track);
                         this.play();
                         return this;
@@ -256,7 +256,7 @@ class Player extends EventEmitter {
                         }
 
                         let track = availableTracks[Math.floor(Math.random() * availableTracks.length)];
-                        track.info.isAutoplay = true;
+                        track.isAutoplay = true;
                         this.queue.push(track);
                         this.play();
                         return this;
@@ -288,7 +288,7 @@ class Player extends EventEmitter {
                         }
 
                         let track = availableTracks[Math.floor(Math.random() * availableTracks.length)];
-                        track.info.isAutoplay = true;
+                        track.isAutoplay = true;
                         this.queue.push(track);
                         this.play();
                         return this;
