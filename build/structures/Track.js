@@ -40,6 +40,7 @@ class Track {
 
         this.pluginInfo = data.pluginInfo
         this.userData = data.userData
+        this.isAutoplay = false;
     }
 
     async resolve(riffy) {
