@@ -134,6 +134,10 @@ export declare class Track {
     public pluginInfo: object;
     public rawData: RestTrack;
     public userData: object;
+    /**
+     * (Client-Specific Property - not from the Node), If the track was auto-played by the Client/Riffy. 
+     */
+    public isAutoplay: boolean;
 
     public resolve(riffy: Riffy): Promise<Track>;
 }

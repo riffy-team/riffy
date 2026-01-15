@@ -148,7 +148,7 @@ class Player extends EventEmitter {
             if (player == null) {
                 this.isAutoplay = false;
                 return this;
-            // @ts-ignore
+                // @ts-ignore
             } else if (player == false) {
                 this.isAutoplay = false;
                 return this;
@@ -193,6 +193,12 @@ class Player extends EventEmitter {
                         availableTracks = response.tracks;
                     }
                     let track = availableTracks[Math.floor(Math.random() * availableTracks.length)];
+                    Object.defineProperty(track, "isAutoplay", {
+                        writable: false,
+                        enumerable: true,
+                        value: true
+                    })
+
                     this.queue.push(track);
                     this.play();
                     return this;
@@ -223,6 +229,11 @@ class Player extends EventEmitter {
                         }
 
                         let track = availableTracks[Math.floor(Math.random() * availableTracks.length)];
+                        Object.defineProperty(track, "isAutoplay", {
+                            writable: false,
+                            enumerable: true,
+                            value: true
+                        })
 
                         this.queue.push(track);
                         this.play();
@@ -255,6 +266,11 @@ class Player extends EventEmitter {
                         }
 
                         let track = availableTracks[Math.floor(Math.random() * availableTracks.length)];
+                        Object.defineProperty(track, "isAutoplay", {
+                            writable: false,
+                            enumerable: true,
+                            value: true
+                        })
 
                         this.queue.push(track);
                         this.play();
@@ -287,6 +303,11 @@ class Player extends EventEmitter {
                         }
 
                         let track = availableTracks[Math.floor(Math.random() * availableTracks.length)];
+                        Object.defineProperty(track, "isAutoplay", {
+                            writable: false,
+                            enumerable: true,
+                            value: true
+                        })
 
                         this.queue.push(track);
                         this.play();
@@ -300,7 +321,7 @@ class Player extends EventEmitter {
         } else return this;
     }
 
-    connect(options = { 
+    connect(options = {
         guildId: this.guildId,
         voiceChannel: this.voiceChannel,
         deaf: this.deaf,
