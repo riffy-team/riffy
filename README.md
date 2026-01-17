@@ -223,7 +223,7 @@ After running the bot, invite the bot in your server and run `!play` command to 
 
 ---
 
-### ╰┈2️⃣ Our Team
+### ╰┈3️⃣ Our Team
 
 - 🟦 Emmanuel Lobo: **[@unschooledgamer](https://github.com/unschooledgamer)**
 - 🟪 Priyanshu Jain: **[@elitex07](https://github.com/elitex07)**
@@ -231,12 +231,12 @@ After running the bot, invite the bot in your server and run `!play` command to 
 
 ---
 
-### ╰┈3️⃣ Example Projects
+### ╰┈4️⃣ Example Projects
 - **[Riffy Music Bot](https://github.com/riffy-team/riffy-music-bot)** | Contribute to add yours.
 
 ---
 
-### ╰┈4️⃣ Official Plugins
+### ╰┈5️⃣ Official Plugins
 - **[riffy-spotify](https://github.com/riffy-team/riffy-spotify)** (Spotify Plugin for Riffy Client.)
 
 <p align="center">≪ ◦ ✦ ◦ ≫</p>

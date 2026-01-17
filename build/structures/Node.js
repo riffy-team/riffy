@@ -3,7 +3,6 @@ const { Rest } = require("./Rest");
 const { Track } = require("./Track");
 
 class Node {
-class Node {
   /**
    * @param {import("./Riffy").Riffy} riffy
    * @param {import("..").NodeOptions} node
