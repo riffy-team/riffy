@@ -186,6 +186,32 @@ client.on("raw", (d) => {
 client.login("Discord-Bot-Token-Here");
 ```
 
+### ╰┈2️⃣ Queue Management
+Riffy's queue system extends the native Array class, giving you access to all standard array methods plus powerful custom ones.
+
+```js
+// Add a track to the end
+player.queue.add(track);
+
+// Add a track to the front (Priority)
+player.queue.unshift(track);
+
+// Shuffle the queue (Fisher-Yates)
+player.queue.shuffle();
+
+// Move a track from position 2 to position 0
+player.queue.move(2, 0);
+
+// Remove a specific track by index
+const removedTrack = player.queue.remove(2);
+
+// Clear the entire queue
+player.queue.clear();
+
+// Get queue size
+console.log(player.queue.size);
+```
+
 #### Start the Bot
 Now that we have created our project, we can run our bot by typing the following command in the terminal.
 
