@@ -144,6 +144,7 @@ class Node {
 
   /**
    * Mixer Manager (Nodelink Only)
+   * @since 1.0.9
    */
   mixer = {
     check: () => this.info?.isNodelink ?? false,
@@ -223,7 +224,7 @@ class Node {
     }
 
     this.connected = true;
-    this.riffy.emit('debug', `[Node: ${this.name}] Websocket Open`);
+    this.riffy.emit('debug', `[Node: ${this.name}] Websocket connection established on ${this.wsUrl}`);
 
     try {
       this.info = await this.fetchInfo();
@@ -246,11 +247,13 @@ class Node {
   error(event) {
     if (!event) return;
     this.riffy.emit("nodeError", this, event);
-    this.riffy.emit("debug", `[Node: ${this.name}] WS Error: ${event.message || event}`);
+    this.riffy.emit("debug", `[Node: ${this.name}] Websocket Error: ${event.message || event}`);
 
     if (this.riffy.migrateOnFailure && this.connected) {
       // attempt migration only if we were previously "connected" logic-wise
-      this.riffy.migrate(this).catch(() => { });
+      this.riffy.migrate(this).catch(err => {
+        this.riffy.emit("debug", `Failed to auto-migrate players from node ${this.name} on error: ${err.message}`);
+      });
     }
   }
 
@@ -262,6 +265,7 @@ class Node {
     if (!payload.op) return;
 
     this.riffy.emit("raw", "Node", payload);
+    this.riffy.emit("debug", `[Node: ${this.name}] Received OP: ${payload.op} | Payload: ${JSON.stringify(payload)}`);
 
     if (payload.op === "stats") {
       this.stats = { ...payload };
@@ -275,13 +279,15 @@ class Node {
       }
 
       this.riffy.emit("nodeConnect", this);
-      this.riffy.emit("debug", `[Node: ${this.name}] Ready! Session: ${payload.sessionId}`);
+      this.riffy.emit("debug", `[Node: ${this.name}] Ready (Ready Payload received)! Session ID: ${payload.sessionId}, ${this.info?.isNodelink ? `Nodelink ✨ (V${this.info?.version?.semver})` : ""}`);
 
       // Configure Resuming
       if (this.restVersion === "v4" && this.sessionId) {
         this.rest.makeRequest(`PATCH`, `/${this.rest.version}/sessions/${this.sessionId}`, { resuming: true, timeout: this.resumeTimeout });
+        this.riffy.emit("debug", `[Node: ${this.name}] Resuming configured (v4).`);
       } else if (this.resumeKey) {
         this.rest.makeRequest(`PATCH`, `/${this.rest.version}/sessions/${this.sessionId}`, { resumingKey: this.resumeKey, timeout: this.resumeTimeout });
+        this.riffy.emit("debug", `[Node: ${this.name}] Resuming configured (v3).`);
       }
     }
 
@@ -291,12 +297,14 @@ class Node {
 
   async close(event, reason) {
     this.riffy.emit("nodeDisconnect", this, { event, reason });
-    this.riffy.emit("debug", `[Node: ${this.name}] Closed. Code: ${event}, Reason: ${reason}`);
+    this.riffy.emit("debug", `Connection with Lavalink closed with Error code : ${event || "Unknown code"}, reason: ${reason || "Unknown reason"}`);
 
     this.connected = false;
 
     if (this.riffy.migrateOnDisconnect) {
-      this.riffy.migrate(this).catch(() => { });
+      this.riffy.migrate(this).catch(err => {
+        this.riffy.emit("debug", `Failed to auto-migrate players from node ${this.name} on disconnect: ${err.message}`);
+      });
     }
 
     this.reconnect();
@@ -359,6 +367,18 @@ class Node {
     this.riffy.emit("debug", `[Node: ${this.name}] Destroyed.`);
 
     this.riffy.nodeMap.delete(this.name);
+    this.connected = false;
+  }
+
+  disconnect() {
+    if (!this.connected) return;
+    this.riffy.players.forEach((player) => { if (player.node == this) { this.riffy.bestNode() ? player.moveTo(this.riffy.bestNode()) : true } });
+    this.ws.close(1000, "destroy");
+    this.ws?.removeAllListeners();
+    this.ws = null;
+    // Allowing to connect back.
+    // this.riffy.nodeMap.delete(this.name);
+    this.riffy.emit("nodeDisconnect", this);
     this.connected = false;
   }
 
