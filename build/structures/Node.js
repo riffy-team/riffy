@@ -18,17 +18,21 @@ class Node {
     this.secure = node.secure || false;
     this.sessionId = node.sessionId || null;
     this.rest = new Rest(riffy, this);
-
-    // Define options as read-only
     Object.defineProperty(this, "options", {
-      value: options,
-      writable: false
-    });
+      get() {
+        return options
+      }
+    })
 
-    this.wsUrl = `ws${this.secure ? "s" : ""}://${this.host}:${this.port}${this.restVersion === "v4" ? "/v4/websocket" : ""}`;
+    if (options.restVersion === "v4") {
+      this.wsUrl = `ws${this.secure ? "s" : ""}://${this.host}:${this.port}/v4/websocket`;
+    } else {
+      this.wsUrl = `ws${this.secure ? "s" : ""}://${this.host}:${this.port}`;
+    }
+
     this.restUrl = `http${this.secure ? "s" : ""}://${this.host}:${this.port}`;
     this.ws = null;
-    this.regions = node.regions || [];
+    this.regions = node.regions;
 
     /**
      * Lavalink Info fetched While/After connecting.
@@ -43,9 +47,22 @@ class Node {
       players: 0,
       playingPlayers: 0,
       uptime: 0,
-      memory: { free: 0, used: 0, allocated: 0, reservable: 0 },
-      cpu: { cores: 0, systemLoad: 0, lavalinkLoad: 0 },
-      frameStats: { sent: 0, nulled: 0, deficit: 0 },
+      memory: {
+        free: 0,
+        used: 0,
+        allocated: 0,
+        reservable: 0,
+      },
+      cpu: {
+        cores: 0,
+        systemLoad: 0,
+        lavalinkLoad: 0,
+      },
+      frameStats: {
+        sent: 0,
+        nulled: 0,
+        deficit: 0,
+      },
       detailedStats: null,
     };
 
@@ -143,36 +160,89 @@ class Node {
   }
 
   /**
-   * Mixer Manager (Nodelink Only)
    * @since 1.0.9
    */
   mixer = {
-    check: () => this.info?.isNodelink ?? false,
+    check: () => {
+      return this.info?.isNodelink ?? false;
+    },
 
     /**
-     * Add a mix layer.
      * @param {string} guildId 
      * @param {import("..").AddMixLayerOptions} mixLayerOptions 
+     * @returns 
      */
     addMixLayer: async (guildId, mixLayerOptions) => {
-      if (!this.mixer.check()) throw new Error("Node is not a Nodelink Server");
-      if (!mixLayerOptions || typeof mixLayerOptions !== "object") throw new TypeError("mixLayerOptions must be an object");
+      if (!this.mixer.check()) {
+        throw new Error("This node is not a Nodelink Server");
+      }
 
-      return this.rest.makeRequest("POST", `/v4/sessions/${this.sessionId}/players/${guildId}/mix`, mixLayerOptions);
+      if (mixLayerOptions && typeof mixLayerOptions !== "object") {
+        throw new TypeError("mixLayerOptions must be an object");
+      }
+
+      if (mixLayerOptions.track && typeof mixLayerOptions.track !== "object") {
+        throw new TypeError("mixLayerOptions.track must be an object");
+      }
+
+      if (mixLayerOptions.track.encoded && mixLayerOptions.track.identifier) {
+        throw new TypeError("mixLayerOptions.track.encoded and mixLayerOptions.track.identifier cannot be provided at the same time");
+      }
+
+      if (mixLayerOptions.volume !== undefined && typeof mixLayerOptions.volume !== "number" || mixLayerOptions.volume < 0 || mixLayerOptions.volume > 1) {
+        throw new TypeError("mixLayerOptions.volume must be a number between 0 and 1");
+      }
+
+      const body = {
+        track: mixLayerOptions.track
+      }
+
+      if (mixLayerOptions.volume) {
+        body.volume = mixLayerOptions.volume;
+      }
+
+
+      return this.rest.makeRequest("POST", `/v4/sessions/${this.sessionId}/players/${guildId}/mix`, body)
     },
 
     getActiveMixLayers: async (guildId) => {
-      if (!this.mixer.check()) throw new Error("Node is not a Nodelink Server");
+      if (!this.mixer.check()) {
+        throw new Error("Node is not hosted with Nodelink Server");
+      }
       return await this.rest.makeRequest("GET", `/v4/sessions/${this.sessionId}/players/${guildId}/mix`);
     },
 
     updateMixLayerVolume: async (guildId, mixId, volume) => {
-      if (!this.mixer.check()) throw new Error("Node is not a Nodelink Server");
+      if (!this.mixer.check()) {
+        throw new Error("Node is not hosted with Nodelink Server");
+      }
+      if (!guildId || !mixId || !volume) {
+        throw new TypeError("guildId, mixId and volume are required to Update Mix Volume");
+      }
+
+      if (mixId !== undefined && typeof mixId !== "string") {
+        throw new TypeError("id must be a string");
+      }
+
+      if (volume !== undefined && typeof volume !== "number" || volume < 0 || volume > 1) {
+        throw new TypeError("volume must be a number between 0 and 1");
+      }
+
       return await this.rest.makeRequest("PATCH", `/v4/sessions/${this.sessionId}/players/${guildId}/mix/${mixId}`, { volume });
     },
 
     removeMixLayer: async (guildId, mixId) => {
-      if (!this.mixer.check()) throw new Error("Node is not a Nodelink Server");
+      if (!this.mixer.check()) {
+        throw new Error("Node is not hosted with Nodelink Server");
+      }
+      if (!guildId || !mixId) {
+        throw new TypeError("guildId and mixId are required to Remove the Mix Layer");
+      }
+
+      if (mixId !== undefined && typeof mixId !== "string") {
+        throw new TypeError("id must be a string");
+      }
+
       return await this.rest.makeRequest("DELETE", `/v4/sessions/${this.sessionId}/players/${guildId}/mix/${mixId}`);
     }
   }
