@@ -52,6 +52,7 @@ class Player extends EventEmitter {
         this.isAutoplay = false;
         this.migrating = false;
 
+        // @ts-ignore this.connectionTimeout exists on the constructor.
         Object.defineProperty(this, "connectionTimeout", {
             value: 10000,
             configurable: false,
@@ -168,7 +169,6 @@ class Player extends EventEmitter {
     }
 
     /**
-     * Enables/Disables Autoplay.
      * @param {Player} player The player instance.
      * @returns {Promise<this>}
      */
@@ -177,6 +177,7 @@ class Player extends EventEmitter {
             if (player == null) {
                 this.isAutoplay = false;
                 return this;
+                // @ts-ignore
             } else if (player == false) {
                 this.isAutoplay = false;
                 return this;
@@ -257,10 +258,6 @@ class Player extends EventEmitter {
         } else return this;
     }
 
-    /**
-     * Connects to a voice channel.
-     * @param {import("..").ConnectOptions} options 
-     */
     connect(options = {
         guildId: this.guildId,
         voiceChannel: this.voiceChannel,
@@ -281,7 +278,7 @@ class Player extends EventEmitter {
 
     /**
      * Stops the player.
-     * @returns {this}
+     * @returns {Player}
      */
     stop() {
         this.position = 0;
@@ -305,7 +302,7 @@ class Player extends EventEmitter {
             data: { paused: toggle },
         });
 
-        this.playing = !toggle;
+        this.playing = this.playing ? false : this.playing;
         this.paused = toggle;
 
         return this;
@@ -316,7 +313,11 @@ class Player extends EventEmitter {
      * @param {number} position Position in milliseconds.
      */
     seek(position) {
-        if (!this.current) return;
+        if (!this.current) {
+            this.riffy.emit("debug", `[Player ${this.guildId}] No current track to seek, aborting seek operation`);
+            return;
+        };
+
         const trackLength = this.current.info.length;
         this.position = Math.max(0, Math.min(trackLength, position));
 
@@ -480,14 +481,17 @@ class Player extends EventEmitter {
     trackEnd(player, track, payload) {
         this.addToPreviousTrack(track)
         const previousTrack = this.previous;
-
+        this.previous = null;
+        // By using lower case We handle both Lavalink Versions(v3, v4) Smartly 😎,
+        // If reason is replaced do nothing expect User do something hopefully else RIP.
         if (payload.reason.toLowerCase() === "replaced") return this.riffy.emit("trackEnd", player, track, payload);
 
+        // Replacing & to lower case it Again Smartly 😎, Handled Both Lavalink Versions.
+        // This avoids track that got cleaned-up or failed to load to be played again (Via Loop Mode).
         if (["loadfailed", "cleanup"].includes(payload.reason.replace("_", "").toLowerCase())) {
             if (player.queue.length === 0) {
                 this.playing = false;
-                this.riffy.emit("debug", `Player (${player.guildId}) Track-Ended with reason: ${payload.reason}, emitting queueEnd instead of trackEnd as queue is empty/finished`);
-                return this.riffy.emit("queueEnd", player);
+                this.riffy.emit("debug", `Player (${player.guildId}) Track-Ended(${track.info.title}) with reason: ${payload.reason}, emitting queueEnd instead of trackEnd as queue is empty/finished`);
             }
 
             this.riffy.emit("trackEnd", player, track, payload);
