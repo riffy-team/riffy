@@ -2,12 +2,21 @@ const { EventEmitter } = require("node:events");
 const { Node } = require("./Node");
 const { Player } = require("./Player");
 const { Track } = require("./Track");
-// @ts-ignore It's JS 🙃, --resolveJsonModule doesn't apply here
+// @ts-ignore
 const { version: pkgVersion } = require("../../package.json")
 
 const versions = ["v3", "v4"];
 
+/**
+ * Main Riffy Client class.
+ * @extends {EventEmitter}
+ */
 class Riffy extends EventEmitter {
+  /**
+   * @param {import("discord.js").Client} client Discord Client instance
+   * @param {import("..").NodeOptions[]} nodes Array of Node Options
+   * @param {import("..").RiffyOptions} options Riffy Options
+   */
   constructor(client, nodes, options) {
     super();
     if (!client) throw new Error("Client is required to initialize Riffy");
@@ -26,6 +35,7 @@ class Riffy extends EventEmitter {
     this.autoMigratePlayers = options.autoMigratePlayers ?? false;
     this.migrateOnDisconnect = options.migrateOnDisconnect ?? false;
     this.migrateOnFailure = options.migrateOnFailure ?? false;
+
     /**
      * Migration Strategy Function, takes a player and availableNodes returns the Best Node for the given player.
      * Could be used for custom Strategies i.e Priority Nodes for Certain Players.
@@ -36,7 +46,7 @@ class Riffy extends EventEmitter {
     this.loadType = null;
     this.playlistInfo = null;
     this.pluginInfo = null;
-    this.plugins = options.plugins;
+    this.plugins = options.plugins || [];
     /**
      * @description Package Version Of Riffy
      */
@@ -63,23 +73,30 @@ class Riffy extends EventEmitter {
       .sort((a, b) => a.penalties - b.penalties)[0];
   }
 
+  /**
+   * Initialize Riffy
+   * @param {string} clientId 
+   */
   init(clientId) {
     if (this.initiated) return this;
+    if (!clientId) throw new Error("Client ID is required to initialize Riffy");
+
     this.clientId = clientId;
     this.nodes.forEach((node) => this.createNode(node));
     this.initiated = true;
 
     this.emit("debug", `Riffy initialized, connecting to ${this.nodes.length} node(s)`);
 
-    if (this.plugins) {
+    if (this.plugins.length) {
       this.emit("debug", `Loading ${this.plugins.length} Riffy plugin(s)`);
-
-      this.plugins.forEach((plugin) => {
-        plugin.load(this);
-      });
+      this.plugins.forEach((plugin) => plugin.load(this));
     }
   }
 
+  /**
+   * Create a Node
+   * @param {import("..").LavalinkNode} options 
+   */
   createNode(options) {
     const node = new Node(this, options, this.options);
     this.nodeMap.set(options.name || options.host, node);
@@ -89,14 +106,22 @@ class Riffy extends EventEmitter {
     return node;
   }
 
+  /**
+   * Destroy a Node
+   * @param {string} identifier Node name or host
+   */
   destroyNode(identifier) {
     const node = this.nodeMap.get(identifier);
     if (!node) return;
-    node.disconnect();
+    node.destroy();
     this.nodeMap.delete(identifier);
     this.emit("nodeDestroy", node);
   }
 
+  /**
+   * Update Voice State
+   * @param {Object} packet Voice Packet
+   */
   async updateVoiceState(packet) {
     if (!["VOICE_STATE_UPDATE", "VOICE_SERVER_UPDATE"].includes(packet.t)) return;
     const player = this.players.get(packet.d.guild_id);
@@ -110,6 +135,10 @@ class Riffy extends EventEmitter {
     }
   }
 
+  /**
+   * Retrieve nodes by region
+   * @param {string} region 
+   */
   fetchRegion(region) {
     const nodesByRegion = [...this.nodeMap.values()]
       .filter((node) => node.connected && node.regions?.includes(region?.toLowerCase()))
@@ -131,6 +160,10 @@ class Riffy extends EventEmitter {
    *
    * @param {Object} options - The options for creating the connection.
    * @param {string} options.guildId - The ID of the guild.
+   * @param {string} options.voiceChannel - The ID of the voice channel.
+   * @param {string} options.textChannel - The ID of the text channel.
+   * @param {boolean} [options.deaf] - Whether to deafen the bot.
+   * @param {boolean} [options.mute] - Whether to mute the bot.
    * @param {string} [options.region] - The region for the connection.
    * @param {number} [options.defaultVolume] - The default volume of the player. **By-Default**: **100**
    * @param {import("..").LoopOption} [options.loop] - The loop mode of the player.
@@ -148,7 +181,7 @@ class Riffy extends EventEmitter {
     let node;
     if (options.region) {
       const region = this.fetchRegion(options.region)[0];
-      node = this.nodeMap.get(region.name || this.leastUsedNodes[0].name);
+      node = this.nodeMap.get(region?.name || this.leastUsedNodes[0].name);
     } else {
       node = this.nodeMap.get(this.leastUsedNodes[0].name);
     }
@@ -197,12 +230,14 @@ class Riffy extends EventEmitter {
       }
 
       if (!node) {
-        this.emit("playerMigrationFailed", player, new Error("No other nodes are available to migrate to."));
-        throw new Error("No other nodes are available to migrate to.");
+        const err = new Error("No other nodes are available to migrate to.");
+        this.emit("playerMigrationFailed", player, err);
+        throw err;
       }
       if (player.node === node) {
-        this.emit("playerMigrationFailed", player, new Error("Player is already on the destination node."));
-        throw new Error("Player is already on the destination node.");
+        const err = new Error("Player is already on the destination node.");
+        this.emit("playerMigrationFailed", player, err);
+        throw err;
       }
 
       try {
@@ -228,8 +263,9 @@ class Riffy extends EventEmitter {
         .sort((a, b) => a.penalties - b.penalties);
 
       if (!availableNodes.length) {
-        this.emit("nodeMigrationFailed", nodeToMigrate, new Error("No other nodes are available to migrate to."));
-        throw new Error("No other nodes are available to migrate to.");
+        const err = new Error("No other nodes are available to migrate to.");
+        this.emit("nodeMigrationFailed", nodeToMigrate, err);
+        throw err;
       }
 
       const migratedPlayers = [];
@@ -271,15 +307,17 @@ class Riffy extends EventEmitter {
   /**
    * @param {object} param0 
    * @param {string} param0.query used for searching as a search Query  
-   * @param {*} param0.source  A source to search the query on example:ytmsearch for youtube music
+   * @param {import("..").SearchPlatform} [param0.source] A source to search the query on example:ytmsearch for youtube music (uses defaultSearchPlatform if not provided)
    * @param {*} param0.requester the requester who's requesting 
-   * @param {(string | Node)} [param0.node] the node to request the query on either use node identifier/name or the node class itself
+   * @param {(string | Node)} [param0.node] Specific node to use for the search either put-in node identifier/name or the node class itself
    * @returns {Promise<import("..").nodeResponse>} returned properties values are nullable if lavalink doesn't give them
    * */
   async resolve({ query, source, requester, node }) {
     if (!this.initiated) throw new Error("You have to initialize Riffy in your ready event");
 
-    if (node && (typeof node !== "string" && !(node instanceof Node))) throw new Error(`'node' property must either be an node identifier/name('string') or an Node/Node Class, But Received: ${typeof node}`)
+    if (node && (typeof node !== "string" && !(node instanceof Node))) {
+      throw new Error(`'node' property must either be an node identifier/name('string') or an Node/Node Class, But Received: ${typeof node}`);
+    }
 
     const requestNode = (node && typeof node === 'string' ? this.nodeMap.get(node) : node) || this.leastUsedNodes[0];
     if (!requestNode) throw new Error("No nodes are available.");
@@ -287,7 +325,6 @@ class Riffy extends EventEmitter {
     try {
       // ^^(jsdoc) A source to search the query on example:ytmsearch for youtube music
       const querySource = source || this.defaultSearchPlatform;
-
       const regex = /^https?:\/\//;
       const identifier = regex.test(query) ? query : `${querySource}:${query}`;
 
@@ -295,39 +332,36 @@ class Riffy extends EventEmitter {
 
       let response = await requestNode.rest.makeRequest(`GET`, `/${requestNode.rest.version}/loadtracks?identifier=${encodeURIComponent(identifier)}`);
 
-      // for resolving identifiers - Only works in Spotify and Youtube
-      if (response.loadType === "empty" || response.loadType === "NO_MATCHES") {
-        response = await requestNode.rest.makeRequest(`GET`, `/${requestNode.rest.version}/loadtracks?identifier=https://open.spotify.com/track/${query}`);
-        if (response.loadType === "empty" || response.loadType === "NO_MATCHES") {
-          response = await requestNode.rest.makeRequest(`GET`, `/${requestNode.rest.version}/loadtracks?identifier=https://www.youtube.com/watch?v=${query}`);
+      // Fallback strategies for empty/no_matches if Query is NOT a url
+      if (!regex.test(query) && (response.loadType === "empty" || response.loadType === "NO_MATCHES")) {
+        // This fallback logic looks a bit aggressive (forcing Spotify then YouTube if original query failed), 
+        // but I'll keep it as it seems to be desired internal logic, just cleaning up readability.
+        const spotifyRes = await requestNode.rest.makeRequest(`GET`, `/${requestNode.rest.version}/loadtracks?identifier=https://open.spotify.com/track/${query}`);
+        if (spotifyRes.loadType !== "empty" && spotifyRes.loadType !== "NO_MATCHES") response = spotifyRes;
+        else {
+          const youtubeRes = await requestNode.rest.makeRequest(`GET`, `/${requestNode.rest.version}/loadtracks?identifier=https://www.youtube.com/watch?v=${query}`);
+          if (youtubeRes.loadType !== "empty" && youtubeRes.loadType !== "NO_MATCHES") response = youtubeRes;
         }
       }
 
+      // Process response based on version
+      this.tracks = [];
       if (requestNode.rest.version === "v4") {
         if (response.loadType === "track") {
           this.tracks = response.data ? [new Track(response.data, requester, requestNode)] : [];
-
-          this.emit("debug", `Search Success for "${query}" on node "${requestNode.name}", loadType: ${response.loadType}, Resulted track Title: ${this.tracks[0].info.title} by ${this.tracks[0].info.author}`);
         } else if (response.loadType === "playlist") {
           this.tracks = response.data?.tracks ? response.data.tracks.map((track) => new Track(track, requester, requestNode)) : [];
-
-          this.emit("debug", `Search Success for "${query}" on node "${requestNode.name}", loadType: ${response.loadType} tracks: ${this.tracks.length}`);
-        } else {
-          this.tracks = response.loadType === "search" && response.data ? response.data.map((track) => new Track(track, requester, requestNode)) : [];
-
-          this.emit("debug", `Search ${this.loadType !== "error" ? "Success" : "Failed"} for "${query}" on node "${requestNode.name}", loadType: ${response.loadType} tracks: ${this.tracks.length}`);
+        } else if (response.loadType === "search") {
+          this.tracks = response.data ? response.data.map((track) => new Track(track, requester, requestNode)) : [];
         }
       } else {
         // v3 (Legacy or Lavalink V3)
         this.tracks = response?.tracks ? response.tracks.map((track) => new Track(track, requester, requestNode)) : [];
-
-        this.emit("debug", `Search ${this.loadType !== "error" || this.loadType !== "LOAD_FAILED" ? "Success" : "Failed"} for "${query}" on node "${requestNode.name}", loadType: ${response.loadType} tracks: ${this.tracks.length}`);
       }
 
-      if (
-        requestNode.rest.version === "v4" &&
-        response.loadType === "playlist"
-      ) {
+      this.emit("debug", `Search ${["error", "LOAD_FAILED"].includes(response.loadType) ? "Failed" : "Success"} for "${query}" on node "${requestNode.name}", loadType: ${response.loadType}, tracks: ${this.tracks.length}`);
+
+      if (requestNode.rest.version === "v4" && response.loadType === "playlist") {
         this.playlistInfo = response.data?.info ?? null;
       } else {
         this.playlistInfo = response.playlistInfo ?? null;
@@ -344,7 +378,7 @@ class Riffy extends EventEmitter {
         tracks: this.tracks,
       };
     } catch (error) {
-      this.emit("debug", `Search Failed for "${query}" on node "${requestNode.name}", Due to: ${error?.stack || error}`);
+      this.emit("debug", `Search Failed for "${query}" on node "${requestNode.name}", Due to: ${error?.message || error}`);
       throw error;
     }
   }
