@@ -5,7 +5,8 @@ const { Track } = require("./Track");
 class Node {
   /**
    * @param {import("./Riffy").Riffy} riffy
-   * @param {Node} node
+   * @param {import("..").RiffyOptions} options
+   * @param {import("..").LavalinkNode} node
    */
   constructor(riffy, node, options) {
     this.riffy = riffy
@@ -34,7 +35,7 @@ class Node {
     this.regions = node.regions;
     /**
      * Lavalink Info fetched While/After connecting.
-     * @type {import("..").NodeInfo}
+     * @type {import("..").NodeInfo | null}
      */
     this.info = null;
     this.stats = {
@@ -66,7 +67,7 @@ class Node {
     this.resumeTimeout = options.resumeTimeout || 60;
     this.autoResume = options.autoResume || false;
 
-    this.reconnectTimeout = options.reconnectTimeout || 5000
+    this.reconnectTimeout = options.reconnectTimeout || 5000;
     this.reconnectTries = options.reconnectTries || 3;
     this.reconnectAttempt = null;
     this.reconnectAttempted = 1;
@@ -81,10 +82,10 @@ class Node {
      * @param {boolean} [eitherOne=true] If set to true, will return true if at least one of the plugins is present.
      * @param {...string} plugins The plugins to look for.
      * @returns {Promise<boolean>} If the plugins are available.
-     * @throws {RangeError} If the plugins are missing.
+     * @throws {RangeError} If the plugins are missing and node is disconnected..
      */
     checkAvailable: async (eitherOne = true, ...plugins) => {
-      if (!this.sessionId) throw new Error(`Node (${this.name}) is not Ready/Connected.`)
+      if (!this.sessionId || !this.connected) throw new Error(`Node (${this.name}) is not Ready/Connected.`)
       if (!plugins.length) plugins = ["lavalyrics-plugin", "java-lyrics-plugin", "lyrics"];
 
       const missingPlugins = [];
@@ -133,7 +134,7 @@ class Node {
      * @param {boolean} skipTrackSource skips the Track Source & fetches from highest priority source (configured on Lavalink Server)
      * @param {string} [plugin] The Plugin to use(**Only required if you have too many known (i.e java-lyrics-plugin, lavalyrics-plugin) Lyric Plugins**)
      */
-    getCurrentTrack: async (guildId, skipTrackSource = false, plugin) => {
+    getCurrentTrack: async (guildId, skipTrackSource = false, plugin = "") => {
       const DEFAULT_PLUGIN = "lavalyrics-plugin"
       if (!(await this.lyrics.checkAvailable())) return null;
 
@@ -330,7 +331,8 @@ class Node {
 
   async connect() {
     if (this.ws) this.ws.close()
-    this.riffy.emit('debug', this.name, `Checking Node Version`);
+    // this.riffy.emit("debug", `[Node (${this.name}) - Version Check] Checking Node Version`);
+    this.riffy.emit("debug", `[Node (${this.name})] Connecting to the Node (i.e Lavalink/Nodelink Server; Opening a WebSocket Connection)`);
 
     // // Preform Version Check To see If Lavalink Version is supported by Riffy (v3, v4)
     // await this.#fetchAndCheckVersion();
@@ -364,13 +366,15 @@ class Node {
     this.connected = true;
     this.riffy.emit('debug', `[Node: ${this.name}] Websocket connection established on ${this.wsUrl}`);
 
-    this.info = await this.fetchInfo()
-       .then((info) => this.info = info)
-       .catch((e) => (console.error(`Node (${this.name}) Failed to fetch info (${this.restVersion}/info) on WS-OPEN: ${e}`), null));
+    this.info = 
+          await this.fetchInfo()
+            .then((info) => this.info = info)
+            .catch((e) => (this.riffy.emit('debug', `[Node: ${this.name}] Failed to fetch info on open: ${e.message}`)));
 
-    this.info
     // @ts-ignore this.options exists on the constructor
     if (!this.info && !this.options.bypassChecks.nodeFetchInfo) {
+      // Throws the Error because it's a critical failure, Node should have info 
+      // about the server configuration (i.e sources, version, plugins, etc).
       throw new Error(`Node (${this.name} - URL: ${this.restUrl}) Failed to fetch info on WS-OPEN`);
     }
 
@@ -452,18 +456,23 @@ class Node {
   }
 
   reconnect() {
+    // Prevent multiple reconnect loops
+    if (this.reconnectAttempt) return;
+
     this.reconnectAttempt = setTimeout(() => {
       if (this.reconnectAttempted >= this.reconnectTries) {
         const error = new Error(`Unable to connect with ${this.name} node after ${this.reconnectTries} attempts.`);
 
         this.riffy.emit("nodeError", this, error);
-        return this.destroy();
+        // Clean destroy
+        return this.destroy(true);
       }
 
       this.ws?.removeAllListeners();
       this.ws = null;
       this.riffy.emit("nodeReconnect", this);
       this.riffy.emit("debug", `[Node: ${this.name}] Reconnecting... Attempt ${this.reconnectAttempted}/${this.reconnectTries}`);
+      this.reconnectAttempt = null;
       this.connect();
       this.reconnectAttempted++;
     }, this.reconnectTimeout);
@@ -488,8 +497,10 @@ class Node {
    */
   destroy(clean = false) {
     if (clean) {
+      if (this.ws) this.ws?.close(1000, "Clean Destroy");
       this.ws?.removeAllListeners();
       this.ws = null;
+      this.reconnectAttempt = null;
       this.riffy.emit("nodeDestroy", this);
       this.riffy.nodeMap.delete(this.name);
       return;
@@ -508,6 +519,7 @@ class Node {
     this.ws = null;
 
     clearTimeout(this.reconnectAttempt);
+    this.reconnectAttempt = null;
 
     this.riffy.emit("nodeDestroy", this);
     this.riffy.emit("debug", `[Node: ${this.name}] Destroyed.`);
