@@ -37,7 +37,8 @@ class Riffy extends EventEmitter {
     this.migrateOnFailure = options.migrateOnFailure ?? false;
 
     /**
-     * Migration Strategy Function
+     * Migration Strategy Function, takes a player and availableNodes returns the Best Node for the given player.
+     * Could be used for custom Strategies i.e Priority Nodes for Certain Players.
      */
     this.migrationStrategyFn = options.migrationStrategyFn || this._defaultMigrationStrategy;
     this.restVersion = options.restVersion || "v3";
@@ -46,6 +47,9 @@ class Riffy extends EventEmitter {
     this.playlistInfo = null;
     this.pluginInfo = null;
     this.plugins = options.plugins || [];
+    /**
+     * @description Package Version Of Riffy
+     */
     this.version = pkgVersion;
 
     if (this.restVersion && !versions.includes(this.restVersion)) throw new RangeError(`${this.restVersion} is not a valid version`);
@@ -91,7 +95,7 @@ class Riffy extends EventEmitter {
 
   /**
    * Create a Node
-   * @param {import("..").NodeOptions} options 
+   * @param {import("..").LavalinkNode} options 
    */
   createNode(options) {
     const node = new Node(this, options, this.options);
@@ -139,8 +143,12 @@ class Riffy extends EventEmitter {
     const nodesByRegion = [...this.nodeMap.values()]
       .filter((node) => node.connected && node.regions?.includes(region?.toLowerCase()))
       .sort((a, b) => {
-        const aLoad = a.stats.cpu ? (a.stats.cpu.systemLoad / a.stats.cpu.cores) * 100 : 0;
-        const bLoad = b.stats.cpu ? (b.stats.cpu.systemLoad / b.stats.cpu.cores) * 100 : 0;
+        const aLoad = a.stats.cpu
+          ? (a.stats.cpu.systemLoad / a.stats.cpu.cores) * 100
+          : 0;
+        const bLoad = b.stats.cpu
+          ? (b.stats.cpu.systemLoad / b.stats.cpu.cores) * 100
+          : 0;
         return aLoad - bLoad;
       });
 
@@ -246,7 +254,9 @@ class Riffy extends EventEmitter {
     if (target instanceof Node) {
       const nodeToMigrate = target;
       const playersToMigrate = [...this.players.values()].filter(p => p.node === nodeToMigrate);
-      if (!playersToMigrate.length) return [];
+      if (!playersToMigrate.length) {
+        return [];
+      }
 
       const availableNodes = [...this.nodeMap.values()]
         .filter(n => n.connected && n !== nodeToMigrate)
@@ -295,14 +305,13 @@ class Riffy extends EventEmitter {
   }
 
   /**
-   * Search for tracks/playlists.
    * @param {object} param0 
-   * @param {string} param0.query Search Query
-   * @param {string} [param0.source="ytmsearch"] Source (ytmsearch, scsearch, etc.)
-   * @param {*} param0.requester Requester object (User)
-   * @param {string|Node} [param0.node] Specific node to use
-   * @returns {Promise<import("..").nodeResponse>}
-   */
+   * @param {string} param0.query used for searching as a search Query  
+   * @param {import("..").SearchPlatform} [param0.source] A source to search the query on example:ytmsearch for youtube music (uses defaultSearchPlatform if not provided)
+   * @param {*} param0.requester the requester who's requesting 
+   * @param {(string | Node)} [param0.node] Specific node to use for the search either put-in node identifier/name or the node class itself
+   * @returns {Promise<import("..").nodeResponse>} returned properties values are nullable if lavalink doesn't give them
+   * */
   async resolve({ query, source, requester, node }) {
     if (!this.initiated) throw new Error("You have to initialize Riffy in your ready event");
 
@@ -314,6 +323,7 @@ class Riffy extends EventEmitter {
     if (!requestNode) throw new Error("No nodes are available.");
 
     try {
+      // ^^(jsdoc) A source to search the query on example:ytmsearch for youtube music
       const querySource = source || this.defaultSearchPlatform;
       const regex = /^https?:\/\//;
       const identifier = regex.test(query) ? query : `${querySource}:${query}`;
@@ -345,7 +355,7 @@ class Riffy extends EventEmitter {
           this.tracks = response.data ? response.data.map((track) => new Track(track, requester, requestNode)) : [];
         }
       } else {
-        // v3
+        // v3 (Legacy or Lavalink V3)
         this.tracks = response?.tracks ? response.tracks.map((track) => new Track(track, requester, requestNode)) : [];
       }
 
