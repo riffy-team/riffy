@@ -186,6 +186,17 @@ client.on("raw", (d) => {
 client.login("Discord-Bot-Token-Here");
 ```
 
+#### Start the Bot
+Now that we have created our project, we can run our bot by typing the following command in the terminal.
+
+```shell
+node index.js
+```
+
+After running the bot, invite the bot in your server and run `!play` command to play music.
+
+---
+
 ### ╰┈2️⃣ Queue Management
 Riffy's queue system extends the native Array class, giving you access to all standard array methods plus powerful custom ones.
 
@@ -211,15 +222,6 @@ player.queue.clear();
 // Get queue size
 console.log(player.queue.size);
 ```
-
-#### Start the Bot
-Now that we have created our project, we can run our bot by typing the following command in the terminal.
-
-```shell
-node index.js
-```
-
-After running the bot, invite the bot in your server and run `!play` command to play music.
 
 ---
 
