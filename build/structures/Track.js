@@ -51,10 +51,13 @@ class Track {
             return;
         }
 
+        const authorRegexes = [this.info.author, `${this.info.author} - Topic`]
+            .map(name => new RegExp(`^${escapeRegExp(name)}$`, "i"));
+        const titleRegex = new RegExp(`^${escapeRegExp(this.info.title)}$`, "i");
+
         const officialAudio = result.tracks.find((track) => {
-            const author = [this.info.author, `${this.info.author} - Topic`];
-            return author.some((name) => new RegExp(`^${escapeRegExp(name)}$`, "i").test(track.info.author)) ||
-                new RegExp(`^${escapeRegExp(this.info.title)}$`, "i").test(track.info.title);
+            return authorRegexes.some(rx => rx.test(track.info.author)) ||
+                titleRegex.test(track.info.title);
         });
 
         if (officialAudio) {
