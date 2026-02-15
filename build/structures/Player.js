@@ -430,7 +430,12 @@ class Player extends EventEmitter {
     destroy() {
         this.disconnect();
         this.node.rest.destroyPlayer(this.guildId);
+        this.removeAllListeners();
+        this.connection = null;
         this.riffy.emit("playerDisconnect", this);
+        this.queue.clear();
+        // let the rest properties such as previous track, current
+        // get cleared with GC. As the user can use this values from event (playerDisconnect, playerDestroy)
         this.riffy.emit("debug", `[Player ${this.guildId}] Destroyed!`);
         this.riffy.players.delete(this.guildId);
     }
@@ -484,7 +489,6 @@ class Player extends EventEmitter {
     trackEnd(player, track, payload) {
         this.addToPreviousTrack(track)
         const previousTrack = this.previous;
-        this.previous = null;
         // By using lower case We handle both Lavalink Versions(v3, v4) Smartly 😎,
         // If reason is replaced do nothing expect User do something hopefully else RIP.
         if (payload.reason.toLowerCase() === "replaced") return this.riffy.emit("trackEnd", player, track, payload);
