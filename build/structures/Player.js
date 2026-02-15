@@ -93,13 +93,16 @@ class Player extends EventEmitter {
      * @param {import("./Track").Track} track 
      */
     addToPreviousTrack(track) {
-        if (Number.isInteger(this.riffy.options.multipleTrackHistory) && this.previousTracks.length >= this.riffy.options.mutipleTrackHistory) {
-            this.previousTracks.splice(this.riffy.options.multipleTrackHistory, this.previousTracks.length)
-        }
+        const limit = this.riffy.options.multipleTrackHistory;
+
         // If its falsy Save Only last Played Track.
-        else if (!this.riffy.options.multipleTrackHistory) {
-            this.previousTracks[0] = track;
+        if (!this.riffy.options.multipleTrackHistory) {
+            this.previousTracks = [track];
             return;
+        }
+
+        if (Number.isInteger(limit) && this.previousTracks.length >= limit) {
+            this.previousTracks.splice(limit)
         }
 
         this.previousTracks.unshift(track)
