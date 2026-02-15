@@ -346,36 +346,40 @@ class Riffy extends EventEmitter {
 
       // Process response based on version
       this.tracks = [];
+      let tracks = [];
+      let playlistInfo = null;
       if (requestNode.rest.version === "v4") {
         if (response.loadType === "track") {
-          this.tracks = response.data ? [new Track(response.data, requester, requestNode)] : [];
+          tracks = response.data ? [new Track(response.data, requester, requestNode)] : [];
         } else if (response.loadType === "playlist") {
-          this.tracks = response.data?.tracks ? response.data.tracks.map((track) => new Track(track, requester, requestNode)) : [];
+          tracks = response.data?.tracks ? response.data.tracks.map((track) => new Track(track, requester, requestNode)) : [];
         } else if (response.loadType === "search") {
-          this.tracks = response.data ? response.data.map((track) => new Track(track, requester, requestNode)) : [];
+          tracks = response.data ? response.data.map((track) => new Track(track, requester, requestNode)) : [];
         }
       } else {
         // v3 (Legacy or Lavalink V3)
-        this.tracks = response?.tracks ? response.tracks.map((track) => new Track(track, requester, requestNode)) : [];
+        tracks = response?.tracks ? response.tracks.map((track) => new Track(track, requester, requestNode)) : [];
       }
 
-      this.emit("debug", `Search ${["error", "LOAD_FAILED"].includes(response.loadType) ? "Failed" : "Success"} for "${query}" on node "${requestNode.name}", loadType: ${response.loadType}, tracks: ${this.tracks.length}`);
+      this.emit("debug", `Search ${["error", "LOAD_FAILED"].includes(response.loadType) ? "Failed" : "Success"} for "${query}" on node "${requestNode.name}", loadType: ${response.loadType}, tracks: ${tracks.length}`);
 
       if (requestNode.rest.version === "v4" && response.loadType === "playlist") {
-        this.playlistInfo = response.data?.info ?? null;
+        playlistInfo = response.data?.info ?? null;
       } else {
-        this.playlistInfo = response.playlistInfo ?? null;
+        playlistInfo = response.playlistInfo ?? null;
       }
 
-      this.loadType = response.loadType ?? null
+      this.loadType = response.loadType ?? null;
+      this.playlistInfo = playlistInfo;
       this.pluginInfo = response.pluginInfo ?? {};
+      this.tracks = tracks;
 
       return {
-        loadType: this.loadType,
-        exception: this.loadType === "error" ? response.data : this.loadType === "LOAD_FAILED" ? response.exception : null,
-        playlistInfo: this.playlistInfo,
-        pluginInfo: this.pluginInfo,
-        tracks: this.tracks,
+        loadType: response.loadType ?? null,
+        exception: response.loadType === "error" ? response.data : response.loadType === "LOAD_FAILED" ? response.exception : null,
+        playlistInfo: playlistInfo,
+        pluginInfo: response.pluginInfo ?? {},
+        tracks: tracks,
       };
     } catch (error) {
       this.emit("debug", `Search Failed for "${query}" on node "${requestNode.name}", Due to: ${error?.message || error}`);
