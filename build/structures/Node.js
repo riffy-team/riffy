@@ -357,10 +357,10 @@ class Node {
   }
 
   async open() {
-    if (this.reconnectTimeout) {
-      clearTimeout(this.reconnectTimeout);
+    if (this.reconnectAttempt) {
+      clearTimeout(this.reconnectAttempt);
       this.reconnectAttempted = 1;
-      this.reconnectTimeout = null;
+      this.reconnectAttempt = null;
     }
 
     this.connected = true;
