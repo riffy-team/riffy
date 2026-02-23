@@ -113,6 +113,7 @@ b    */
             sessionId: this.voice.sessionId,
             endpoint: this.voice.endpoint,
             token: this.voice.token,
+            channelId: this.voiceChannel
         };
 
         this.player.riffy.emit("debug", this.player.node.name, `[Rest Manager] Sending Update Player request with voice data: ${JSON.stringify(voiceToSend)}`);
