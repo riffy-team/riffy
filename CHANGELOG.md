@@ -1,5 +1,29 @@
 # Changelog
 
+## v1.0.12 (2026-03-01)
+
+A Urgent Release made for DAVE support 🙏, Users are Advised to Update ASAP to avoid failures on 2nd March (As discord makes it mandatory for all).
+Marking All Previous versions essentially as deprecated.
+
+
+### What's Changed
+- Streamline CodeQL workflow by removing manual build steps @UnschooledGamer https://github.com/riffy-team/riffy/commit/40ded8c
+- feat: `channelId` in voice payload for upcoming LL v4.2.0 @UnschooledGamer https://github.com/riffy-team/riffy/commit/6c280a6
+- fix(Node): reconnection Timeout/intervals @UnschooledGamer https://github.com/riffy-team/riffy/commit/c3180ab
+- perf(Track): improve track.resolve() regex creation performance @unschooledgamer https://github.com/riffy-team/riffy/commit/3f44c35
+- update: player destroy cleanup @unschooledgamer https://github.com/riffy-team/riffy/commit/d1b984e
+- fix: multiple tracks history spell error causing overlimit not being cleared @unschooledgamer https://github.com/riffy-team/riffy/commit/4afa11c
+- fix: sort of memory leak, concurrent access case in riffy.resolve @unschooledgamer https://github.com/riffy-team/riffy/commit/23c3baa
+* Add autoplay flag to track metadata by @KingsMusic in https://github.com/riffy-team/riffy/pull/38
+* feat: Upgrade Queue System, Stability Improvements & JSDoc by @ramkrishna-js in https://github.com/riffy-team/riffy/pull/39
+* chore(fix): location of Queue Management by @ramkrishna-js in https://github.com/riffy-team/riffy/pull/40
+
+### New Contributors
+* @KingsMusic made their first contribution in https://github.com/riffy-team/riffy/pull/38
+* @ramkrishna-js made their first contribution in https://github.com/riffy-team/riffy/pull/39
+
+**Full Changelog**: https://github.com/riffy-team/riffy/compare/v1.0.11...v1.0.12
+
 ## v1.0.11 (2026-01-06)
 
 ### What's Changed
