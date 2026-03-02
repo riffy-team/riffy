@@ -150,14 +150,24 @@ class Player extends EventEmitter {
 
         this.current = this.queue.shift();
 
-        if (!this.current.track) {
-            this.current = await this.current.resolve(this.riffy);
-        }
+if (!this.current.track) {
+    const resolved = await this.current.resolve(this.riffy);
+    
+    if (!resolved || !resolved.track) {
+        this.riffy.emit("debug", `[Player ${this.guildId}] Failed to resolve track: ${this.current?.info?.title}`);
+        this.playing = false;
+        
+        // Skip to next track if queue has more
+        if (this.queue.length > 0) return this.play();
+        
+        this.riffy.emit("queueEnd", this);
+        return this;
+    }
+    
+    this.current = resolved;
+}
 
-        this.playing = true;
-        this.position = 0;
-
-        const { track } = this.current;
+const { track } = this.current; // ✅ Safe now
 
         this.node.rest.updatePlayer({
             guildId: this.guildId,
