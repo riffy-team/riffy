@@ -151,7 +151,15 @@ class Player extends EventEmitter {
         this.current = this.queue.shift();
 
         if (!this.current.track) {
-            this.current = await this.current.resolve(this.riffy);
+            const resolved = await this.current.resolve(this.riffy);
+            if (!resolved) {
+                this.riffy.emit("debug", `[Player ${this.guildId}] Track "${this.current.info?.title}" could not be resolved on any available node, skipping...`);
+                this.riffy.emit("trackError", this, this.current, { type: "TrackResolveError", error: "Track could not be resolved on any available node." });
+                if (this.queue.length) return this.play();
+                this.playing = false;
+                return this.riffy.emit("queueEnd", this);
+            }
+            this.current = resolved;
         }
 
         this.playing = true;
@@ -305,7 +313,7 @@ class Player extends EventEmitter {
             data: { paused: toggle },
         });
 
-        this.playing = this.playing ? false : this.playing;
+        this.playing = !toggle;
         this.paused = toggle;
 
         return this;
@@ -321,10 +329,17 @@ class Player extends EventEmitter {
             return;
         };
 
-        const trackLength = this.current.info.length;
-        this.position = Math.max(0, Math.min(trackLength, position));
+        if (!Number.isFinite(position)) {
+            throw new TypeError("Position must be a finite number.");
+        }
 
-        this.node.rest.updatePlayer({ guildId: this.guildId, data: { position } });
+        const trackLength = this.current.info.length;
+        const normalizedPosition = Math.max(0, position);
+        this.position = typeof trackLength === "number" && Number.isFinite(trackLength) && trackLength > 0
+            ? Math.min(trackLength, normalizedPosition)
+            : normalizedPosition;
+
+        this.node.rest.updatePlayer({ guildId: this.guildId, data: { position: this.position } });
     }
 
     /**
@@ -499,6 +514,8 @@ class Player extends EventEmitter {
             if (player.queue.length === 0) {
                 this.playing = false;
                 this.riffy.emit("debug", `Player (${player.guildId}) Track-Ended(${track.info.title}) with reason: ${payload.reason}, emitting queueEnd instead of trackEnd as queue is empty/finished`);
+                this.riffy.emit("trackEnd", player, track, payload);
+                return this.riffy.emit("queueEnd", player);
             }
 
             this.riffy.emit("trackEnd", player, track, payload);
@@ -538,13 +555,31 @@ class Player extends EventEmitter {
     trackError(player, track, payload) {
         this.riffy.emit("debug", `Player (${player.guildId}) has an exception/error while playing ${track.info.title} by ${track.info.author} this track, exception received: ${inspect(payload.exception)}`);
         this.riffy.emit("trackError", player, track, payload);
-        this.stop();
+
+        if (player.queue.length > 0) {
+            player.playing = false;
+            player.position = 0;
+            return player.play();
+        }
+
+        player.playing = false;
+        player.position = 0;
+        return this.riffy.emit("queueEnd", player);
     }
 
     trackStuck(player, track, payload) {
         this.riffy.emit("trackStuck", player, track, payload);
         this.riffy.emit("debug", `Player (${player.guildId}) has been stuck track ${track.info.title} by ${track.info.author} for ${payload.thresholdMs}ms, skipping track...`);
-        this.stop();
+
+        if (player.queue.length > 0) {
+            player.playing = false;
+            player.position = 0;
+            return player.play();
+        }
+
+        player.playing = false;
+        player.position = 0;
+        return this.riffy.emit("queueEnd", player);
     }
 
     async socketClosed(player, payload) {

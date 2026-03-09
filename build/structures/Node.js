@@ -67,12 +67,68 @@ class Node {
     this.resumeTimeout = options.resumeTimeout || 60;
     this.autoResume = options.autoResume || false;
 
-    this.reconnectTimeout = options.reconnectTimeout || 5000;
-    this.reconnectTries = options.reconnectTries || 3;
+    this.reconnectTimeout = node.reconnectTimeout ?? options.reconnectTimeout ?? 5000;
+    this.reconnectTries = node.reconnectTries ?? options.reconnectTries ?? 3;
     this.reconnectAttempt = null;
     this.reconnectAttempted = 1;
 
+    this.priority = node.priority ?? 0;
+
     this.lastStats = Date.now();
+
+    /**
+     * Tracks resolve success/failure per query type for smart node selection.
+     * @type {Map<string, {successes: number, failures: number, lastFailure: number|null}>}
+     */
+    this.resolveStats = new Map();
+  }
+
+  /**
+   * Records a successful resolve for a given query type.
+   * @param {string} queryType
+   */
+  recordResolveSuccess(queryType) {
+    const stats = this.resolveStats.get(queryType) || { successes: 0, failures: 0, lastFailure: null };
+    stats.successes++;
+    this.resolveStats.set(queryType, stats);
+  }
+
+  /**
+   * Records a failed resolve for a given query type.
+   * @param {string} queryType
+   */
+  recordResolveFailure(queryType) {
+    const stats = this.resolveStats.get(queryType) || { successes: 0, failures: 0, lastFailure: null };
+    stats.failures++;
+    stats.lastFailure = Date.now();
+    this.resolveStats.set(queryType, stats);
+  }
+
+  /**
+   * Returns whether this node is expected to be able to resolve a given query type.
+   * Returns true if no data or if the node has had at least one success.
+   * @param {string} queryType
+   * @returns {boolean}
+   */
+  canResolve(queryType) {
+    const stats = this.resolveStats.get(queryType);
+    if (!stats) return true;
+    if (stats.successes > 0) return true;
+    return stats.failures === 0;
+  }
+
+  /**
+   * Returns a score (0-100) representing how well this node handles a query type.
+   * Higher = better. 0 = no data.
+   * @param {string} queryType
+   * @returns {number}
+   */
+  getResolveScore(queryType) {
+    const stats = this.resolveStats.get(queryType);
+    if (!stats) return 0;
+    const total = stats.successes + stats.failures;
+    if (total === 0) return 0;
+    return (stats.successes / total) * 100;
   }
 
 
@@ -171,11 +227,11 @@ class Node {
         throw new Error("This node is not a Nodelink Server");
       }
 
-      if (mixLayerOptions && typeof mixLayerOptions !== "object") {
+      if (!mixLayerOptions || typeof mixLayerOptions !== "object") {
         throw new TypeError("mixLayerOptions must be an object");
       }
 
-      if (mixLayerOptions.track && typeof mixLayerOptions.track !== "object") {
+      if (!mixLayerOptions.track || typeof mixLayerOptions.track !== "object") {
         throw new TypeError("mixLayerOptions.track must be an object");
       }
 
@@ -183,7 +239,7 @@ class Node {
         throw new TypeError("mixLayerOptions.track.encoded and mixLayerOptions.track.identifier cannot be provided at the same time");
       }
 
-      if (mixLayerOptions.volume !== undefined && typeof mixLayerOptions.volume !== "number" || mixLayerOptions.volume < 0 || mixLayerOptions.volume > 1) {
+      if (mixLayerOptions.volume !== undefined && (typeof mixLayerOptions.volume !== "number" || mixLayerOptions.volume < 0 || mixLayerOptions.volume > 1)) {
         throw new TypeError("mixLayerOptions.volume must be a number between 0 and 1");
       }
 
@@ -191,7 +247,7 @@ class Node {
         track: mixLayerOptions.track
       }
 
-      if (mixLayerOptions.volume) {
+      if (mixLayerOptions.volume !== undefined) {
         body.volume = mixLayerOptions.volume;
       }
 
@@ -210,7 +266,7 @@ class Node {
       if (!this.mixer.check()) {
         throw new Error("Node is not hosted with Nodelink Server");
       }
-      if (!guildId || !mixId || !volume) {
+      if (!guildId || !mixId || volume === undefined || volume === null) {
         throw new TypeError("guildId, mixId and volume are required to Update Mix Volume");
       }
 
@@ -218,7 +274,7 @@ class Node {
         throw new TypeError("id must be a string");
       }
 
-      if (volume !== undefined && typeof volume !== "number" || volume < 0 || volume > 1) {
+      if (volume !== undefined && (typeof volume !== "number" || volume < 0 || volume > 1)) {
         throw new TypeError("volume must be a number between 0 and 1");
       }
 
@@ -372,7 +428,7 @@ class Node {
             .catch((e) => (this.riffy.emit('debug', `[Node: ${this.name}] Failed to fetch info on open: ${e.message}`)));
 
     // @ts-ignore this.options exists on the constructor
-    if (!this.info && !this.options.bypassChecks.nodeFetchInfo) {
+    if (!this.info && !this.options?.bypassChecks?.nodeFetchInfo) {
       // Throws the Error because it's a critical failure, Node should have info 
       // about the server configuration (i.e sources, version, plugins, etc).
       throw new Error(`Node (${this.name} - URL: ${this.restUrl}) Failed to fetch info on WS-OPEN`);
@@ -530,7 +586,12 @@ class Node {
 
   disconnect() {
     if (!this.connected) return;
-    this.riffy.players.forEach((player) => { if (player.node == this) { this.riffy.bestNode() ? player.moveTo(this.riffy.bestNode()) : true } });
+    const targetNode = [...this.riffy.nodeMap.values()]
+      .filter(n => n.connected && n !== this)
+      .sort((a, b) => a.penalties - b.penalties)[0];
+    if (targetNode) {
+      this.riffy.players.forEach((player) => { if (player.node === this) player.moveTo(targetNode); });
+    }
     this.ws.close(1000, "destroy");
     this.ws?.removeAllListeners();
     this.ws = null;

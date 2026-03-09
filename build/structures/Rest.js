@@ -89,9 +89,10 @@ class Rest {
 
       requestBody = { ...otherRequestData };
 
+      delete options.data.track;
       Object.assign(
         options.data,
-        typeof options.data.track.encoded !== "undefined"
+        typeof track.encoded !== "undefined"
           ? { encodedTrack: track.encoded }
           : { identifier: track.identifier }
       );
@@ -167,7 +168,7 @@ class Rest {
     }
 
     try {
-      return await req[req.headers.get("Content-Type").includes("text/plain") ? "text" : "json"]();
+      return await req[(req.headers.get("Content-Type") || "").includes("text/plain") ? "text" : "json"]();
     } catch (e) {
       this.riffy.emit(
         "debug",

@@ -186,12 +186,21 @@ export declare class Rest extends EventEmitter {
 
 export declare class Queue extends Array<Track> {
     get size(): number;
-    get first(): Track | null;
+    get first(): Track | undefined;
+    get last(): Track | undefined;
+    get totalDuration(): number;
 
-    add(track: Track): this;
+    add(track: Track | Track[]): this;
+    addAt(index: number, track: Track): this;
     remove(index: number): Track;
-    clear(): void;
-    shuffle(): void;
+    removeRange(start: number, end: number): Track[];
+    clear(): this;
+    shuffle(): this;
+    reverse(): this;
+    swap(index1: number, index2: number): this;
+    move(from: number, to: number): this;
+    skipTo(index: number): Track[];
+    removeDuplicates(): Track[];
 }
 
 export declare class Plugin {
@@ -261,6 +270,7 @@ export declare class Player extends EventEmitter {
     addToPreviousTrack(track: Track): void
 
     public play(): Promise<Player>;
+    public restart(): Promise<Player>;
 
     public autoplay(player: Player): Promise<Player>;
 
@@ -689,6 +699,12 @@ export declare class Riffy extends EventEmitter {
     public readonly leastUsedNodes: Array<Node>;
 
     /**
+     * Returns connected nodes that have a priority > 0, sorted by priority (descending).
+     * Ties are broken by least REST calls.
+     */
+    public readonly priorityNodes: Array<Node>;
+
+    /**
      * @description A Single Best Node is returned After Filtering All connected Nodes by {@link Node.penalties penalties}
      */
     public readonly bestNode: Node | null | undefined;
@@ -798,6 +814,13 @@ export type LavalinkNode = {
      * Voice Regions for the Node
      */
     regions?: string[];
+
+    /**
+     * Priority of the node for selection.
+     * Higher values = higher priority. Nodes with priority > 0 are preferred over least-used selection.
+     * @default 0
+     */
+    priority?: number;
 
 } & Partial<NodeOptions>
 
@@ -1001,6 +1024,13 @@ export declare class Node {
 
     public reconnectAttempt: number;
     public reconnectAttempted: number;
+
+    /**
+     * Priority of the node for selection.
+     * Higher values = higher priority. Nodes with priority > 0 are preferred over least-used selection.
+     * @default 0
+     */
+    public priority: number;
 
     public connected: boolean;
     /**

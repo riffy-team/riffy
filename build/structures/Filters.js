@@ -1,21 +1,23 @@
+const withDefault = (value, fallback) => value ?? fallback;
+
 class Filters {
     constructor(player, options = {}) {
         this.player = player;
-        this.volume = options.volume || 1
-        this.equalizer = options.equalizer || [];
-        this.karaoke = options.karaoke || null;
-        this.timescale = options.timescale || null;
-        this.tremolo = options.tremolo || null;
-        this.vibrato = options.vibrato || null;
-        this.rotation = options.rotation || null;
-        this.distortion = options.distortion || null;
-        this.channelMix = options.channelMix || null;
-        this.lowPass = options.lowPass || null;
-        this.bassboost = options.bassboost || null;
-        this.slowmode = options.slowmode || null;
-        this.nightcore = options.nightcore || null;
-        this.vaporwave = options.vaporwave || null;
-        this._8d = options._8d || null;
+        this.volume = withDefault(options.volume, 1)
+        this.equalizer = withDefault(options.equalizer, []);
+        this.karaoke = withDefault(options.karaoke, null);
+        this.timescale = withDefault(options.timescale, null);
+        this.tremolo = withDefault(options.tremolo, null);
+        this.vibrato = withDefault(options.vibrato, null);
+        this.rotation = withDefault(options.rotation, null);
+        this.distortion = withDefault(options.distortion, null);
+        this.channelMix = withDefault(options.channelMix, null);
+        this.lowPass = withDefault(options.lowPass, null);
+        this.bassboost = withDefault(options.bassboost, null);
+        this.slowmode = withDefault(options.slowmode, null);
+        this.nightcore = withDefault(options.nightcore, null);
+        this.vaporwave = withDefault(options.vaporwave, null);
+        this._8d = withDefault(options._8d, null);
     }
 
     /**
@@ -42,10 +44,10 @@ class Filters {
 
         if (enabled == true) {
             this.karaoke = {
-                level: options.level || 1.0,
-                monoLevel: options.monoLevel || 1.0,
-                filterBand: options.filterBand || 220.0,
-                filterWidth: options.filterWidth || 100.0
+                level: withDefault(options.level, 1.0),
+                monoLevel: withDefault(options.monoLevel, 1.0),
+                filterBand: withDefault(options.filterBand, 220.0),
+                filterWidth: withDefault(options.filterWidth, 100.0)
             };
 
             this.updateFilters();
@@ -69,9 +71,9 @@ class Filters {
 
         if (enabled == true) {
             this.timescale = {
-                speed: options.speed || 1.0,
-                pitch: options.pitch || 1.0,
-                rate: options.rate || 1.0
+                speed: withDefault(options.speed, 1.0),
+                pitch: withDefault(options.pitch, 1.0),
+                rate: withDefault(options.rate, 1.0)
             };
 
             this.updateFilters();
@@ -95,8 +97,8 @@ class Filters {
 
         if (enabled == true) {
             this.tremolo = {
-                frequency: options.frequency || 2.0,
-                depth: options.depth || 0.5
+                frequency: withDefault(options.frequency, 2.0),
+                depth: withDefault(options.depth, 0.5)
             };
 
             this.updateFilters();
@@ -120,8 +122,8 @@ class Filters {
 
         if (enabled == true) {
             this.vibrato = {
-                frequency: options.frequency || 2.0,
-                depth: options.depth || 0.5
+                frequency: withDefault(options.frequency, 2.0),
+                depth: withDefault(options.depth, 0.5)
             };
 
             this.updateFilters();
@@ -145,7 +147,7 @@ class Filters {
 
         if (enabled == true) {
             this.rotation = {
-                rotationHz: options.rotationHz || 0.0
+                rotationHz: withDefault(options.rotationHz, 0.0)
             };
 
             this.updateFilters();
@@ -169,14 +171,14 @@ class Filters {
 
         if (enabled == true) {
             this.distortion = {
-                sinOffset: options.sinOffset || 0.0,
-                sinScale: options.sinScale || 1.0,
-                cosOffset: options.cosOffset || 0.0,
-                cosScale: options.cosScale || 1.0,
-                tanOffset: options.tanOffset || 0.0,
-                tanScale: options.tanScale || 1.0,
-                offset: options.offset || 0.0,
-                scale: options.scale || 1.0
+                sinOffset: withDefault(options.sinOffset, 0.0),
+                sinScale: withDefault(options.sinScale, 1.0),
+                cosOffset: withDefault(options.cosOffset, 0.0),
+                cosScale: withDefault(options.cosScale, 1.0),
+                tanOffset: withDefault(options.tanOffset, 0.0),
+                tanScale: withDefault(options.tanScale, 1.0),
+                offset: withDefault(options.offset, 0.0),
+                scale: withDefault(options.scale, 1.0)
             };
 
             this.updateFilters();
@@ -200,10 +202,10 @@ class Filters {
 
         if (enabled == true) {
             this.channelMix = {
-                leftToLeft: options.leftToLeft || 1.0,
-                leftToRight: options.leftToRight || 0.0,
-                rightToLeft: options.rightToLeft || 0.0,
-                rightToRight: options.rightToRight || 1.0
+                leftToLeft: withDefault(options.leftToLeft, 1.0),
+                leftToRight: withDefault(options.leftToRight, 0.0),
+                rightToLeft: withDefault(options.rightToLeft, 0.0),
+                rightToRight: withDefault(options.rightToRight, 1.0)
             };
 
             this.updateFilters();
@@ -227,7 +229,7 @@ class Filters {
 
         if (enabled == true) {
             this.lowPass = {
-                smoothing: options.smoothing || 20.0
+                smoothing: withDefault(options.smoothing, 20.0)
             };
 
             this.updateFilters();
@@ -250,10 +252,12 @@ class Filters {
         if (!this.player) return;
 
         if (enabled) {
-            if (options.value < 0 || options.value > 5) throw new Error("Bassboost value must be between 0 and 5");
+            const value = withDefault(options.value, 5);
 
-            this.bassboost = options.value || 5;
-            const num = (options.value || 5 - 1) * (1.25 / 9) - 0.25;
+            if (value < 0 || value > 5) throw new Error("Bassboost value must be between 0 and 5");
+
+            this.bassboost = value;
+            const num = (value - 1) * (1.25 / 9) - 0.25;
 
             this.setEqualizer(Array(13).fill(0).map((_n, i) => ({
                 band: i,
@@ -272,7 +276,7 @@ class Filters {
             this.slowmode = true;
 
             this.setTimescale(true, {
-                rate: options.rate || 0.8
+                rate: withDefault(options.rate, 0.8)
             })
         } else {
             this.slowmode = null;
@@ -295,7 +299,7 @@ class Filters {
             this.nightcore = enabled;
 
             this.setTimescale(true, {
-                rate: options.rate || 1.5
+                rate: withDefault(options.rate, 1.5)
             })
 
             this.vaporwave = false;
@@ -319,7 +323,7 @@ class Filters {
             this.vaporwave = enabled;
 
             this.setTimescale(true, {
-                pitch: options.pitch || 0.5
+                pitch: withDefault(options.pitch, 0.5)
             })
 
             if (enabled) {
@@ -345,7 +349,7 @@ class Filters {
             this._8d = enabled;
 
             this.setRotation(true, {
-                rotationHz: options.rotationHz || 0.2
+                rotationHz: withDefault(options.rotationHz, 0.2)
             });
         } else {
             this._8d = null;

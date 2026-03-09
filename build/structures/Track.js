@@ -1,5 +1,6 @@
 const { getImageUrl } = require("../functions/fetchImage");
 const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const isFiniteLength = (value) => typeof value === "number" && Number.isFinite(value) && value > 0;
 
 class Track {
     constructor(data, requester, node) {
@@ -52,12 +53,16 @@ class Track {
         }
 
         const authorRegexes = [this.info.author, `${this.info.author} - Topic`]
+            .filter(Boolean)
             .map(name => new RegExp(`^${escapeRegExp(name)}$`, "i"));
-        const titleRegex = new RegExp(`^${escapeRegExp(this.info.title)}$`, "i");
+        const titleRegex = this.info.title
+            ? new RegExp(`^${escapeRegExp(this.info.title)}$`, "i")
+            : null;
 
         const officialAudio = result.tracks.find((track) => {
-            return authorRegexes.some(rx => rx.test(track.info.author)) ||
-                titleRegex.test(track.info.title);
+            const authorMatches = authorRegexes.length > 0 && authorRegexes.some(rx => rx.test(track.info.author));
+            const titleMatches = titleRegex ? titleRegex.test(track.info.title) : false;
+            return authorMatches && titleMatches;
         });
 
         if (officialAudio) {
@@ -66,21 +71,20 @@ class Track {
             return this;
         }
 
-        if (this.info.length) {
-            const sameDuration = result.tracks.find((track) => track.info.length >= (this.info.length ? this.info.length : 0) - 2000 &&
-                track.info.length <= (this.info.length ? this.info.length : 0) + 2000);
-
-            if (sameDuration) {
-                this.info.identifier = sameDuration.info.identifier;
-                this.track = sameDuration.track;
-                return this;
-            }
-
-            const sameDurationAndTitle = result.tracks.find((track) => track.info.title === this.info.title && track.info.length >= (this.info.length ? this.info.length : 0) - 2000 && track.info.length <= (this.info.length ? this.info.length : 0) + 2000);
+        if (isFiniteLength(this.info.length)) {
+            const sameDurationAndTitle = result.tracks.find((track) => titleRegex && titleRegex.test(track.info.title) && isFiniteLength(track.info.length) && Math.abs(track.info.length - this.info.length) <= 2000);
 
             if (sameDurationAndTitle) {
                 this.info.identifier = sameDurationAndTitle.info.identifier;
                 this.track = sameDurationAndTitle.track;
+                return this;
+            }
+
+            const sameDuration = result.tracks.find((track) => isFiniteLength(track.info.length) && Math.abs(track.info.length - this.info.length) <= 2000);
+
+            if (sameDuration) {
+                this.info.identifier = sameDuration.info.identifier;
+                this.track = sameDuration.track;
                 return this;
             }
         }

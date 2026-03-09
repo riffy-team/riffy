@@ -116,7 +116,7 @@ b    */
             channelId: this.voiceChannel
         };
 
-        this.player.riffy.emit("debug", this.player.node.name, `[Rest Manager] Sending Update Player request with voice data: ${JSON.stringify(voiceToSend)}`);
+        this.player.riffy.emit("debug", `[Player ${this.player.guildId} - CONNECTION] [${this.player.node.name}] Sending Update Player request with voice data: ${JSON.stringify(voiceToSend)}`);
 
         this.pendingUpdate = this.updatePlayerVoiceData(voiceToSend);
 
@@ -152,16 +152,6 @@ b    */
         this.region = endpoint.split(".").shift()?.replace(/[0-9]/g, "") || null;
 
         this.player.riffy.emit("debug", `[Player ${this.player.guildId} - CONNECTION] Received voice server, ${previousVoiceRegion !== null ? `Changed Voice Region from(oldRegion) ${previousVoiceRegion} to(newRegion) ${this.region}` : `Voice Server: ${this.region}`}, Updating Node's Voice Data.`)
-
-        // console.log("Paused Data", this.player.paused)
-        if (this.player.paused) {
-            this.player.riffy.emit(
-                "debug",
-                this.player.node.name,
-                `unpaused ${this.player.guildId} player, expecting it was paused while the player moved to ${this.voiceChannel}`
-            );
-            await this.player.pause(false);
-        }
 
         this.checkAndSend();
     }
@@ -200,16 +190,6 @@ b    */
 -            * FIXME: Need a better way so that we don't the volume each time.
 -            */
             volume: this.player.volume,
-        }
-
-        // Just In case...
-        if (this.player.paused) {
-            this.player.riffy.emit(
-                "debug",
-                this.player.node.name,
-                `unpaused ${this.player.guildId} player, expecting it was paused while the player moved to ${this.voiceChannel}`
-            )
-            updatePlayerBody["paused"] = false;
         }
 
 

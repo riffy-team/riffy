@@ -74,6 +74,19 @@ class Riffy extends EventEmitter {
   }
 
   /**
+   * Returns connected nodes that have a priority > 0, sorted by priority (descending).
+   * Ties are broken by least REST calls.
+   */
+  get priorityNodes() {
+    return [...this.nodeMap.values()]
+      .filter((node) => node.connected && node.priority > 0)
+      .sort((a, b) => {
+        if (b.priority !== a.priority) return b.priority - a.priority;
+        return a.rest.calls - b.rest.calls;
+      });
+  }
+
+  /**
    * Initialize Riffy
    * @param {string} clientId 
    */
@@ -143,10 +156,10 @@ class Riffy extends EventEmitter {
     const nodesByRegion = [...this.nodeMap.values()]
       .filter((node) => node.connected && node.regions?.includes(region?.toLowerCase()))
       .sort((a, b) => {
-        const aLoad = a.stats.cpu
+        const aLoad = a.stats.cpu && a.stats.cpu.cores > 0 && Number.isFinite(a.stats.cpu.systemLoad)
           ? (a.stats.cpu.systemLoad / a.stats.cpu.cores) * 100
           : 0;
-        const bLoad = b.stats.cpu
+        const bLoad = b.stats.cpu && b.stats.cpu.cores > 0 && Number.isFinite(b.stats.cpu.systemLoad)
           ? (b.stats.cpu.systemLoad / b.stats.cpu.cores) * 100
           : 0;
         return aLoad - bLoad;
@@ -180,10 +193,12 @@ class Riffy extends EventEmitter {
 
     let node;
     if (options.region) {
-      const region = this.fetchRegion(options.region)[0];
-      node = this.nodeMap.get(region?.name || this.leastUsedNodes[0].name);
+      const regionNodes = this.fetchRegion(options.region);
+      // Among region-matched nodes, prefer highest priority first
+      const priorityRegionNode = regionNodes.filter(n => n.priority > 0).sort((a, b) => b.priority - a.priority)[0];
+      node = priorityRegionNode || regionNodes[0] || this.priorityNodes[0] || this.leastUsedNodes[0];
     } else {
-      node = this.nodeMap.get(this.leastUsedNodes[0].name);
+      node = this.priorityNodes[0] || this.leastUsedNodes[0];
     }
 
     if (!node) throw new Error("No nodes are available");
@@ -319,72 +334,202 @@ class Riffy extends EventEmitter {
       throw new Error(`'node' property must either be an node identifier/name('string') or an Node/Node Class, But Received: ${typeof node}`);
     }
 
-    const requestNode = (node && typeof node === 'string' ? this.nodeMap.get(node) : node) || this.leastUsedNodes[0];
-    if (!requestNode) throw new Error("No nodes are available.");
+    const querySource = source || this.defaultSearchPlatform;
+    const regex = /^https?:\/\//;
+    const identifier = regex.test(query) ? query : `${querySource}:${query}`;
+    const queryType = this.classifyQuery(identifier);
+    const isURL = regex.test(query);
 
-    try {
-      // ^^(jsdoc) A source to search the query on example:ytmsearch for youtube music
-      const querySource = source || this.defaultSearchPlatform;
-      const regex = /^https?:\/\//;
-      const identifier = regex.test(query) ? query : `${querySource}:${query}`;
+    // If user specified a node, resolve only on that node (no retry/smart selection)
+    const userSpecifiedNode = node ? (typeof node === 'string' ? this.nodeMap.get(node) : node) : null;
+    if (node && !userSpecifiedNode) throw new Error("The specified node was not found.");
 
-      this.emit("debug", `Searching for ${query} on node "${requestNode.name}"`);
+    const connectedNodes = [...this.nodeMap.values()].filter(n => n.connected);
+    if (!connectedNodes.length) throw new Error("No nodes are available.");
 
-      let response = await requestNode.rest.makeRequest(`GET`, `/${requestNode.rest.version}/loadtracks?identifier=${encodeURIComponent(identifier)}`);
+    const maxAttempts = userSpecifiedNode ? 1 : Math.min(3, connectedNodes.length);
+    const triedNodes = [];
+    let lastResult = null;
+    let lastError = null;
 
-      // Fallback strategies for empty/no_matches if Query is NOT a url
-      if (!regex.test(query) && (response.loadType === "empty" || response.loadType === "NO_MATCHES")) {
-        // This fallback logic looks a bit aggressive (forcing Spotify then YouTube if original query failed), 
-        // but I'll keep it as it seems to be desired internal logic, just cleaning up readability.
-        const spotifyRes = await requestNode.rest.makeRequest(`GET`, `/${requestNode.rest.version}/loadtracks?identifier=https://open.spotify.com/track/${query}`);
-        if (spotifyRes.loadType !== "empty" && spotifyRes.loadType !== "NO_MATCHES") response = spotifyRes;
-        else {
-          const youtubeRes = await requestNode.rest.makeRequest(`GET`, `/${requestNode.rest.version}/loadtracks?identifier=https://www.youtube.com/watch?v=${query}`);
-          if (youtubeRes.loadType !== "empty" && youtubeRes.loadType !== "NO_MATCHES") response = youtubeRes;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const requestNode = userSpecifiedNode || this.getPreferredNode(queryType, triedNodes);
+      if (!requestNode) break;
+      triedNodes.push(requestNode);
+
+      try {
+        this.emit("debug", `Searching for "${query}" on node "${requestNode.name}" (attempt ${attempt + 1}/${maxAttempts}, queryType: ${queryType})`);
+
+        let response = await requestNode.rest.makeRequest(`GET`, `/${requestNode.rest.version}/loadtracks?identifier=${encodeURIComponent(identifier)}`);
+
+        // Fallback strategies for empty/no_matches if Query is NOT a url
+        if (!isURL && (response.loadType === "empty" || response.loadType === "NO_MATCHES")) {
+          const spotifyRes = await requestNode.rest.makeRequest(`GET`, `/${requestNode.rest.version}/loadtracks?identifier=https://open.spotify.com/track/${encodeURIComponent(query)}`);
+          if (spotifyRes.loadType !== "empty" && spotifyRes.loadType !== "NO_MATCHES") response = spotifyRes;
+          else {
+            const youtubeRes = await requestNode.rest.makeRequest(`GET`, `/${requestNode.rest.version}/loadtracks?identifier=https://www.youtube.com/watch?v=${encodeURIComponent(query)}`);
+            if (youtubeRes.loadType !== "empty" && youtubeRes.loadType !== "NO_MATCHES") response = youtubeRes;
+          }
         }
-      }
 
-      // Process response based on version
-      this.tracks = [];
-      let tracks = [];
-      let playlistInfo = null;
-      if (requestNode.rest.version === "v4") {
-        if (response.loadType === "track") {
-          tracks = response.data ? [new Track(response.data, requester, requestNode)] : [];
-        } else if (response.loadType === "playlist") {
-          tracks = response.data?.tracks ? response.data.tracks.map((track) => new Track(track, requester, requestNode)) : [];
-        } else if (response.loadType === "search") {
-          tracks = response.data ? response.data.map((track) => new Track(track, requester, requestNode)) : [];
+        // Check if result warrants a retry on another node
+        const isLoadError = ["error", "LOAD_FAILED"].includes(response.loadType);
+        const isEmpty = ["empty", "NO_MATCHES"].includes(response.loadType);
+
+        if (isLoadError || (isEmpty && isURL)) {
+          requestNode.recordResolveFailure(queryType);
+          lastResult = { response, requestNode };
+          this.emit("debug", `Resolve ${isLoadError ? "failed" : "returned empty"} on "${requestNode.name}" for queryType "${queryType}", ${attempt < maxAttempts - 1 ? "retrying on another node..." : "no more retries"}`);
+          if (attempt < maxAttempts - 1) continue;
+        } else {
+          requestNode.recordResolveSuccess(queryType);
         }
-      } else {
-        // v3 (Legacy or Lavalink V3)
-        tracks = response?.tracks ? response.tracks.map((track) => new Track(track, requester, requestNode)) : [];
+
+        return this._buildResolveResult(response, requestNode, requester, query);
+      } catch (error) {
+        requestNode.recordResolveFailure(queryType);
+        lastError = error;
+        this.emit("debug", `Search Failed for "${query}" on node "${requestNode.name}", Due to: ${error?.message || error}`);
+        if (attempt === maxAttempts - 1 || userSpecifiedNode) throw error;
       }
-
-      this.emit("debug", `Search ${["error", "LOAD_FAILED"].includes(response.loadType) ? "Failed" : "Success"} for "${query}" on node "${requestNode.name}", loadType: ${response.loadType}, tracks: ${tracks.length}`);
-
-      if (requestNode.rest.version === "v4" && response.loadType === "playlist") {
-        playlistInfo = response.data?.info ?? null;
-      } else {
-        playlistInfo = response.playlistInfo ?? null;
-      }
-
-      this.loadType = response.loadType ?? null;
-      this.playlistInfo = playlistInfo;
-      this.pluginInfo = response.pluginInfo ?? {};
-      this.tracks = tracks;
-
-      return {
-        loadType: response.loadType ?? null,
-        exception: response.loadType === "error" ? response.data : response.loadType === "LOAD_FAILED" ? response.exception : null,
-        playlistInfo: playlistInfo,
-        pluginInfo: response.pluginInfo ?? {},
-        tracks: tracks,
-      };
-    } catch (error) {
-      this.emit("debug", `Search Failed for "${query}" on node "${requestNode.name}", Due to: ${error?.message || error}`);
-      throw error;
     }
+
+    // All retries exhausted - return last result if we have one, otherwise throw
+    if (lastResult) {
+      return this._buildResolveResult(lastResult.response, lastResult.requestNode, requester, query);
+    }
+    if (lastError) throw lastError;
+    throw new Error("No nodes are available.");
+  }
+
+  /**
+   * @private
+   * Builds a standardized resolve result from a raw response.
+   */
+  _buildResolveResult(response, requestNode, requester, query) {
+    this.tracks = [];
+    let tracks = [];
+    let playlistInfo = null;
+
+    if (requestNode.rest.version === "v4") {
+      if (response.loadType === "track") {
+        tracks = response.data ? [new Track(response.data, requester, requestNode)] : [];
+      } else if (response.loadType === "playlist") {
+        tracks = response.data?.tracks ? response.data.tracks.map((track) => new Track(track, requester, requestNode)) : [];
+      } else if (response.loadType === "search") {
+        tracks = response.data ? response.data.map((track) => new Track(track, requester, requestNode)) : [];
+      }
+    } else {
+      // v3 (Legacy or Lavalink V3)
+      tracks = response?.tracks ? response.tracks.map((track) => new Track(track, requester, requestNode)) : [];
+    }
+
+    this.emit("debug", `Search ${["error", "LOAD_FAILED"].includes(response.loadType) ? "Failed" : "Success"} for "${query}" on node "${requestNode.name}", loadType: ${response.loadType}, tracks: ${tracks.length}`);
+
+    if (requestNode.rest.version === "v4" && response.loadType === "playlist") {
+      playlistInfo = response.data?.info ?? null;
+    } else {
+      playlistInfo = response.playlistInfo ?? null;
+    }
+
+    this.loadType = response.loadType ?? null;
+    this.playlistInfo = playlistInfo;
+    this.pluginInfo = response.pluginInfo ?? {};
+    this.tracks = tracks;
+
+    return {
+      loadType: response.loadType ?? null,
+      exception: response.loadType === "error" ? response.data : response.loadType === "LOAD_FAILED" ? response.exception : null,
+      playlistInfo: playlistInfo,
+      pluginInfo: response.pluginInfo ?? {},
+      tracks: tracks,
+    };
+  }
+
+  /**
+   * Classifies a query/identifier into a query type string for smart node selection.
+   * Types follow the format "platform:contentType" (e.g. "spotify:track", "youtube:playlist").
+   * @param {string} identifier The full identifier (URL or "source:query")
+   * @returns {string} The query type classification
+   */
+  classifyQuery(identifier) {
+    if (/^https?:\/\//i.test(identifier)) {
+      if (/open\.spotify\.com/i.test(identifier)) {
+        if (/\/track\//i.test(identifier)) return "spotify:track";
+        if (/\/playlist\//i.test(identifier)) return "spotify:playlist";
+        if (/\/album\//i.test(identifier)) return "spotify:album";
+        return "spotify:other";
+      }
+      if (/music\.youtube\.com/i.test(identifier)) {
+        if (/[?&]list=/i.test(identifier)) return "youtubemusic:playlist";
+        return "youtubemusic:video";
+      }
+      if (/youtu(?:be\.com|\.be)/i.test(identifier)) {
+        if (/\/playlist|[?&]list=/i.test(identifier)) return "youtube:playlist";
+        return "youtube:video";
+      }
+      if (/soundcloud\.com/i.test(identifier)) {
+        if (/\/sets\//i.test(identifier)) return "soundcloud:playlist";
+        return "soundcloud:track";
+      }
+      if (/deezer\.com/i.test(identifier)) {
+        if (/\/track\//i.test(identifier)) return "deezer:track";
+        if (/\/playlist\//i.test(identifier)) return "deezer:playlist";
+        if (/\/album\//i.test(identifier)) return "deezer:album";
+        return "deezer:other";
+      }
+      if (/music\.apple\.com/i.test(identifier)) {
+        if (/\/playlist\//i.test(identifier)) return "applemusic:playlist";
+        if (/\/album\//i.test(identifier)) return "applemusic:album";
+        return "applemusic:track";
+      }
+      return "url:other";
+    }
+
+    const searchMatch = identifier.match(/^(\w+):/);
+    if (searchMatch) {
+      const prefix = searchMatch[1].toLowerCase();
+      const prefixMap = {
+        spsearch: "search:spotify",
+        ytsearch: "search:youtube",
+        ytmsearch: "search:youtubemusic",
+        scsearch: "search:soundcloud",
+        amsearch: "search:applemusic",
+        dzsearch: "search:deezer",
+      };
+      return prefixMap[prefix] || `search:${prefix}`;
+    }
+
+    return "search:unknown";
+  }
+
+  /**
+   * Returns the best node for a given query type, excluding nodes already tried.
+   * Nodes that have proven success for this query type are preferred.
+   * Nodes that have only failures for this type are demoted.
+   * @param {string} queryType
+   * @param {import("./Node").Node[]} [excludeNodes=[]]
+   * @returns {import("./Node").Node | null}
+   */
+  getPreferredNode(queryType, excludeNodes = []) {
+    const candidates = [...this.nodeMap.values()]
+      .filter(n => n.connected && !excludeNodes.includes(n));
+    if (!candidates.length) return null;
+
+    return candidates.sort((a, b) => {
+      // Strongly prefer nodes that can resolve this type
+      const canA = a.canResolve(queryType);
+      const canB = b.canResolve(queryType);
+      if (canA !== canB) return canA ? -1 : 1;
+
+      // Then prefer nodes with higher resolve success score for this type
+      const scoreA = a.getResolveScore(queryType);
+      const scoreB = b.getResolveScore(queryType);
+      if (scoreA !== scoreB) return scoreB - scoreA;
+
+      // Fall back to general penalties
+      return a.penalties - b.penalties;
+    })[0];
   }
 
   get(guildId) {
