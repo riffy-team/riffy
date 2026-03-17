@@ -90,7 +90,7 @@ class Player extends EventEmitter {
 
     /**
      * @private
-     * @param {import("./Track").Track} track 
+     * @param {import("./Track").Track} track
      */
     addToPreviousTrack(track) {
         const limit = this.riffy.options.multipleTrackHistory;
@@ -169,6 +169,63 @@ class Player extends EventEmitter {
         });
 
         return this;
+    }
+
+    /**
+     * NodeLink Only.
+     * Sends the next track in the queue to the player.
+     * Informating about the next track to preload for gapless transitions (between tracks)
+     * @param {Track} track The track to send.
+     * This should be called again, if the next track is changed (i.e. track removed from the queue)
+     */
+    async sendNextTrack(track) {
+        if(!this.playing) throw new Error("Player is not playing");
+        if(!track || !track.encoded) throw new Error("Track is not provided for sending next track");
+
+        await this.node.rest.updatePlayer({
+            guildId: this.guildId,
+            data: {
+                nextTrack: {
+                    encoded: track.encoded,
+                },
+                fading: {
+                    "enabled": true,
+                    "trackStart": { "duration": 1000, "curve": "linear" }
+                }
+            },
+        });
+    }
+
+    /**
+     * NodeLink Only
+     * Smooth volume transitions for track changes, seeking, and pausing.
+     * NodeLink supports high-fidelity volume fading to prevent jarring audio clips.
+     * @param {boolean} enabled
+     * @param {object} fading accepts a fading object containing settings for different scenarios (or types) such as `trackStart`, `trackEnd`, `trackStop`, `seek`, and `ducking`, each with a duration (in milliseconds) and curve (Mathematical curve for the fade (linear, exponential, logarithmic, s-curve)) properties.
+     */
+    async setFadings(enabled = true, fading = { "trackStart": { "duration": 1000, "curve": "linear" } }) {
+
+      if (typeof fading !== "object") throw new TypeError("Fading must be an object in setFading");
+
+      Object.entries(fading).forEach(([key, value]) => {
+        if (["trackStart", "trackEnd", "trackStop", "seek", "ducking"].includes(key)) {
+          throw new TypeError(`Invalid ${key} fading key/type (scenarios), expected it to be one of the following: "trackStart", "trackEnd", "trackStop", "seek", "ducking".`);
+        }
+
+        if (typeof value !== "object" || typeof value.duration !== "number" || typeof value.curve !== "string") {
+          throw new TypeError(`Invalid ${key} fading configuration in setFading, ${key} must be an object with duration (number) and curve (string) properties.`);
+        }
+      });
+
+      await this.node.rest.updatePlayer({
+            guildId: this.guildId,
+            data: {
+                fading: {
+                    "enabled": enabled,
+                    ...fading
+                }
+            },
+        });
     }
 
     /**

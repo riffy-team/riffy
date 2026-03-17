@@ -309,7 +309,11 @@ export declare class Player extends EventEmitter {
     public moveTo(newNode: Node): Promise<Player>;
 }
 
-export type SearchPlatform = "ytsearch" | "ytmsearch" | "scsearch" | "spsearch" | "amsearch" | "dzsearch" | "ymsearch" | (string & {})
+export type SearchPlatform = "ytsearch" | "ytmsearch" | "scsearch" | "spsearch" | "amsearch" | "dzsearch" | "ymsearch" | (string & {});
+export type NodelinkSearchPlatform = "admsearch" | "amsearch" | "audiomack" | "bcsearch" | "bilibili"
+                                    | "dzsearch" | "flowery" | "ftts" | "gaanasearch" | "gtts" | "jssearch" 
+                                    | "lfsearch" | "mcsearch" | "ncsearch" | "nicovideo" | "pdsearch" | "shsearch"
+                                    | "speak" | "spsearch" | "szsearch" | "tdsearch" | "vksearch";
 export type Version = "v3" | "v4";
 
 export type LavalinkTrackLoadException = {

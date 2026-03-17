@@ -305,28 +305,31 @@ class Riffy extends EventEmitter {
   }
 
   /**
+   * TODO: handle non-playable tracks for certain search results returned by NodeLink (https://nodelink.js.org/docs/api/rest#loadtracks)
    * @param {object} param0 
    * @param {string} param0.query used for searching as a search Query  
    * @param {import("..").SearchPlatform} [param0.source] A source to search the query on example:ytmsearch for youtube music (uses defaultSearchPlatform if not provided)
    * @param {*} param0.requester the requester who's requesting 
    * @param {(string | Node)} [param0.node] Specific node to use for the search either put-in node identifier/name or the node class itself
+   * @param {import("..").SearchType} [param0.searchType] (Nodelink Only) The type of search to perform (default: "track")
    * @returns {Promise<import("..").nodeResponse>} returned properties values are nullable if lavalink doesn't give them
    * */
-  async resolve({ query, source, requester, node }) {
+  async resolve({ query, source, requester, node, searchType }) {
     if (!this.initiated) throw new Error("You have to initialize Riffy in your ready event");
 
     if (node && (typeof node !== "string" && !(node instanceof Node))) {
       throw new Error(`'node' property must either be an node identifier/name('string') or an Node/Node Class, But Received: ${typeof node}`);
     }
-
-    const requestNode = (node && typeof node === 'string' ? this.nodeMap.get(node) : node) || this.leastUsedNodes[0];
+    
+    // Retrieve the node to use for the search, either from the nodeMap or the least used nodes (nodelink filtered if it's features are used)
+    const requestNode = (node && typeof node === 'string' ? this.nodeMap.get(node) : node) || this.leastUsedNodes.find(n => (searchType ? n.info.isNodelink : true));
     if (!requestNode) throw new Error("No nodes are available.");
 
     try {
       // ^^(jsdoc) A source to search the query on example:ytmsearch for youtube music
       const querySource = source || this.defaultSearchPlatform;
       const regex = /^https?:\/\//;
-      const identifier = regex.test(query) ? query : `${querySource}:${query}`;
+      const identifier = regex.test(query) ? query : `${querySource}:${searchType ? searchType + ":" : ""}${query}`;
 
       this.emit("debug", `Searching for ${query} on node "${requestNode.name}"`);
 
