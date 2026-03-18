@@ -174,9 +174,9 @@ class Player extends EventEmitter {
     /**
      * NodeLink Only.
      * Sends the next track in the queue to the player.
-     * Informating about the next track to preload for gapless transitions (between tracks)
-     * @param {Track} track The track to send.
-     * This should be called again, if the next track is changed (i.e. track removed from the queue)
+     * NodeLink Only.
+     * Sends the next track in the queue to the player.
+     * Informs the node about the next track to preload for gapless transitions (between tracks)
      */
     async sendNextTrack(track) {
         if(!this.playing) throw new Error("Player is not playing");
