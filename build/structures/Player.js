@@ -208,7 +208,7 @@ class Player extends EventEmitter {
       if (typeof fading !== "object") throw new TypeError("Fading must be an object in setFading");
 
       Object.entries(fading).forEach(([key, value]) => {
-        if (["trackStart", "trackEnd", "trackStop", "seek", "ducking"].includes(key)) {
+        if (!["trackStart", "trackEnd", "trackStop", "seek", "ducking"].includes(key)) {
           throw new TypeError(`Invalid ${key} fading key/type (scenarios), expected it to be one of the following: "trackStart", "trackEnd", "trackStop", "seek", "ducking".`);
         }
 
