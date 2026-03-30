@@ -314,6 +314,7 @@ export type NodelinkSearchPlatform = "admsearch" | "amsearch" | "audiomack" | "b
                                     | "dzsearch" | "flowery" | "ftts" | "gaanasearch" | "gtts" | "jssearch" 
                                     | "lfsearch" | "mcsearch" | "ncsearch" | "nicovideo" | "pdsearch" | "shsearch"
                                     | "speak" | "spsearch" | "szsearch" | "tdsearch" | "vksearch";
+export type SearchType = "track" | "album" | "playlist" | "artist" | (string & {});
 export type Version = "v3" | "v4";
 
 export type LavalinkTrackLoadException = {
