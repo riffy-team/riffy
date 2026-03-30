@@ -173,10 +173,12 @@ class Player extends EventEmitter {
 
     /**
      * NodeLink Only.
-     * Sends the next track in the queue to the player.
-     * NodeLink Only.
+     * 
      * Sends the next track in the queue to the player.
      * Informs the node about the next track to preload for gapless transitions (between tracks)
+     * 
+     * @throws {Error} If the player is not playing
+     * @throws {Error} If the track is not provided for sending next track
      */
     async sendNextTrack(track) {
         if(!this.playing) throw new Error("Player is not playing");
@@ -188,12 +190,10 @@ class Player extends EventEmitter {
                 nextTrack: {
                     encoded: track.encoded,
                 },
-                fading: {
-                    "enabled": true,
-                    "trackStart": { "duration": 1000, "curve": "linear" }
-                }
             },
         });
+      
+        return this;
     }
 
     /**

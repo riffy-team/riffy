@@ -261,7 +261,33 @@ export declare class Player extends EventEmitter {
     addToPreviousTrack(track: Track): void
 
     public play(): Promise<Player>;
-
+    
+    /**
+     * NodeLink Only.
+     * 
+     * Sends the next track in the queue to the player.
+     * Informs the node about the next track to preload for gapless transitions (between tracks)
+     * 
+     * @throws {Error} If the player is not playing
+     * @throws {Error} If the track is not provided for sending next track
+     */
+    public sendNextTrack(): Promise<Player>;
+    
+    /**
+     * NodeLink Only
+     * Smooth volume transitions for track changes, seeking, and pausing.
+     * NodeLink supports high-fidelity volume fading to prevent jarring audio clips.
+     * @param {boolean} enabled
+     * @param {object} fading accepts a fading object containing settings for different scenarios (or types) such as `trackStart`, `trackEnd`, `trackStop`, `seek`, and `ducking`, each with a duration (in milliseconds) and curve (Mathematical curve for the fade (linear, exponential, logarithmic, s-curve)) properties.
+     */
+     public setFadings(enabled?: boolean, fading?: {
+         trackStart?: { duration: number; curve: string };
+         trackEnd?: { duration: number; curve: string };
+         trackStop?: { duration: number; curve: string };
+         seek?: { duration: number; curve: string };
+         ducking?: { duration: number; curve: string };
+     }): Promise<Player>;
+  
     public autoplay(player: Player): Promise<Player>;
 
     public connect(options?: {
