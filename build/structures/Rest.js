@@ -167,7 +167,13 @@ class Rest {
     }
 
     try {
-      return await req[req.headers.get("Content-Type").includes("text/plain") ? "text" : "json"]();
+      if (req.headers.get("Content-Type")?.includes("text/plain")) {
+        return await req.text();
+      } else if (req.headers.get("Content-Type")?.includes("application/json")) {
+        return await req.json();
+      } else if (req.headers.get("Content-Type")?.includes("application/octet-stream") || req.headers.get("Content-Type")?.includes("audio/")) {
+        return await req.body; 
+      }
     } catch (e) {
       this.riffy.emit(
         "debug",

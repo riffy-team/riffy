@@ -59,6 +59,22 @@ class Node {
         deficit: 0,
       },
       detailedStats: null,
+      /**
+       * Nodelink specific stats
+       */
+      eventLoopLagP50: 0,
+      /**
+       * Nodelink specific stats
+       */
+      eventLoopLagP95: 0,
+      /**
+       * Nodelink specific stats
+       */
+      eventLoopLagP99: 0,
+      /**
+       * Nodelink specific stats
+       */
+      stuckRecoveries: 0,
     };
 
     this.connected = false;
@@ -155,6 +171,7 @@ class Node {
 
   /**
    * @since 1.0.9
+   * [Nodelink](https://nodelink.js.org) Mixer API, allows you to add/remove/update mix layers on a player if the node is hosted on a Nodelink Server.
    */
   mixer = {
     check: () => {
@@ -239,6 +256,212 @@ class Node {
 
       return await this.rest.makeRequest("DELETE", `/v4/sessions/${this.sessionId}/players/${guildId}/mix/${mixId}`);
     }
+  }
+
+  /**
+   * [Nodelink-Only](https://nodelink.js.org) 
+   * SponserBlock API
+   */
+
+  sponserBlock = {
+    /**
+     * @internal
+     * 
+     * Validates the provided segment object, throws an error if it's invalid (as everything is required)
+     */
+    _validateSponsorBlockSegment: (segment) => {
+      if (typeof segment !== "object") {
+        throw new TypeError("segment must be an object");
+      }
+
+      if(typeof segment.uuid !== "string") throw new TypeError("segment.uuid must be a string");
+      if(typeof segment.start !== "number") throw new TypeError("segment.start must be a number");
+      if(typeof segment.end !== "number") throw new TypeError("segment.end must be a number");
+      // (e.g. sponsor, intro, outro, selfpromo, interaction, preview, music_offtopic, filler).
+      if(typeof segment.category !== "string") throw new TypeError("segment.category must be a string");
+      // (e.g. skip, mute, poi, chapter).
+      if(typeof segment.actionType !== "string") throw new TypeError("segment.actionType must be a string");
+      if(typeof segment.votes !== "number") throw new TypeError("segment.votes must be a number");
+      if(typeof segment.locked !== "boolean") throw new TypeError("segment.locked must be a boolean");
+      if(typeof segment.videoDuration !== "number") throw new TypeError("segment.videoDuration must be a number");
+      if(typeof segment.description !== "string") throw new TypeError("segment.description must be a string");
+    },
+
+    check: () => {
+      return this.info?.isNodelink ?? false;
+    },
+
+    /**
+     * Returns the current SponsorBlock state for a player.
+     * @param {string} guildId 
+     */
+    getCurrentBlock: async (guildId) => {
+      if(!this.sponserBlock.check()) throw new Error("This node is not a Nodelink Server");
+
+      if (typeof guildId !== "string") throw new TypeError("guildId must be a string");
+
+      return await this.rest.makeRequest("GET", `/v4/sessions/${this.sessionId}/players/${guildId}/sponsorblock`);
+    },
+
+
+    /**
+     * 
+     * Updates SponsorBlock settings for a player. Only the provided options are changed.
+     * @link https://nodelink.js.org/docs/api/rest#updatesponsorblock
+     * 
+     * @param {string} guildId 
+     * @param {object} options 
+     * @returns {Promise<object>}
+     * @throws {Error} If the node is not a Nodelink Server.
+     * @throws {TypeError} If the provided options are of invalid types or values.
+     */
+    updateSettings: async (guildId, options) => {
+      if (!this.sponserBlock.check()) {
+        throw new Error("This node is not a Nodelink Server");
+      }
+
+      if(!options || typeof options !== "object") {
+        throw new TypeError("Options must be an object");
+      }
+
+      if(typeof options.enabled !== "boolean") {
+        throw new TypeError("options.enabled must be a boolean");
+      }
+
+      if (!Array.isArray(options.categories) || options.categories.some(category => typeof category !== "string")) {
+        throw new TypeError("options.categories must be an array of strings");
+      }
+
+      if(options.actionTypes !== undefined && (!Array.isArray(options.actionTypes) || options.actionTypes.some(actionType => typeof actionType !== "string"))) {
+        throw new TypeError("options.actionTypes must be an array of strings");
+      }
+
+      if (options.skipMarginMs !== undefined && (typeof options.skipMarginMs !== "number" || options.skipMarginMs < 0)) {
+        throw new TypeError("options.skipMarginMs must be a positive number");
+      }
+
+      return await this.rest.makeRequest("PATCH", `/v4/sessions/${this.sessionId}/players/${guildId}/sponsorblock`, options);
+    },
+
+    /**
+     * Overrides the segments array for a player with a custom set of segments.
+     * @link https://nodelink.js.org/docs/api/rest#setsponsorblocksegments
+     * 
+     * @param {string} guildId 
+     * @param {Array} segments 
+     */
+    setBlockSegments: async (guildId, segments) => {
+
+      if(!this.sponserBlock.check()) {
+        throw new Error("This node is not a Nodelink Server");
+      }
+
+      if (typeof guildId !== "string") {
+        throw new TypeError("guildId must be a string");
+      }
+
+      if(!Array.isArray(segments)) {
+        throw new TypeError("segments must be an array");
+      }
+
+      segments.forEach(segment => this.sponserBlock._validateSponsorBlockSegment(segment));
+
+      return await this.rest.makeRequest("PUT", `/v4/sessions/${this.sessionId}/players/${guildId}/sponsorblock`, { segments });
+    },
+
+    /**
+     * Clears all SponsorBlock state for a player (segments, last skipped UUID, and resets to defaults).
+     * @link https://nodelink.js.org/docs/api/rest#clearsponsorblock
+     * 
+     * @param {string} guildId 
+     */
+    clearSponsorBlock: async (guildId) => {
+      if(!this.sponserBlock.check()) {
+        throw new Error("This node is not a Nodelink Server");
+      }
+
+      if (typeof guildId !== "string") {
+        throw new TypeError("guildId must be a string");
+      }
+
+      return await this.rest.makeRequest("DELETE", `/v4/sessions/${this.sessionId}/players/${guildId}/sponsorblock`);
+    }
+  }
+
+  /**
+   * [Nodelink-Only](https://nodelink.js.org) & works when `enableTrackStreamEndpoint` config option is enabled on the Nodelink Server.
+   * 
+   * @description Retrives the Source's Audio Stream URL & formats for the provided encoded track string and itag.
+   * 
+   * **Note:** This method is only for fetching the audio source URL for a track, it doesn't actually fetch or return the audio stream itself, you can use the returned URL to directly stream the audio from the source.
+   * @param {string} encodedTrackStr The Encoded Track String of the track to fetch the stream for.
+   * @param {number} itag The itag of the source to fetch
+   * @returns {Promise<string>} The Audio Source URL for the provided track and (optionally) itag.
+   * @throws {Error} If the node is not a Nodelink Server.
+   * @see https://nodelink.js.org/docs/api/nodelink-features#direct-streaming
+   */
+  async fetchTrackStream(encodedTrackStr, itag = null) {
+
+    if(!this.info?.isNodelink) {
+      throw new Error("This node is not a Nodelink Server");
+    }
+
+    if(!encodedTrackStr || typeof encodedTrackStr !== "string") {
+      throw new TypeError(`encodedTrackStr must be a string, received ${encodedTrackStr}`);
+    }
+
+    if (itag !== null && (typeof itag !== "number" || itag < 0)) {
+      throw new TypeError(`itag must be a positive number, received ${itag}`);
+    }
+
+    return await this.rest.makeRequest("GET", `/v4/trackstream?encodedTrack=${encodedTrackStr}${itag ? `&itag=${itag}` : ""}`);
+  }
+
+  /**
+   * [Nodelink-Only](https://nodelink.js.org) & works when `enableLoadStreamEndpoint` config option is enabled on the Nodelink Server.
+   * 
+   * Stream raw PCM audio for custom processing or recording.
+   * 
+   * @param {string} encodedTrackStr 
+   * @param {number|null} volume 
+   * @param {number|null} position 
+   * @param {string|object|null} filters 
+   * @returns {Promise<ReadableStream>} Readable Stream of raw PCM audio data for the provided track, volume, position, and filters.
+   * @throws {Error} If the node is not a Nodelink Server.
+   * @throws {TypeError} If the provided parameters are of invalid types or values.
+   * @see https://nodelink.js.org/docs/api/nodelink-features#pcm-streaming
+   */
+  async fetchPCMStream(encodedTrackStr, volume = null, position = null, filters = null) {
+
+    if(!this.info?.isNodelink) {
+      throw new Error("This node is not a Nodelink Server");
+    }
+
+    if(!encodedTrackStr || typeof encodedTrackStr !== "string") {
+      throw new TypeError(`encodedTrackStr must be a string, received ${encodedTrackStr}`);
+    }
+
+    if (volume !== null && (typeof volume !== "number" || volume < 0 || volume > 1000)) {
+      throw new TypeError(`volume must be a null or number between 0 and 1000, received ${volume}`);
+    }
+
+    if (position !== null && (typeof position !== "number" || position < 0)) {
+      throw new TypeError(`position must be a null or positive number, received ${position}`);
+    }
+
+    if (filters !== null && typeof filters !== "string" && typeof filters !== "object") {
+      throw new TypeError(`filters must be a null, string or object, received ${filters}`);
+    }
+
+    const body = {
+      encodedTrack: encodedTrackStr,
+    }
+
+    if (volume !== null) body.volume = volume;
+    if (position !== null) body.position = position;
+    if (filters !== null) body.filters = filters;
+
+    return await this.rest.makeRequest("POST", `/v4/loadstream`, body);
   }
 
   /**
