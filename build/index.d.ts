@@ -177,8 +177,8 @@ export declare class Rest {
     public updatePlayer(options: playerUpdateOptions): Promise<RestPlayer | null>;
     public destroyPlayer(guildId: string): Promise<null>;
     public getTracks(identifier: string): Promise<nodeResponse | null>;
-    public decodeTrack(track: string, node?: any): Promise<RestTrack | null>;
-    public decodeTracks(tracks: any[]): Promise<RestTrack[] | null>;
+    public decodeTrack(track: string): Promise<RestTrack | null>;
+    public decodeTracks(tracks: string[]): Promise<RestTrack[] | null>;
     public getStats(): Promise<Prettify<Omit<Node["stats"], "frameStats"> & { frameStats: null }> | null>;
     public getInfo(): Promise<NodeInfo | null>;
     public getRoutePlannerStatus(): Promise<RestResponse | null>;
@@ -315,12 +315,12 @@ export declare class Player extends EventEmitter {
 
     public disconnect(): Player | void;
     public destroy(): void;
-    private handleEvent(payload: any): void;
-    private trackStart(player: Player, track: Track, payload: any): void;
-    private trackEnd(player: Player, track: Track, payload: any): void;
-    private trackError(player: Player, track: Track, payload: any): void;
-    private trackStuck(player: Player, track: Track, payload: any): void;
-    private socketClosed(player: Player, payload: any): void;
+    private handleEvent(payload: NodePlayerEvent): void;
+    private trackStart(player: Player, track: Track, payload: PlayerTrackStartEventPayload): void;
+    private trackEnd(player: Player, track: Track, payload: PlayerTrackEndEventPayload<this["node"]["restVersion"]>): void;
+    private trackError(player: Player, track: Track, payload: PlayerTrackErrorEventPayload): void;
+    private trackStuck(player: Player, track: Track, payload: PlayerTrackStuckEventPayload): void;
+    private socketClosed(player: Player, payload: PlayerSocketClosedEventPayload): void;
     public set(key: string, value: any): any;
     public get(key: string): any;
 
@@ -522,7 +522,7 @@ export type RiffyEvents = {
      * 
      * @see https://lavalink.dev/api/websocket.html#websocketclosedevent
      */
-    "socketClosed": (player: Player, payload: any) => void;
+    "socketClosed": (player: Player, payload: PlayerSocketClosedEventPayload) => void;
 
     /**
      * Emitted When a Node Has been Migrated.
@@ -551,7 +551,7 @@ export type RiffyEvents = {
      * 
      * @see https://lavalink.dev/api/websocket.html#trackstartevent
      */
-    "trackStart": (player: Player, track: Track, payload: any) => void;
+    "trackStart": (player: Player, track: Track, payload: PlayerTrackStartEventPayload) => void;
 
     /**
      * Emitted when a track ends (Queue End is emitted when the queue ends i.e when the last track ends Instead of this.)
@@ -561,7 +561,7 @@ export type RiffyEvents = {
      * 
      * @see https://lavalink.dev/api/websocket.html#trackendevent
      */
-    "trackEnd": (player: Player, track: Track, payload: any) => void;
+    "trackEnd": <TPlayer extends Player>(player: TPlayer, track: Track, payload: PlayerTrackEndEventPayload<TPlayer["node"]["restVersion"]>) => void;
 
     /**
      * Emitted when a track encounters an error (Sent by Lavalink via [TrackExceptionEvent](https://lavalink.dev/api/websocket.html#trackexceptionevent))
@@ -569,7 +569,7 @@ export type RiffyEvents = {
      * @param track The track that encountered the error.
      * @param payload The payload of the track error.
      */
-    "trackError": (player: Player, track: Track, payload: any) => void;
+    "trackError": (player: Player, track: Track, payload: PlayerTrackErrorEventPayload) => void;
 
     /**
      * Emitted when a track gets stuck (Sent by Lavalink via [TrackStuckEvent](https://lavalink.dev/api/websocket.html#trackstuckevent))
@@ -579,7 +579,7 @@ export type RiffyEvents = {
      * 
      * @see https://lavalink.dev/api/websocket.html#trackstuckevent
      */
-    "trackStuck": (player: Player, track: Track, payload: any) => void;
+    "trackStuck": (player: Player, track: Track, payload: PlayerTrackStuckEventPayload) => void;
 
     // Player Events
 
@@ -614,7 +614,7 @@ export type RiffyEvents = {
      * @param player The player that was updated.
      * @param payload The payload of the player update.
      */
-    "playerUpdate": (player: Player, payload: any) => void;
+    "playerUpdate": (player: Player, payload: NodePlayerUpdatePayload) => void;
 
     /**
      * Emitted when a Player's Migration has Failed (🥲 sad life no music for them)
@@ -640,19 +640,61 @@ export type RiffyEvents = {
     "queueEnd": (player: Player) => void;
 
     /**
-     * Emitted when SponsorBlock segments are loaded.
+     * NodeLink Only.
+     * Emitted when lyrics are found for a track.
+     * @param player The player that found the lyrics.
+     * @param lyrics The lyrics that were found.
+     * @param payload The payload of the lyrics found event.
      */
-    "sponsorBlockSegmentsLoaded": (player: Player, segments: SponsorBlockSegment[], payload: any) => void;
+    "lyricsFound": (player: Player, lyrics: PlayerLyricsFoundEventPayload["lyrics"], payload: PlayerLyricsFoundEventPayload) => void;
 
     /**
+     * NodeLink Only.
+     * Emitted when lyrics are not found for a track.
+     * @param player The player that did not find the lyrics.
+     * @param payload The payload of the lyrics not found event.
+     */
+    "lyricsNotFound": (player: Player, payload: BaseNodePlayerEvent<"lyricsNotFoundEvent", {}>) => void;
+
+    /**
+     * NodeLink Only.
+     * Emitted when a line of lyrics is found for a track.
+     * @param player The player that found the lyrics line.
+     * @param payload The payload of the lyrics line event.
+     */
+    "lyricsLine": (player: Player, payload: PlayerLyricLineEventPayload) => void;
+
+    /**
+     * NodeLink Only.
+     * Emitted when SponsorBlock segments are loaded.
+     */
+    "sponsorBlockSegmentsLoaded": (player: Player, segments: SponsorBlockSegment[], payload: BaseNodePlayerEvent<"sponsorBlockSegmentsLoadedEvent", { segments: SponsorBlockSegment[] }>) => void;
+
+    /**
+     * NodeLink Only.
      * Emitted when a SponsorBlock segment is skipped.
      */
-    "sponsorBlockSegmentSkipped": (player: Player, segment: SponsorBlockSegment, payload: any) => void;
+    "sponsorBlockSegmentSkipped": (player: Player, segment: SponsorBlockSegment, payload: BaseNodePlayerEvent<"sponsorBlockSegmentSkippedEvent", { segment: SponsorBlockSegment }>) => void;
+
+    /**
+     * NodeLink Only.
+     * @param player 
+     * @param payload 
+     */
+    "mixStarted": (player: Player, payload: BaseNodePlayerEvent<"mixStartedEvent", any>) => void;
+
+    /**
+     * NodeLink Only.
+     * @param player 
+     * @param payload 
+     */
+    "mixEnded": (player: Player, payload: BaseNodePlayerEvent<"mixEndedEvent", any>) => void;
 
     // Misc Events
     "apiResponse": (endpoint: string, response: any) => void;
     "debug": (...message: string[]) => void;
     "raw": (type: string, payload: any) => void;
+    "nodeLinkEvent": (event: string, payload: any) => void;
 };
 
 // k as `key`
@@ -1046,6 +1088,102 @@ export type SponsorBlockState = {
     segments?: SponsorBlockSegment[];
     [key: string]: any;
 };
+
+export type NodePayloadOp = "ready" | "playerUpdate" | "event" | "stats";
+
+export type BaseNodePayload<TOp extends NodePayloadOp, TData> = Prettify<{
+    op: TOp;
+} & TData>;
+
+export type NodeReadyPayload = BaseNodePayload<"ready", {
+    sessionId: string;
+    resumed: boolean;
+}>;
+
+export type NodePlayerUpdatePayload = BaseNodePayload<"playerUpdate", {
+    guildId: string;
+    state: {
+        time: number;
+        position: number;
+        connected: boolean;
+        ping: number;
+    }
+}>;
+
+export type NodeStatsPayload = BaseNodePayload<"stats", Node["stats"]>;
+
+export type BaseNodePlayerEvent<TEvent extends (string), TEData> = BaseNodePayload<"event", {
+    guildId: string;
+    event: TEvent;
+} & TEData>;
+
+export type PlayerTrackStartEventPayload = BaseNodePlayerEvent<"TrackStartEvent", {
+    track: RestTrack;
+}>;
+
+export type PlayerTrackEndEventPayload<TVer extends Version> = BaseNodePlayerEvent<"TrackEndEvent", {
+    track: RestTrack;
+    reason: TVer extends "v4" 
+            ? "stopped" | "finished" | "loadFailed" | "replaced" | "cleanup" 
+            : "STOPPED" | "FINISHED" | "LOAD_FAILED" | "REPLACED" | "CLEANUP";
+}>;
+
+export type PlayerTrackErrorEventPayload = BaseNodePlayerEvent<"TrackExceptionEvent", {
+    track: RestTrack;
+    error: LavalinkTrackLoadException;
+}>;
+
+export type PlayerTrackStuckEventPayload = BaseNodePlayerEvent<"TrackStuckEvent", {
+    track: RestTrack;
+    thresholdMs: number;
+    /**
+     * The reason why the track got stuck, if provided by Nodelink (Lavalink does not provide this).
+     */
+    reason?: string;
+}>;
+
+export type PlayerSocketClosedEventPayload = BaseNodePlayerEvent<"WebSocketClosedEvent", {
+    code: number;
+    reason: string;
+    byRemote: boolean;
+}>;
+
+export type NodeEventPayload = NodeReadyPayload | NodePlayerUpdatePayload | NodeStatsPayload | PlayerTrackStartEventPayload | PlayerTrackEndEventPayload<Version> | PlayerTrackErrorEventPayload | PlayerTrackStuckEventPayload | PlayerSocketClosedEventPayload;
+
+type PlayerLyricLineEventPayload = BaseNodePlayerEvent<"lyricsLineEvent", {
+    line: {
+        text: string;
+        timestamp: number;
+        duration: number;
+        words: Array<Record<string, unknown>>;
+        plugin: object;
+    };
+    lineIndex: number;
+    skipped: boolean;
+}>;
+
+type PlayerLyricsFoundEventPayload = BaseNodePlayerEvent<"lyricsFoundEvent", {
+    lyrics: {
+        sourceName: string;
+        provider: string;
+        text: string,
+        lines: Array<PlayerLyricLineEventPayload["line"]>,
+        plugin: object;
+    };
+}>;
+
+type NodePlayerEventMap = {
+    "TrackStartEvent": PlayerTrackStartEventPayload;
+    "TrackEndEvent": PlayerTrackEndEventPayload<Version>;
+    "TrackExceptionEvent": PlayerTrackErrorEventPayload;
+    "TrackStuckEvent": PlayerTrackStuckEventPayload;
+    "WebSocketClosedEvent": PlayerSocketClosedEventPayload;
+    "lyricsLineEvent": PlayerLyricLineEventPayload;
+    "lyricsFoundEvent": PlayerLyricsFoundEventPayload;
+    [key: string]: BaseNodePlayerEvent<string, any>;
+}
+
+export type NodePlayerEvent = PlayerTrackStartEventPayload | PlayerTrackEndEventPayload<Version> | PlayerTrackErrorEventPayload | PlayerTrackStuckEventPayload | PlayerSocketClosedEventPayload | PlayerLyricLineEventPayload | PlayerLyricsFoundEventPayload | BaseNodePlayerEvent<string, any>;
 
 export declare class Node {
     constructor(riffy: Riffy, node: LavalinkNode, options: NodeOptions);

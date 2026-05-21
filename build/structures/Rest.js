@@ -118,8 +118,7 @@ class Rest {
     );
   }
 
-  async decodeTrack(track, node) {
-    if (!node) node = this.riffy.leastUsedNodes[0];
+  async decodeTrack(track) {
     return this.makeRequest(
       `GET`,
       `/${this.version}/decodetrack?encodedTrack=${encodeURIComponent(track)}`

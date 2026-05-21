@@ -529,6 +529,21 @@ class Player extends EventEmitter {
                 this.socketClosed(player, payload);
                 break;
 
+            case "LyricsFoundEvent": 
+                this.riffy.emit("lyricsFound", player, payload.lyrics, payload);
+                this.#emitNodeLinkEvent("lyricsFound", payload.lyrics, payload);
+                break;
+            
+            case "LyricsNotFoundEvent":
+                this.riffy.emit("lyricsNotFound", player, payload);
+                this.#emitNodeLinkEvent("lyricsNotFound", payload);
+                break;
+            
+            case "LyricsLineEvent":
+                this.riffy.emit("lyricsLine", player, payload);
+                this.#emitNodeLinkEvent("lyricsLine", payload);
+                break;
+
             case "SponsorBlockSegmentsLoadedEvent":
                 this.riffy.emit("sponsorBlockSegmentsLoaded", player, payload.segments, payload);
                 break;
@@ -537,7 +552,35 @@ class Player extends EventEmitter {
                 this.riffy.emit("sponsorBlockSegmentSkipped", player, payload.segment, payload);
                 break;
 
+            case "MixStartedEvent":
+                this.riffy.emit("mixStarted", player, payload);
+                this.#emitNodeLinkEvent("mixStarted", payload);
+                break;
+            
+            case "MixEndedEvent":
+                this.riffy.emit("mixEnded", player, payload);
+                this.#emitNodeLinkEvent("mixEnded", payload);
+                break;
+
+            case "SeekEvent":
+                this.position = payload.position;
+                this.#emitNodeLinkEvent("seek", payload);
+                break;
+
+            case "VolumeChangedEvent":
+                this.volume = payload.volume;
+                this.#emitNodeLinkEvent("volumeChanged", payload);
+                break;
+            
+            case "PauseEvent":
+                this.paused = payload.pause;
+                this.#emitNodeLinkEvent("pause", payload);
+                break;
+
             default:
+
+                if(this.node.info?.isNodeLink) this.#emitNodeLinkEvent(payload.type, payload);
+
                 const error = new Error(`Node encountered an unknown event: '${payload.type}'`);
                 this.riffy.emit("nodeError", this, error);
                 break;
@@ -715,6 +758,13 @@ class Player extends EventEmitter {
         }
 
         return this;
+    }
+
+    #emitNodeLinkEvent(eventName, ...args) {
+
+        if(!this.node.info?.isNodeLink) return;
+
+        this.riffy.emit("nodeLinkEvent", eventName, ...args);
     }
 }
 
