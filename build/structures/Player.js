@@ -529,6 +529,14 @@ class Player extends EventEmitter {
                 this.socketClosed(player, payload);
                 break;
 
+            case "SponsorBlockSegmentsLoadedEvent":
+                this.riffy.emit("sponsorBlockSegmentsLoaded", player, payload.segments, payload);
+                break;
+            
+            case "SponsorBlockSegmentSkippedEvent":
+                this.riffy.emit("sponsorBlockSegmentSkipped", player, payload.segment, payload);
+                break;
+
             default:
                 const error = new Error(`Node encountered an unknown event: '${payload.type}'`);
                 this.riffy.emit("nodeError", this, error);

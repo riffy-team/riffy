@@ -147,7 +147,7 @@ class Node {
 
     /** @description fetches Lyrics for Currently playing Track
      * @param {string} guildId The Guild Id of the Player
-     * @param {boolean} skipTrackSource skips the Track Source & fetches from highest priority source (configured on Lavalink Server)
+     * @param {boolean} [skipTrackSource=false] skips the Track Source & fetches from highest priority source (configured on Lavalink Server)
      * @param {string} [plugin] The Plugin to use(**Only required if you have too many known (i.e java-lyrics-plugin, lavalyrics-plugin) Lyric Plugins**)
      */
     getCurrentTrack: async (guildId, skipTrackSource = false, plugin = "") => {

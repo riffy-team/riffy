@@ -1,4 +1,5 @@
 import { EventEmitter } from "events";
+import { WebSocket } from "ws";
 
 type Nullable<T> = T | null;
 type Prettify<T> =
@@ -107,6 +108,7 @@ export declare class Track {
     constructor(data: RestTrack, requester: any, node: Node);
 
     public track: string;
+    public encoded: string;
     public info: {
         identifier: string;
         seekable: boolean;
@@ -139,7 +141,7 @@ export declare class Track {
      */
     public isAutoplay: boolean;
 
-    public resolve(riffy: Riffy): Promise<Track>;
+    public resolve(riffy: Riffy): Promise<Track | undefined>;
 }
 
 export interface RestOptions {
@@ -160,7 +162,7 @@ export interface RestResponse {
     [key: string]: any;
 }
 
-export declare class Rest extends EventEmitter {
+export declare class Rest {
     constructor(riffy: Riffy, options: RestOptions);
     public riffy: Riffy;
     public url: string
@@ -181,7 +183,7 @@ export declare class Rest extends EventEmitter {
     public getInfo(): Promise<NodeInfo | null>;
     public getRoutePlannerStatus(): Promise<RestResponse | null>;
     public getRoutePlannerAddress(address: string): Promise<RestResponse | null>;
-    public parseResponse(req: any): Promise<RestResponse | null>;
+    public parseResponse(req: any): Promise<RestResponse | string | ReadableStream | null>;
 }
 
 export declare class Queue extends Array<Track> {
@@ -189,13 +191,16 @@ export declare class Queue extends Array<Track> {
     get first(): Track | null;
 
     add(track: Track): this;
+    unshift(track: Track): this;
     remove(index: number): Track;
-    clear(): void;
-    shuffle(): void;
+    clear(): this;
+    shuffle(): this;
+    move(from: number, to: number): this;
 }
 
 export declare class Plugin {
     constructor(name: string);
+    public name: string;
 
     load(riffy: Riffy): void;
     unload(riffy: Riffy): void;
@@ -219,9 +224,9 @@ export declare class Player extends EventEmitter {
     public node: Node;
     public options: PlayerOptions;
     public guildId: string;
-    public textChannel: string;
-    public voiceChannel: string;
-    public connection: Connection;
+    public textChannel: string | undefined;
+    public voiceChannel: string | null | undefined;
+    public connection: Connection | null;
     public deaf: boolean;
     public mute: boolean;
     public volume: number;
@@ -230,7 +235,8 @@ export declare class Player extends EventEmitter {
     public data: {};
     public queue: Queue;
     public position: number;
-    public current: Track;
+    public current: Track | null;
+    public previousTracks: Track[];
     public playing: boolean;
     public paused: boolean;
     public connected: boolean;
@@ -271,7 +277,7 @@ export declare class Player extends EventEmitter {
      * @throws {Error} If the player is not playing
      * @throws {Error} If the track is not provided for sending next track
      */
-    public sendNextTrack(): Promise<Player>;
+    public sendNextTrack(track: { encoded: string }): Promise<Player>;
     
     /**
      * NodeLink Only
@@ -286,7 +292,7 @@ export declare class Player extends EventEmitter {
          trackStop?: { duration: number; curve: string };
          seek?: { duration: number; curve: string };
          ducking?: { duration: number; curve: string };
-     }): Promise<Player>;
+    }): Promise<void>;
   
     public autoplay(player: Player): Promise<Player>;
 
@@ -298,7 +304,7 @@ export declare class Player extends EventEmitter {
     }): void;
 
     public stop(): Player;
-    public pause(toggle?: boolean): Player;
+    public pause(toggle?: boolean): Promise<Player>;
     public seek(position: number): void;
     public setVolume(volume: number): Player;
     public setLoop(mode: LoopOption): Player;
@@ -308,7 +314,7 @@ export declare class Player extends EventEmitter {
         deaf?: boolean;
     }): Player;
 
-    public disconnect(): Player;
+    public disconnect(): Player | void;
     public destroy(): void;
     private handleEvent(payload: any): void;
     private trackStart(player: Player, track: Track, payload: any): void;
@@ -485,9 +491,10 @@ export type RiffyEvents = {
     /**
      * Emitted when a node disconnects
      * @param node The node that disconnected.
-     * @param reason The reason for the disconnect.
+     * @param param1.code The WebSocket close code sent by Lavalink (if any).
+     * @param param1.reason The WebSocket close reason sent by Lavalink (if any).
      */
-    "nodeDisconnect": (node: Node, reason: string) => void;
+    "nodeDisconnect": (node: Node, { code, reason }: { code: number; reason: string }) => void;
 
     /**
      * Emitted when a node is created
@@ -633,7 +640,18 @@ export type RiffyEvents = {
      */
     "queueEnd": (player: Player) => void;
 
+    /**
+     * Emitted when SponsorBlock segments are loaded.
+     */
+    "sponsorBlockSegmentsLoaded": (player: Player, segments: SponsorBlockSegment[], payload: any) => void;
+
+    /**
+     * Emitted when a SponsorBlock segment is skipped.
+     */
+    "sponsorBlockSegmentSkipped": (player: Player, segment: SponsorBlockSegment, payload: any) => void;
+
     // Misc Events
+    "apiResponse": (endpoint: string, response: any) => void;
     "debug": (...message: string[]) => void;
     "raw": (type: string, payload: any) => void;
 };
@@ -724,15 +742,15 @@ export declare class Riffy extends EventEmitter {
      */
     public readonly bestNode: Node | null | undefined;
 
-    public init(clientId: string): this;
+    public init(clientId: string): this | void;
 
-    public createNode(options: any): Node;
+    public createNode(options: LavalinkNode): Node;
 
     public destroyNode(identifier: string): void;
 
-    public updateVoiceState(packet: any): void;
+    public updateVoiceState(packet: any): Promise<void>;
 
-    public fetchRegion(region: string): Array<LavalinkNode>;
+    public fetchRegion(region: string): Array<Node>;
 
     /**
     * Creates a connection based on the provided options.
@@ -776,7 +794,7 @@ export declare class Riffy extends EventEmitter {
     * @param {import("./Player").Player | import("./Node").Node} target The player or node to migrate.
     * @param {import("./Node").Node} [destinationNode] The node to migrate to.
     */
-    public migrate(target: Node | Player, destinationNode?: Node): Player[]
+    public migrate(target: Node | Player, destinationNode?: Node | null): Promise<Player | Player[] | undefined>
     public removeConnection(guildId: string): void;
 
     /**
@@ -789,9 +807,10 @@ export declare class Riffy extends EventEmitter {
    * */
     public resolve(params: {
         query: string;
-        source?: string;
+        source?: SearchPlatform;
         requester: any;
-        node?: string | Node
+        node?: string | Node;
+        searchType?: SearchType;
     }): Promise<nodeResponse>;
 
 
@@ -1001,9 +1020,38 @@ interface NodeLyricsLine {
     plugin: object
 }
 
+export type SponsorBlockSegment = {
+    uuid: string;
+    start: number;
+    end: number;
+    category: string;
+    actionType: string;
+    votes: number;
+    locked: boolean;
+    videoDuration: number;
+    description: string;
+};
+
+export type SponsorBlockUpdateOptions = {
+    enabled: boolean;
+    categories: string[];
+    actionTypes?: string[];
+    skipMarginMs?: number;
+};
+
+export type SponsorBlockState = {
+    enabled?: boolean;
+    categories?: string[];
+    actionTypes?: string[];
+    skipMarginMs?: number;
+    segments?: SponsorBlockSegment[];
+    [key: string]: any;
+};
+
 export declare class Node {
     constructor(riffy: Riffy, node: LavalinkNode, options: NodeOptions);
     public riffy: Riffy;
+    public readonly options: RiffyOptions;
 
     public name: LavalinkNode["name"];
     public host: LavalinkNode["host"];
@@ -1015,7 +1063,7 @@ export declare class Node {
     public rest: Rest;
     public wsUrl: string;
     public restUrl: string;
-    private ws: null;
+    private ws: WebSocket | null;
 
     public resumeKey: NodeOptions["resumeKey"];
     public sessionId: NodeOptions["sessionId"];
@@ -1024,13 +1072,13 @@ export declare class Node {
      * Helpful for region-based Node filtering.
      * i.e If Voice Channel Region is `eu_west` Filter's Nodes specifically to `eu_west` 
      */
-    public regions: string[] | null;
+    public regions: string[] | undefined;
     public resumeTimeout: NodeOptions["resumeTimeout"];
     public autoResume: NodeOptions["autoResume"];
     public reconnectTimeout: NodeOptions["reconnectTimeout"];
     public reconnectTries: NodeOptions["reconnectTries"];
 
-    public reconnectAttempt: number;
+    public reconnectAttempt: NodeJS.Timeout | null;
     public reconnectAttempted: number;
 
     public connected: boolean;
@@ -1039,24 +1087,24 @@ export declare class Node {
     */
     public info: NodeInfo | null;
     public stats: {
-        players: 0,
-        playingPlayers: 0,
-        uptime: 0,
+        players: number,
+        playingPlayers: number,
+        uptime: number,
         memory: {
-            free: 0,
-            used: 0,
-            allocated: 0,
-            reservable: 0,
+            free: number,
+            used: number,
+            allocated: number,
+            reservable: number,
         },
         cpu: {
-            cores: 0,
-            systemLoad: 0,
-            lavalinkLoad: 0,
+            cores: number,
+            systemLoad: number,
+            lavalinkLoad: number,
         },
         frameStats: {
-            sent: 0,
-            nulled: 0,
-            deficit: 0,
+            sent: number,
+            nulled: number,
+            deficit: number,
         },
 
         /**
@@ -1075,6 +1123,23 @@ export declare class Node {
                 } & Record<string, number>
             }
         } | null,
+
+        /**
+         * Nodelink specific stats
+         */
+        eventLoopLagP50: number;
+        /**
+         * Nodelink specific stats
+         */
+        eventLoopLagP95: number;
+        /**
+         * Nodelink specific stats
+         */
+        eventLoopLagP99: number;
+        /**
+         * Nodelink specific stats
+         */
+        stuckRecoveries: number;
     };
     public lastStats: number
 
@@ -1083,7 +1148,7 @@ export declare class Node {
      * returns null if some error occurred.
      * @see https://lavalink.dev/api/rest.html#info
      */
-    fetchInfo(): Promise<NodeInfo | null>;
+    fetchInfo(options?: { restVersion?: Version; includeHeaders?: boolean }): Promise<NodeInfo | { data: NodeInfo | null; headers: any } | null>;
 
     /**
      * Lavalink Lyrics API (Works Only when Lavalink has Lyrics Plugin like: [lavalyrics](https://github.com/topi314/LavaLyrics))
@@ -1096,7 +1161,7 @@ export declare class Node {
          * @returns {Promise<boolean>} If the plugins are available.
          * @throws {RangeError} If the plugins are missing.
          */
-        checkAvailable: (eitherOne: boolean, ...plugins: string[]) => Promise<boolean>;
+        checkAvailable: (eitherOne?: boolean, ...plugins: string[]) => Promise<boolean>;
         /**
          * Fetches lyrics for a given track or encoded track string.
          * 
@@ -1105,14 +1170,14 @@ export declare class Node {
          * @returns {Promise<Object|null>} The lyrics data or null if the plugin is unavailable Or If no lyrics were found OR some Http request error occured.
          * @throws {TypeError} If `trackOrEncodedTrackStr` is not a `Track` or `string`.
          */
-        get: (trackOrEncodedTrackStr: Track | string, skipTrackSource: boolean) => Promise<NodeLyricsResult | null>;
+        get: (trackOrEncodedTrackStr: Track | string, skipTrackSource?: boolean) => Promise<NodeLyricsResult | null>;
 
         /** @description fetches Lyrics for Currently playing Track 
          * @param {string} guildId The Guild Id of the Player
-         * @param {boolean} skipTrackSource skips the Track Source & fetches from highest priority source (configured on Lavalink Server) 
+         * @param {boolean} [skipTrackSource=false] skips the Track Source & fetches from highest priority source (configured on Lavalink Server) 
          * @param {string} [plugin] The Plugin to use(**Only required if you have too many known (i.e java-lyrics-plugin, lavalyrics-plugin) Lyric Plugins**)
          */
-        getCurrentTrack: <TPlugin extends LyricPluginWithoutLavaLyrics | (string & {}) >(guildId: string, skipTrackSource: boolean, plugin?: TPlugin) => Promise<TPlugin extends LyricPluginWithoutLavaLyrics ? LyricPluginWithoutLavaLyricsResult : NodeLyricsResult | null>;
+        getCurrentTrack: <TPlugin extends LyricPluginWithoutLavaLyrics | (string & {}) >(guildId: string, skipTrackSource?: boolean, plugin?: TPlugin) => Promise<TPlugin extends LyricPluginWithoutLavaLyrics ? LyricPluginWithoutLavaLyricsResult : NodeLyricsResult | null>;
     }
 
     /**
@@ -1143,6 +1208,86 @@ export declare class Node {
          */
         removeMixLayer: (guildId: string, mixId: string) => Promise<void>;
     }
+
+    /**
+     * [Nodelink-Only](https://nodelink.js.org)
+     * SponserBlock API
+     */
+    sponserBlock: {
+        /**
+         * @internal
+         *
+         * Validates the provided segment object, throws an error if it's invalid (as everything is required)
+         */
+        _validateSponsorBlockSegment: (segment: SponsorBlockSegment) => void;
+
+        check: () => boolean;
+
+        /**
+         * Returns the current SponsorBlock state for a player.
+         * @param {string} guildId
+         */
+        getCurrentBlock: (guildId: string) => Promise<SponsorBlockState | null>;
+
+        /**
+         * Updates SponsorBlock settings for a player. Only the provided options are changed.
+         * @link https://nodelink.js.org/docs/api/rest#updatesponsorblock
+         *
+         * @param {string} guildId
+         * @param {object} options
+         * @returns {Promise<object>}
+         * @throws {Error} If the node is not a Nodelink Server.
+         * @throws {TypeError} If the provided options are of invalid types or values.
+         */
+        updateSettings: (guildId: string, options: SponsorBlockUpdateOptions) => Promise<object>;
+
+        /**
+         * Overrides the segments array for a player with a custom set of segments.
+         * @link https://nodelink.js.org/docs/api/rest#setsponsorblocksegments
+         *
+         * @param {string} guildId
+         * @param {Array} segments
+         */
+        setBlockSegments: (guildId: string, segments: SponsorBlockSegment[]) => Promise<object>;
+
+        /**
+         * Clears all SponsorBlock state for a player (segments, last skipped UUID, and resets to defaults).
+         * @link https://nodelink.js.org/docs/api/rest#clearsponsorblock
+         *
+         * @param {string} guildId
+         */
+        clearSponsorBlock: (guildId: string) => Promise<object>;
+    };
+
+    /**
+     * [Nodelink-Only](https://nodelink.js.org) & works when `enableTrackStreamEndpoint` config option is enabled on the Nodelink Server.
+     *
+     * @description Retrives the Source's Audio Stream URL & formats for the provided encoded track string and itag.
+     *
+     * **Note:** This method is only for fetching the audio source URL for a track, it doesn't actually fetch or return the audio stream itself, you can use the returned URL to directly stream the audio from the source.
+     * @param {string} encodedTrackStr The Encoded Track String of the track to fetch the stream for.
+     * @param {number} itag The itag of the source to fetch
+     * @returns {Promise<string>} The Audio Source URL for the provided track and (optionally) itag.
+     * @throws {Error} If the node is not a Nodelink Server.
+     * @see https://nodelink.js.org/docs/api/nodelink-features#direct-streaming
+     */
+    fetchTrackStream(encodedTrackStr: string, itag?: number | null): Promise<string>;
+
+    /**
+     * [Nodelink-Only](https://nodelink.js.org) & works when `enableLoadStreamEndpoint` config option is enabled on the Nodelink Server.
+     *
+     * Stream raw PCM audio for custom processing or recording.
+     *
+     * @param {string} encodedTrackStr
+     * @param {number|null} volume
+     * @param {number|null} position
+     * @param {string|object|null} filters
+     * @returns {Promise<ReadableStream>} Readable Stream of raw PCM audio data for the provided track, volume, position, and filters.
+     * @throws {Error} If the node is not a Nodelink Server.
+     * @throws {TypeError} If the provided parameters are of invalid types or values.
+     * @see https://nodelink.js.org/docs/api/nodelink-features#pcm-streaming
+     */
+    fetchPCMStream(encodedTrackStr: string, volume?: number | null, position?: number | null, filters?: string | object | null): Promise<ReadableStream | null>;
 
     public connect(): Promise<void>;
     public open(): Promise<void>;
@@ -1276,7 +1421,7 @@ export type FilterOptions = {
     /**
      * The Slowmode of the player
      */
-    slowmode?: number | null;
+    slowmode?: boolean | null;
     /**
      * The Nightcore of the player
      */
@@ -1383,16 +1528,16 @@ export declare class Filters {
         rotationHz: number;
     }): this;
 
-    public clearFilters(): this;
+    public clearFilters(): Promise<this>;
 
-    public updateFilters(): this;
+    public updateFilters(): Promise<this>;
 }
 
 export type Voice = {
     /**
      * The voice session id
      */
-    sessionId: string,
+    sessionId: string | null,
     /**
      * The voice event
      */
@@ -1400,18 +1545,19 @@ export type Voice = {
     /**
      * The voice endpoint
      */
-    endpoint: string
+    endpoint: string | null,
+    token?: string | null
 }
 
 export declare class Connection {
     constructor(player: Player);
     public player: Player;
-    public sessionId: string;
+    public sessionId: string | null;
     public voice: Voice;
-    public region: string;
+    public region: string | null;
     public self_deaf: boolean;
     public self_mute: boolean;
-    public voiceChannel: string;
+    public voiceChannel: string | null;
 
     /**
      * Tracks the promise for the initial connection (credentials)
@@ -1440,6 +1586,8 @@ export declare class Connection {
      */
     get isReady(): boolean;
 
+    private _credentialsChanged(): boolean;
+
     /**
     * Waits for the connection to be ready and for any active voice updates to the Node to complete.
     * Optimization: Returns immediately if ready and idle to save resources.
@@ -1451,7 +1599,7 @@ export declare class Connection {
     */
     private checkAndSend(): Promise<void>;
 
-    public setServerUpdate(data: { endpoint: string; token: string }): void;
+    public setServerUpdate(data: { endpoint: string; token: string }): Promise<void>;
 
     public setStateUpdate(data: {
         session_id: string;
