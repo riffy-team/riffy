@@ -30,16 +30,6 @@ class Queue extends Array {
     }
 
     /**
-     * Add a track to the beginning of the queue (priority).
-     * @param {import("./Track").Track} track The track to add.
-     * @returns {Queue} The queue instance.
-     */
-    unshift(track) {
-        super.unshift(track);
-        return this;
-    }
-
-    /**
      * Remove a track from the queue by index.
      * @param {number} index The index of the track to remove.
      * @returns {import("./Track").Track} The removed track.

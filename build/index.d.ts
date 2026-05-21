@@ -191,7 +191,6 @@ export declare class Queue extends Array<Track> {
     get first(): Track | null;
 
     add(track: Track): this;
-    unshift(track: Track): this;
     remove(index: number): Track;
     clear(): this;
     shuffle(): this;
@@ -230,7 +229,7 @@ export declare class Player extends EventEmitter {
     public deaf: boolean;
     public mute: boolean;
     public volume: number;
-    public loop: string;
+    public loop: LoopOption;
     public filters: Filters;
     public data: {};
     public queue: Queue;
@@ -1210,83 +1209,18 @@ export declare class Node {
     }
 
     /**
-     * [Nodelink-Only](https://nodelink.js.org)
-     * SponserBlock API
+     * Nodelink SponsorBlock API.
      */
     sponserBlock: {
-        /**
-         * @internal
-         *
-         * Validates the provided segment object, throws an error if it's invalid (as everything is required)
-         */
         _validateSponsorBlockSegment: (segment: SponsorBlockSegment) => void;
-
         check: () => boolean;
-
-        /**
-         * Returns the current SponsorBlock state for a player.
-         * @param {string} guildId
-         */
         getCurrentBlock: (guildId: string) => Promise<SponsorBlockState | null>;
-
-        /**
-         * Updates SponsorBlock settings for a player. Only the provided options are changed.
-         * @link https://nodelink.js.org/docs/api/rest#updatesponsorblock
-         *
-         * @param {string} guildId
-         * @param {object} options
-         * @returns {Promise<object>}
-         * @throws {Error} If the node is not a Nodelink Server.
-         * @throws {TypeError} If the provided options are of invalid types or values.
-         */
         updateSettings: (guildId: string, options: SponsorBlockUpdateOptions) => Promise<object>;
-
-        /**
-         * Overrides the segments array for a player with a custom set of segments.
-         * @link https://nodelink.js.org/docs/api/rest#setsponsorblocksegments
-         *
-         * @param {string} guildId
-         * @param {Array} segments
-         */
         setBlockSegments: (guildId: string, segments: SponsorBlockSegment[]) => Promise<object>;
-
-        /**
-         * Clears all SponsorBlock state for a player (segments, last skipped UUID, and resets to defaults).
-         * @link https://nodelink.js.org/docs/api/rest#clearsponsorblock
-         *
-         * @param {string} guildId
-         */
         clearSponsorBlock: (guildId: string) => Promise<object>;
     };
 
-    /**
-     * [Nodelink-Only](https://nodelink.js.org) & works when `enableTrackStreamEndpoint` config option is enabled on the Nodelink Server.
-     *
-     * @description Retrives the Source's Audio Stream URL & formats for the provided encoded track string and itag.
-     *
-     * **Note:** This method is only for fetching the audio source URL for a track, it doesn't actually fetch or return the audio stream itself, you can use the returned URL to directly stream the audio from the source.
-     * @param {string} encodedTrackStr The Encoded Track String of the track to fetch the stream for.
-     * @param {number} itag The itag of the source to fetch
-     * @returns {Promise<string>} The Audio Source URL for the provided track and (optionally) itag.
-     * @throws {Error} If the node is not a Nodelink Server.
-     * @see https://nodelink.js.org/docs/api/nodelink-features#direct-streaming
-     */
     fetchTrackStream(encodedTrackStr: string, itag?: number | null): Promise<string>;
-
-    /**
-     * [Nodelink-Only](https://nodelink.js.org) & works when `enableLoadStreamEndpoint` config option is enabled on the Nodelink Server.
-     *
-     * Stream raw PCM audio for custom processing or recording.
-     *
-     * @param {string} encodedTrackStr
-     * @param {number|null} volume
-     * @param {number|null} position
-     * @param {string|object|null} filters
-     * @returns {Promise<ReadableStream>} Readable Stream of raw PCM audio data for the provided track, volume, position, and filters.
-     * @throws {Error} If the node is not a Nodelink Server.
-     * @throws {TypeError} If the provided parameters are of invalid types or values.
-     * @see https://nodelink.js.org/docs/api/nodelink-features#pcm-streaming
-     */
     fetchPCMStream(encodedTrackStr: string, volume?: number | null, position?: number | null, filters?: string | object | null): Promise<ReadableStream | null>;
 
     public connect(): Promise<void>;
@@ -1574,7 +1508,7 @@ export declare class Connection {
      * @private
      * @since 1.0.9
      */
-    private pendingUpdate: Promise<void> | null;
+    private pendingUpdate: Promise<any> | null;
     /**
      * @default false
      * @since 1.0.9
