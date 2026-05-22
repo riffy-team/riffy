@@ -11,6 +11,12 @@ class Filters {
         this.distortion = options.distortion || null;
         this.channelMix = options.channelMix || null;
         this.lowPass = options.lowPass || null;
+        this.echo = options.echo || null;
+        this.chorus = options.chorus || null;
+        this.compressor = options.compressor || null;
+        this.highpass = options.highpass || null;
+        this.phaser = options.phaser || null;
+        this.spatial = options.spatial || null;
         this.bassboost = options.bassboost || null;
         this.slowmode = options.slowmode || null;
         this.nightcore = options.nightcore || null;
@@ -240,6 +246,149 @@ class Filters {
     }
 
     /**
+     * NodeLink Only.
+     * Delay-based repetitions with feedback control.
+     */
+    setEcho(enabled, options = {}) {
+        if (!this.player) return;
+
+        if (enabled == true) {
+            this.echo = {
+                delay: options.delay || 500,
+                feedback: options.feedback || 0.3,
+                mix: options.mix || 0.5
+            };
+
+            this.updateFilters();
+            return this;
+        } else {
+            this.echo = null;
+            this.updateFilters();
+            return this;
+        }
+    }
+
+    /**
+     * NodeLink Only.
+     * Simulates multiple voices with modulated delays.
+     */
+    setChorus(enabled, options = {}) {
+        if (!this.player) return;
+
+        if (enabled == true) {
+            this.chorus = {
+                rate: options.rate || 1.5,
+                depth: options.depth || 0.5,
+                delay: options.delay || 25,
+                mix: options.mix || 0.6,
+                feedback: options.feedback || 0.2
+            };
+
+            this.updateFilters();
+            return this;
+        } else {
+            this.chorus = null;
+            this.updateFilters();
+            return this;
+        }
+    }
+
+    /**
+     * NodeLink Only.
+     * Dynamic range compression for balanced audio.
+     */
+    setCompressor(enabled, options = {}) {
+        if (!this.player) return;
+
+        if (enabled == true) {
+            this.compressor = {
+                threshold: options.threshold || -20,
+                ratio: options.ratio || 4,
+                attack: options.attack || 10,
+                release: options.release || 100,
+                gain: options.gain || 5
+            };
+
+            this.updateFilters();
+            return this;
+        } else {
+            this.compressor = null;
+            this.updateFilters();
+            return this;
+        }
+    }
+
+    /**
+     * NodeLink Only.
+     * Attenuates low frequencies.
+     */
+    setHighpass(enabled, options = {}) {
+        if (!this.player) return;
+
+        if (enabled == true) {
+            this.highpass = {
+                smoothing: options.smoothing || 20
+            };
+
+            this.updateFilters();
+            return this;
+        } else {
+            this.highpass = null;
+            this.updateFilters();
+            return this;
+        }
+    }
+
+    /**
+     * NodeLink Only.
+     * Sweeps all-pass filters across the frequency spectrum.
+     */
+    setPhaser(enabled, options = {}) {
+        if (!this.player) return;
+
+        if (enabled == true) {
+            this.phaser = {
+                stages: options.stages || 6,
+                rate: options.rate || 0.5,
+                depth: options.depth || 0.7,
+                feedback: options.feedback || 0.5,
+                mix: options.mix || 0.5,
+                minFrequency: options.minFrequency || 200,
+                maxFrequency: options.maxFrequency || 2000
+            };
+
+            this.updateFilters();
+            return this;
+        } else {
+            this.phaser = null;
+            this.updateFilters();
+            return this;
+        }
+    }
+
+    /**
+     * NodeLink Only.
+     * Creates spatial audio using cross-channel delays.
+     */
+    setSpatial(enabled, options = {}) {
+        if (!this.player) return;
+
+        if (enabled == true) {
+            this.spatial = {
+                depth: options.depth || 0.8,
+                rate: options.rate || 0.3
+            };
+
+            this.updateFilters();
+            return this;
+        } else {
+            this.spatial = null;
+            this.updateFilters();
+            return this;
+        }
+    }
+
+    /**
      * 
      * @param {boolean} enabled 
      * @param {*} options 
@@ -364,6 +513,12 @@ class Filters {
         this.distortion = null;
         this.channelMix = null;
         this.lowPass = null;
+        this.echo = null;
+        this.chorus = null;
+        this.compressor = null;
+        this.highpass = null;
+        this.phaser = null;
+        this.spatial = null;
         this.bassboost = null;
         this.slowmode = null;
         this.nightcore = null;
@@ -375,12 +530,24 @@ class Filters {
     }
 
     async updateFilters() {
-        const { equalizer, karaoke, timescale, tremolo, vibrato, rotation, distortion, channelMix, lowPass, volume } = this;
+        const { equalizer, karaoke, timescale, tremolo, vibrato, rotation, distortion, channelMix, lowPass, echo, chorus, compressor, highpass, phaser, spatial, volume } = this;
+
+        const filters = { volume, equalizer, karaoke, timescale, tremolo, vibrato, rotation, distortion, channelMix, lowPass };
+
+        // NodeLink supports additional filters beyond standard Lavalink filters.
+        if (this.player?.node?.info?.isNodelink) {
+            filters.echo = echo;
+            filters.chorus = chorus;
+            filters.compressor = compressor;
+            filters.highpass = highpass;
+            filters.phaser = phaser;
+            filters.spatial = spatial;
+        }
 
         await this.player.node.rest.updatePlayer({
             guildId: this.player.guildId,
             data: {
-                filters: { volume, equalizer, karaoke, timescale, tremolo, vibrato, rotation, distortion, channelMix, lowPass }
+                filters
             }
         });
 

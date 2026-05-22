@@ -1487,6 +1487,59 @@ export type FilterOptions = {
         smoothing: number;
     } | null;
     /**
+     * NodeLink only: delay-based repetitions with feedback control.
+     */
+    echo?: {
+        delay: number;
+        feedback: number;
+        mix: number;
+    } | null;
+    /**
+     * NodeLink only: simulates multiple voices with modulated delays.
+     */
+    chorus?: {
+        rate: number;
+        depth: number;
+        delay: number;
+        mix: number;
+        feedback: number;
+    } | null;
+    /**
+     * NodeLink only: dynamic range compression.
+     */
+    compressor?: {
+        threshold: number;
+        ratio: number;
+        attack: number;
+        release: number;
+        gain: number;
+    } | null;
+    /**
+     * NodeLink only: attenuates low frequencies.
+     */
+    highpass?: {
+        smoothing: number;
+    } | null;
+    /**
+     * NodeLink only: all-pass filter sweep effect.
+     */
+    phaser?: {
+        stages: number;
+        rate: number;
+        depth: number;
+        feedback: number;
+        mix: number;
+        minFrequency: number;
+        maxFrequency: number;
+    } | null;
+    /**
+     * NodeLink only: cross-channel spatial effect.
+     */
+    spatial?: {
+        depth: number;
+        rate: number;
+    } | null;
+    /**
      * The BassBoost of the player
      */
     bassboost?: number | null;
@@ -1521,6 +1574,18 @@ export declare class Filters {
     public distortion: FilterOptions["distortion"];
     public channelMix: FilterOptions["channelMix"];
     public lowPass: FilterOptions["lowPass"];
+    /** NodeLink Only. Delay-based repetitions with feedback control. */
+    public echo: FilterOptions["echo"];
+    /** NodeLink Only. Simulates multiple voices with modulated delays. */
+    public chorus: FilterOptions["chorus"];
+    /** NodeLink Only. Dynamic range compression for balanced audio. */
+    public compressor: FilterOptions["compressor"];
+    /** NodeLink Only. Attenuates low frequencies. */
+    public highpass: FilterOptions["highpass"];
+    /** NodeLink Only. Sweeps all-pass filters across the frequency spectrum. */
+    public phaser: FilterOptions["phaser"];
+    /** NodeLink Only. Creates spatial audio using cross-channel delays. */
+    public spatial: FilterOptions["spatial"];
     public bassboost: FilterOptions["bassboost"];
     public slowmode: FilterOptions["slowmode"];
     public nightcore: FilterOptions["nightcore"];
@@ -1577,6 +1642,106 @@ export declare class Filters {
 
     public setLowPass(enabled: boolean, options?: {
         smoothing: number;
+    }): this;
+
+    /**
+     * NodeLink Only.
+     * Delay-based repetitions with feedback control.
+     * @param {boolean} enabled
+     * @param {object} [options]
+     * @param {number} [options.delay] Delay time in milliseconds (0–5000). Default: 500
+     * @param {number} [options.feedback] Amount of signal fed back (0.0–1.0). Default: 0.3
+     * @param {number} [options.mix] Dry/wet mix ratio (0.0–1.0). Default: 0.5
+     */
+    public setEcho(enabled: boolean, options?: {
+        delay: number;
+        feedback: number;
+        mix: number;
+    }): this;
+
+    /**
+     * NodeLink Only.
+     * Simulates multiple voices with modulated delays.
+     * @param {boolean} enabled
+     * @param {object} [options]
+     * @param {number} [options.rate] LFO modulation rate in Hz. Default: 1.5
+     * @param {number} [options.depth] Modulation depth (0.0–1.0). Default: 0.5
+     * @param {number} [options.delay] Base delay time in milliseconds (1–45ms). Default: 25
+     * @param {number} [options.mix] Dry/wet mix ratio (0.0–1.0). Default: 0.6
+     * @param {number} [options.feedback] Feedback amount (0.0–0.95). Default: 0.2
+     */
+    public setChorus(enabled: boolean, options?: {
+        rate: number;
+        depth: number;
+        delay: number;
+        mix: number;
+        feedback: number;
+    }): this;
+
+    /**
+     * NodeLink Only.
+     * Dynamic range compression for balanced audio.
+     * @param {boolean} enabled
+     * @param {object} [options]
+     * @param {number} [options.threshold] Threshold level in dB. Default: -20
+     * @param {number} [options.ratio] Compression ratio (1.0 = no compression). Default: 4
+     * @param {number} [options.attack] Attack time in milliseconds. Default: 10
+     * @param {number} [options.release] Release time in milliseconds. Default: 100
+     * @param {number} [options.gain] Makeup gain in dB. Default: 5
+     */
+    public setCompressor(enabled: boolean, options?: {
+        threshold: number;
+        ratio: number;
+        attack: number;
+        release: number;
+        gain: number;
+    }): this;
+
+    /**
+     * NodeLink Only.
+     * Attenuates low frequencies.
+     * @param {boolean} enabled
+     * @param {object} [options]
+     * @param {number} [options.smoothing] Smoothing factor (>1.0 to enable). Default: 20
+     */
+    public setHighpass(enabled: boolean, options?: {
+        smoothing: number;
+    }): this;
+
+    /**
+     * NodeLink Only.
+     * Sweeps all-pass filters across the frequency spectrum.
+     * @param {boolean} enabled
+     * @param {object} [options]
+     * @param {number} [options.stages] Filter stages (2–12). Default: 6
+     * @param {number} [options.rate] LFO rate in Hz. Default: 0.5
+     * @param {number} [options.depth] Modulation depth (0.0–1.0). Default: 0.7
+     * @param {number} [options.feedback] Feedback amount (0.0–0.9). Default: 0.5
+     * @param {number} [options.mix] Dry/wet mix (0.0–1.0). Default: 0.5
+     * @param {number} [options.minFrequency] Minimum sweep frequency in Hz. Default: 200
+     * @param {number} [options.maxFrequency] Maximum sweep frequency in Hz. Default: 2000
+     */
+    public setPhaser(enabled: boolean, options?: {
+        stages: number;
+        rate: number;
+        depth: number;
+        feedback: number;
+        mix: number;
+        minFrequency: number;
+        maxFrequency: number;
+    }): this;
+
+    /**
+     * NodeLink Only.
+     * Creates spatial audio using cross-channel delays.
+     * @param {boolean} enabled
+     * @param {object} [options]
+     * @param {number} [options.depth] Effect depth (0.0–1.0). Default: 0.8
+     * @param {number} [options.rate] Modulation rate in Hz. Default: 0.3
+     */
+    public setSpatial(enabled: boolean, options?: {
+        depth: number;
+        rate: number;
     }): this;
 
 
