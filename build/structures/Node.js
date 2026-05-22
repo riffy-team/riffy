@@ -465,6 +465,29 @@ class Node {
   }
 
   /**
+   * [Nodelink-Only](https://nodelink.js.org)
+   * 
+   * Retrieves chapter markers from YouTube videos.
+   * 
+   * @link https://nodelink.js.org/docs/api/nodelink-features#chapters-api
+   * 
+   * @param {string} encodedTrackStr 
+   */
+  async loadChapters(encodedTrackStr) {
+
+    if(!this.info?.isNodelink) {
+      throw new Error("This node is not a Nodelink Server");
+    }
+
+    if(!encodedTrackStr || typeof encodedTrackStr !== "string") {
+      throw new TypeError(`encodedTrackStr must be a string, received ${encodedTrackStr}`);
+    }
+
+    return await this.rest.makeRequest("GET", `/v4/loadchapters?encodedTrack=${encodedTrackStr}`);
+
+  }
+
+  /**
    * @typedef {Object} fetchInfoOptions
    * @property {import("..").Version} [restVersion] The Rest Version to fetch info the from, Default: one set in the constructor(Node.restVersion)
    * @property {boolean} [includeHeaders=false] Whether to include headers in the response returned.
