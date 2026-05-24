@@ -1,4 +1,5 @@
 import { EventEmitter } from "events";
+import { WebSocket } from "ws";
 
 type Nullable<T> = T | null;
 type Prettify<T> =
@@ -107,6 +108,7 @@ export declare class Track {
     constructor(data: RestTrack, requester: any, node: Node);
 
     public track: string;
+    public encoded: string;
     public info: {
         identifier: string;
         seekable: boolean;
@@ -139,7 +141,7 @@ export declare class Track {
      */
     public isAutoplay: boolean;
 
-    public resolve(riffy: Riffy): Promise<Track>;
+    public resolve(riffy: Riffy): Promise<Track | undefined>;
 }
 
 export interface RestOptions {
@@ -160,7 +162,7 @@ export interface RestResponse {
     [key: string]: any;
 }
 
-export declare class Rest extends EventEmitter {
+export declare class Rest {
     constructor(riffy: Riffy, options: RestOptions);
     public riffy: Riffy;
     public url: string
@@ -175,13 +177,13 @@ export declare class Rest extends EventEmitter {
     public updatePlayer(options: playerUpdateOptions): Promise<RestPlayer | null>;
     public destroyPlayer(guildId: string): Promise<null>;
     public getTracks(identifier: string): Promise<nodeResponse | null>;
-    public decodeTrack(track: string, node?: any): Promise<RestTrack | null>;
-    public decodeTracks(tracks: any[]): Promise<RestTrack[] | null>;
+    public decodeTrack(track: string): Promise<RestTrack | null>;
+    public decodeTracks(tracks: string[]): Promise<RestTrack[] | null>;
     public getStats(): Promise<Prettify<Omit<Node["stats"], "frameStats"> & { frameStats: null }> | null>;
     public getInfo(): Promise<NodeInfo | null>;
     public getRoutePlannerStatus(): Promise<RestResponse | null>;
     public getRoutePlannerAddress(address: string): Promise<RestResponse | null>;
-    public parseResponse(req: any): Promise<RestResponse | null>;
+    public parseResponse(req: any): Promise<RestResponse | string | ReadableStream | null>;
 }
 
 export declare class Queue extends Array<Track> {
@@ -190,12 +192,14 @@ export declare class Queue extends Array<Track> {
 
     add(track: Track): this;
     remove(index: number): Track;
-    clear(): void;
-    shuffle(): void;
+    clear(): this;
+    shuffle(): this;
+    move(from: number, to: number): this;
 }
 
 export declare class Plugin {
     constructor(name: string);
+    public name: string;
 
     load(riffy: Riffy): void;
     unload(riffy: Riffy): void;
@@ -219,18 +223,19 @@ export declare class Player extends EventEmitter {
     public node: Node;
     public options: PlayerOptions;
     public guildId: string;
-    public textChannel: string;
-    public voiceChannel: string;
-    public connection: Connection;
+    public textChannel: string | undefined;
+    public voiceChannel: string | null | undefined;
+    public connection: Connection | null;
     public deaf: boolean;
     public mute: boolean;
     public volume: number;
-    public loop: string;
+    public loop: LoopOption;
     public filters: Filters;
     public data: {};
     public queue: Queue;
     public position: number;
-    public current: Track;
+    public current: Track | null;
+    public previousTracks: Track[];
     public playing: boolean;
     public paused: boolean;
     public connected: boolean;
@@ -261,7 +266,33 @@ export declare class Player extends EventEmitter {
     addToPreviousTrack(track: Track): void
 
     public play(): Promise<Player>;
-
+    
+    /**
+     * NodeLink Only.
+     * 
+     * Sends the next track in the queue to the player.
+     * Informs the node about the next track to preload for gapless transitions (between tracks)
+     * 
+     * @throws {Error} If the player is not playing
+     * @throws {Error} If the track is not provided for sending next track
+     */
+    public sendNextTrack(track: { encoded: string }): Promise<Player>;
+    
+    /**
+     * NodeLink Only
+     * Smooth volume transitions for track changes, seeking, and pausing.
+     * NodeLink supports high-fidelity volume fading to prevent jarring audio clips.
+     * @param {boolean} enabled
+     * @param {object} fading accepts a fading object containing settings for different scenarios (or types) such as `trackStart`, `trackEnd`, `trackStop`, `seek`, and `ducking`, each with a duration (in milliseconds) and curve (Mathematical curve for the fade (linear, exponential, logarithmic, s-curve)) properties.
+     */
+     public setFadings(enabled?: boolean, fading?: {
+         trackStart?: { duration: number; curve: string };
+         trackEnd?: { duration: number; curve: string };
+         trackStop?: { duration: number; curve: string };
+         seek?: { duration: number; curve: string };
+         ducking?: { duration: number; curve: string };
+    }): Promise<void>;
+  
     public autoplay(player: Player): Promise<Player>;
 
     public connect(options?: {
@@ -272,7 +303,7 @@ export declare class Player extends EventEmitter {
     }): void;
 
     public stop(): Player;
-    public pause(toggle?: boolean): Player;
+    public pause(toggle?: boolean): Promise<Player>;
     public seek(position: number): void;
     public setVolume(volume: number): Player;
     public setLoop(mode: LoopOption): Player;
@@ -282,14 +313,14 @@ export declare class Player extends EventEmitter {
         deaf?: boolean;
     }): Player;
 
-    public disconnect(): Player;
+    public disconnect(): Player | void;
     public destroy(): void;
-    private handleEvent(payload: any): void;
-    private trackStart(player: Player, track: Track, payload: any): void;
-    private trackEnd(player: Player, track: Track, payload: any): void;
-    private trackError(player: Player, track: Track, payload: any): void;
-    private trackStuck(player: Player, track: Track, payload: any): void;
-    private socketClosed(player: Player, payload: any): void;
+    private handleEvent(payload: NodePlayerEvent): void;
+    private trackStart(player: Player, track: Track, payload: PlayerTrackStartEventPayload): void;
+    private trackEnd(player: Player, track: Track, payload: PlayerTrackEndEventPayload<this["node"]["restVersion"]>): void;
+    private trackError(player: Player, track: Track, payload: PlayerTrackErrorEventPayload): void;
+    private trackStuck(player: Player, track: Track, payload: PlayerTrackStuckEventPayload): void;
+    private socketClosed(player: Player, payload: PlayerSocketClosedEventPayload): void;
     public set(key: string, value: any): any;
     public get(key: string): any;
 
@@ -309,7 +340,12 @@ export declare class Player extends EventEmitter {
     public moveTo(newNode: Node): Promise<Player>;
 }
 
-export type SearchPlatform = "ytsearch" | "ytmsearch" | "scsearch" | "spsearch" | "amsearch" | "dzsearch" | "ymsearch" | (string & {})
+export type SearchPlatform = "ytsearch" | "ytmsearch" | "scsearch" | "spsearch" | "amsearch" | "dzsearch" | "ymsearch" | (string & {});
+export type NodelinkSearchPlatform = "admsearch" | "amsearch" | "audiomack" | "bcsearch" | "bilibili"
+                                    | "dzsearch" | "flowery" | "ftts" | "gaanasearch" | "gtts" | "jssearch" 
+                                    | "lfsearch" | "mcsearch" | "ncsearch" | "nicovideo" | "pdsearch" | "shsearch"
+                                    | "speak" | "spsearch" | "szsearch" | "tdsearch" | "vksearch";
+export type SearchType = "track" | "album" | "playlist" | "artist" | (string & {});
 export type Version = "v3" | "v4";
 
 export type LavalinkTrackLoadException = {
@@ -454,9 +490,10 @@ export type RiffyEvents = {
     /**
      * Emitted when a node disconnects
      * @param node The node that disconnected.
-     * @param reason The reason for the disconnect.
+     * @param param1.code The WebSocket close code sent by Lavalink (if any).
+     * @param param1.reason The WebSocket close reason sent by Lavalink (if any).
      */
-    "nodeDisconnect": (node: Node, reason: string) => void;
+    "nodeDisconnect": (node: Node, { code, reason }: { code: number; reason: string }) => void;
 
     /**
      * Emitted when a node is created
@@ -485,7 +522,7 @@ export type RiffyEvents = {
      * 
      * @see https://lavalink.dev/api/websocket.html#websocketclosedevent
      */
-    "socketClosed": (player: Player, payload: any) => void;
+    "socketClosed": (player: Player, payload: PlayerSocketClosedEventPayload) => void;
 
     /**
      * Emitted When a Node Has been Migrated.
@@ -514,7 +551,7 @@ export type RiffyEvents = {
      * 
      * @see https://lavalink.dev/api/websocket.html#trackstartevent
      */
-    "trackStart": (player: Player, track: Track, payload: any) => void;
+    "trackStart": (player: Player, track: Track, payload: PlayerTrackStartEventPayload) => void;
 
     /**
      * Emitted when a track ends (Queue End is emitted when the queue ends i.e when the last track ends Instead of this.)
@@ -524,7 +561,7 @@ export type RiffyEvents = {
      * 
      * @see https://lavalink.dev/api/websocket.html#trackendevent
      */
-    "trackEnd": (player: Player, track: Track, payload: any) => void;
+    "trackEnd": <TPlayer extends Player>(player: TPlayer, track: Track, payload: PlayerTrackEndEventPayload<TPlayer["node"]["restVersion"]>) => void;
 
     /**
      * Emitted when a track encounters an error (Sent by Lavalink via [TrackExceptionEvent](https://lavalink.dev/api/websocket.html#trackexceptionevent))
@@ -532,7 +569,7 @@ export type RiffyEvents = {
      * @param track The track that encountered the error.
      * @param payload The payload of the track error.
      */
-    "trackError": (player: Player, track: Track, payload: any) => void;
+    "trackError": (player: Player, track: Track, payload: PlayerTrackErrorEventPayload) => void;
 
     /**
      * Emitted when a track gets stuck (Sent by Lavalink via [TrackStuckEvent](https://lavalink.dev/api/websocket.html#trackstuckevent))
@@ -542,7 +579,7 @@ export type RiffyEvents = {
      * 
      * @see https://lavalink.dev/api/websocket.html#trackstuckevent
      */
-    "trackStuck": (player: Player, track: Track, payload: any) => void;
+    "trackStuck": (player: Player, track: Track, payload: PlayerTrackStuckEventPayload) => void;
 
     // Player Events
 
@@ -577,7 +614,7 @@ export type RiffyEvents = {
      * @param player The player that was updated.
      * @param payload The payload of the player update.
      */
-    "playerUpdate": (player: Player, payload: any) => void;
+    "playerUpdate": (player: Player, payload: NodePlayerUpdatePayload) => void;
 
     /**
      * Emitted when a Player's Migration has Failed (🥲 sad life no music for them)
@@ -602,9 +639,62 @@ export type RiffyEvents = {
      */
     "queueEnd": (player: Player) => void;
 
+    /**
+     * NodeLink Only.
+     * Emitted when lyrics are found for a track.
+     * @param player The player that found the lyrics.
+     * @param lyrics The lyrics that were found.
+     * @param payload The payload of the lyrics found event.
+     */
+    "lyricsFound": (player: Player, lyrics: PlayerLyricsFoundEventPayload["lyrics"], payload: PlayerLyricsFoundEventPayload) => void;
+
+    /**
+     * NodeLink Only.
+     * Emitted when lyrics are not found for a track.
+     * @param player The player that did not find the lyrics.
+     * @param payload The payload of the lyrics not found event.
+     */
+    "lyricsNotFound": (player: Player, payload: BaseNodePlayerEvent<"lyricsNotFoundEvent", {}>) => void;
+
+    /**
+     * NodeLink Only.
+     * Emitted when a line of lyrics is found for a track.
+     * @param player The player that found the lyrics line.
+     * @param payload The payload of the lyrics line event.
+     */
+    "lyricsLine": (player: Player, payload: PlayerLyricLineEventPayload) => void;
+
+    /**
+     * NodeLink Only.
+     * Emitted when SponsorBlock segments are loaded.
+     */
+    "sponsorBlockSegmentsLoaded": (player: Player, segments: SponsorBlockSegment[], payload: BaseNodePlayerEvent<"sponsorBlockSegmentsLoadedEvent", { segments: SponsorBlockSegment[] }>) => void;
+
+    /**
+     * NodeLink Only.
+     * Emitted when a SponsorBlock segment is skipped.
+     */
+    "sponsorBlockSegmentSkipped": (player: Player, segment: SponsorBlockSegment, payload: BaseNodePlayerEvent<"sponsorBlockSegmentSkippedEvent", { segment: SponsorBlockSegment }>) => void;
+
+    /**
+     * NodeLink Only.
+     * @param player 
+     * @param payload 
+     */
+    "mixStarted": (player: Player, payload: BaseNodePlayerEvent<"mixStartedEvent", any>) => void;
+
+    /**
+     * NodeLink Only.
+     * @param player 
+     * @param payload 
+     */
+    "mixEnded": (player: Player, payload: BaseNodePlayerEvent<"mixEndedEvent", any>) => void;
+
     // Misc Events
+    "apiResponse": (endpoint: string, response: any) => void;
     "debug": (...message: string[]) => void;
     "raw": (type: string, payload: any) => void;
+    "nodeLinkEvent": (event: string, payload: any) => void;
 };
 
 // k as `key`
@@ -693,15 +783,15 @@ export declare class Riffy extends EventEmitter {
      */
     public readonly bestNode: Node | null | undefined;
 
-    public init(clientId: string): this;
+    public init(clientId: string): this | void;
 
-    public createNode(options: any): Node;
+    public createNode(options: LavalinkNode): Node;
 
     public destroyNode(identifier: string): void;
 
-    public updateVoiceState(packet: any): void;
+    public updateVoiceState(packet: any): Promise<void>;
 
-    public fetchRegion(region: string): Array<LavalinkNode>;
+    public fetchRegion(region: string): Array<Node>;
 
     /**
     * Creates a connection based on the provided options.
@@ -745,7 +835,7 @@ export declare class Riffy extends EventEmitter {
     * @param {import("./Player").Player | import("./Node").Node} target The player or node to migrate.
     * @param {import("./Node").Node} [destinationNode] The node to migrate to.
     */
-    public migrate(target: Node | Player, destinationNode?: Node): Player[]
+    public migrate(target: Node | Player, destinationNode?: Node | null): Promise<Player | Player[] | undefined>
     public removeConnection(guildId: string): void;
 
     /**
@@ -758,9 +848,10 @@ export declare class Riffy extends EventEmitter {
    * */
     public resolve(params: {
         query: string;
-        source?: string;
+        source?: SearchPlatform;
         requester: any;
-        node?: string | Node
+        node?: string | Node;
+        searchType?: SearchType;
     }): Promise<nodeResponse>;
 
 
@@ -970,9 +1061,134 @@ interface NodeLyricsLine {
     plugin: object
 }
 
+export type SponsorBlockSegment = {
+    uuid: string;
+    start: number;
+    end: number;
+    category: string;
+    actionType: string;
+    votes: number;
+    locked: boolean;
+    videoDuration: number;
+    description: string;
+};
+
+export type SponsorBlockUpdateOptions = {
+    enabled: boolean;
+    categories: string[];
+    actionTypes?: string[];
+    skipMarginMs?: number;
+};
+
+export type SponsorBlockState = {
+    enabled?: boolean;
+    categories?: string[];
+    actionTypes?: string[];
+    skipMarginMs?: number;
+    segments?: SponsorBlockSegment[];
+    [key: string]: any;
+};
+
+export type NodePayloadOp = "ready" | "playerUpdate" | "event" | "stats";
+
+export type BaseNodePayload<TOp extends NodePayloadOp, TData> = Prettify<{
+    op: TOp;
+} & TData>;
+
+export type NodeReadyPayload = BaseNodePayload<"ready", {
+    sessionId: string;
+    resumed: boolean;
+}>;
+
+export type NodePlayerUpdatePayload = BaseNodePayload<"playerUpdate", {
+    guildId: string;
+    state: {
+        time: number;
+        position: number;
+        connected: boolean;
+        ping: number;
+    }
+}>;
+
+export type NodeStatsPayload = BaseNodePayload<"stats", Node["stats"]>;
+
+export type BaseNodePlayerEvent<TEvent extends (string), TEData> = BaseNodePayload<"event", {
+    guildId: string;
+    event: TEvent;
+} & TEData>;
+
+export type PlayerTrackStartEventPayload = BaseNodePlayerEvent<"TrackStartEvent", {
+    track: RestTrack;
+}>;
+
+export type PlayerTrackEndEventPayload<TVer extends Version> = BaseNodePlayerEvent<"TrackEndEvent", {
+    track: RestTrack;
+    reason: TVer extends "v4" 
+            ? "stopped" | "finished" | "loadFailed" | "replaced" | "cleanup" 
+            : "STOPPED" | "FINISHED" | "LOAD_FAILED" | "REPLACED" | "CLEANUP";
+}>;
+
+export type PlayerTrackErrorEventPayload = BaseNodePlayerEvent<"TrackExceptionEvent", {
+    track: RestTrack;
+    error: LavalinkTrackLoadException;
+}>;
+
+export type PlayerTrackStuckEventPayload = BaseNodePlayerEvent<"TrackStuckEvent", {
+    track: RestTrack;
+    thresholdMs: number;
+    /**
+     * The reason why the track got stuck, if provided by Nodelink (Lavalink does not provide this).
+     */
+    reason?: string;
+}>;
+
+export type PlayerSocketClosedEventPayload = BaseNodePlayerEvent<"WebSocketClosedEvent", {
+    code: number;
+    reason: string;
+    byRemote: boolean;
+}>;
+
+export type NodeEventPayload = NodeReadyPayload | NodePlayerUpdatePayload | NodeStatsPayload | PlayerTrackStartEventPayload | PlayerTrackEndEventPayload<Version> | PlayerTrackErrorEventPayload | PlayerTrackStuckEventPayload | PlayerSocketClosedEventPayload;
+
+type PlayerLyricLineEventPayload = BaseNodePlayerEvent<"lyricsLineEvent", {
+    line: {
+        text: string;
+        timestamp: number;
+        duration: number;
+        words: Array<Record<string, unknown>>;
+        plugin: object;
+    };
+    lineIndex: number;
+    skipped: boolean;
+}>;
+
+type PlayerLyricsFoundEventPayload = BaseNodePlayerEvent<"lyricsFoundEvent", {
+    lyrics: {
+        sourceName: string;
+        provider: string;
+        text: string,
+        lines: Array<PlayerLyricLineEventPayload["line"]>,
+        plugin: object;
+    };
+}>;
+
+type NodePlayerEventMap = {
+    "TrackStartEvent": PlayerTrackStartEventPayload;
+    "TrackEndEvent": PlayerTrackEndEventPayload<Version>;
+    "TrackExceptionEvent": PlayerTrackErrorEventPayload;
+    "TrackStuckEvent": PlayerTrackStuckEventPayload;
+    "WebSocketClosedEvent": PlayerSocketClosedEventPayload;
+    "lyricsLineEvent": PlayerLyricLineEventPayload;
+    "lyricsFoundEvent": PlayerLyricsFoundEventPayload;
+    [key: string]: BaseNodePlayerEvent<string, any>;
+}
+
+export type NodePlayerEvent = PlayerTrackStartEventPayload | PlayerTrackEndEventPayload<Version> | PlayerTrackErrorEventPayload | PlayerTrackStuckEventPayload | PlayerSocketClosedEventPayload | PlayerLyricLineEventPayload | PlayerLyricsFoundEventPayload | BaseNodePlayerEvent<string, any>;
+
 export declare class Node {
     constructor(riffy: Riffy, node: LavalinkNode, options: NodeOptions);
     public riffy: Riffy;
+    public readonly options: RiffyOptions;
 
     public name: LavalinkNode["name"];
     public host: LavalinkNode["host"];
@@ -984,7 +1200,7 @@ export declare class Node {
     public rest: Rest;
     public wsUrl: string;
     public restUrl: string;
-    private ws: null;
+    private ws: WebSocket | null;
 
     public resumeKey: NodeOptions["resumeKey"];
     public sessionId: NodeOptions["sessionId"];
@@ -993,13 +1209,13 @@ export declare class Node {
      * Helpful for region-based Node filtering.
      * i.e If Voice Channel Region is `eu_west` Filter's Nodes specifically to `eu_west` 
      */
-    public regions: string[] | null;
+    public regions: string[] | undefined;
     public resumeTimeout: NodeOptions["resumeTimeout"];
     public autoResume: NodeOptions["autoResume"];
     public reconnectTimeout: NodeOptions["reconnectTimeout"];
     public reconnectTries: NodeOptions["reconnectTries"];
 
-    public reconnectAttempt: number;
+    public reconnectAttempt: NodeJS.Timeout | null;
     public reconnectAttempted: number;
 
     public connected: boolean;
@@ -1008,24 +1224,24 @@ export declare class Node {
     */
     public info: NodeInfo | null;
     public stats: {
-        players: 0,
-        playingPlayers: 0,
-        uptime: 0,
+        players: number,
+        playingPlayers: number,
+        uptime: number,
         memory: {
-            free: 0,
-            used: 0,
-            allocated: 0,
-            reservable: 0,
+            free: number,
+            used: number,
+            allocated: number,
+            reservable: number,
         },
         cpu: {
-            cores: 0,
-            systemLoad: 0,
-            lavalinkLoad: 0,
+            cores: number,
+            systemLoad: number,
+            lavalinkLoad: number,
         },
         frameStats: {
-            sent: 0,
-            nulled: 0,
-            deficit: 0,
+            sent: number,
+            nulled: number,
+            deficit: number,
         },
 
         /**
@@ -1044,6 +1260,23 @@ export declare class Node {
                 } & Record<string, number>
             }
         } | null,
+
+        /**
+         * Nodelink specific stats
+         */
+        eventLoopLagP50: number;
+        /**
+         * Nodelink specific stats
+         */
+        eventLoopLagP95: number;
+        /**
+         * Nodelink specific stats
+         */
+        eventLoopLagP99: number;
+        /**
+         * Nodelink specific stats
+         */
+        stuckRecoveries: number;
     };
     public lastStats: number
 
@@ -1052,7 +1285,7 @@ export declare class Node {
      * returns null if some error occurred.
      * @see https://lavalink.dev/api/rest.html#info
      */
-    fetchInfo(): Promise<NodeInfo | null>;
+    fetchInfo(options?: { restVersion?: Version; includeHeaders?: boolean }): Promise<NodeInfo | { data: NodeInfo | null; headers: any } | null>;
 
     /**
      * Lavalink Lyrics API (Works Only when Lavalink has Lyrics Plugin like: [lavalyrics](https://github.com/topi314/LavaLyrics))
@@ -1065,7 +1298,7 @@ export declare class Node {
          * @returns {Promise<boolean>} If the plugins are available.
          * @throws {RangeError} If the plugins are missing.
          */
-        checkAvailable: (eitherOne: boolean, ...plugins: string[]) => Promise<boolean>;
+        checkAvailable: (eitherOne?: boolean, ...plugins: string[]) => Promise<boolean>;
         /**
          * Fetches lyrics for a given track or encoded track string.
          * 
@@ -1074,14 +1307,14 @@ export declare class Node {
          * @returns {Promise<Object|null>} The lyrics data or null if the plugin is unavailable Or If no lyrics were found OR some Http request error occured.
          * @throws {TypeError} If `trackOrEncodedTrackStr` is not a `Track` or `string`.
          */
-        get: (trackOrEncodedTrackStr: Track | string, skipTrackSource: boolean) => Promise<NodeLyricsResult | null>;
+        get: (trackOrEncodedTrackStr: Track | string, skipTrackSource?: boolean) => Promise<NodeLyricsResult | null>;
 
         /** @description fetches Lyrics for Currently playing Track 
          * @param {string} guildId The Guild Id of the Player
-         * @param {boolean} skipTrackSource skips the Track Source & fetches from highest priority source (configured on Lavalink Server) 
+         * @param {boolean} [skipTrackSource=false] skips the Track Source & fetches from highest priority source (configured on Lavalink Server) 
          * @param {string} [plugin] The Plugin to use(**Only required if you have too many known (i.e java-lyrics-plugin, lavalyrics-plugin) Lyric Plugins**)
          */
-        getCurrentTrack: <TPlugin extends LyricPluginWithoutLavaLyrics | (string & {}) >(guildId: string, skipTrackSource: boolean, plugin?: TPlugin) => Promise<TPlugin extends LyricPluginWithoutLavaLyrics ? LyricPluginWithoutLavaLyricsResult : NodeLyricsResult | null>;
+        getCurrentTrack: <TPlugin extends LyricPluginWithoutLavaLyrics | (string & {}) >(guildId: string, skipTrackSource?: boolean, plugin?: TPlugin) => Promise<TPlugin extends LyricPluginWithoutLavaLyrics ? LyricPluginWithoutLavaLyricsResult : NodeLyricsResult | null>;
     }
 
     /**
@@ -1112,6 +1345,97 @@ export declare class Node {
          */
         removeMixLayer: (guildId: string, mixId: string) => Promise<void>;
     }
+
+    /**
+     * [Nodelink-Only](https://nodelink.js.org)
+     * SponsorBlock API.
+     */
+    sponserBlock: {
+        /**
+         * @internal
+         * Validates the provided segment object, throws an error if it's invalid (all fields are required).
+         * @param {SponsorBlockSegment} segment
+         */
+        _validateSponsorBlockSegment: (segment: SponsorBlockSegment) => void;
+        /**
+         * Returns `true` if this node is hosted with a NodeLink Server.
+         */
+        check: () => boolean;
+        /**
+         * Returns the current SponsorBlock state for a player.
+         * @param {string} guildId
+         * @throws {Error} If the node is not a NodeLink Server.
+         * @throws {TypeError} If `guildId` is not a string.
+         */
+        getCurrentBlock: (guildId: string) => Promise<SponsorBlockState | null>;
+        /**
+         * Updates SponsorBlock settings for a player. Only the provided options are changed.
+         * @link https://nodelink.js.org/docs/api/rest#updatesponsorblock
+         * @param {string} guildId
+         * @param {SponsorBlockUpdateOptions} options
+         * @throws {Error} If the node is not a NodeLink Server.
+         * @throws {TypeError} If the provided options are of invalid types or values.
+         */
+        updateSettings: (guildId: string, options: SponsorBlockUpdateOptions) => Promise<object>;
+        /**
+         * Overrides the segments array for a player with a custom set of segments.
+         * @link https://nodelink.js.org/docs/api/rest#setsponsorblocksegments
+         * @param {string} guildId
+         * @param {SponsorBlockSegment[]} segments
+         * @throws {Error} If the node is not a NodeLink Server.
+         * @throws {TypeError} If `guildId` is not a string or `segments` is not an array.
+         */
+        setBlockSegments: (guildId: string, segments: SponsorBlockSegment[]) => Promise<object>;
+        /**
+         * Clears all SponsorBlock state for a player (segments, last skipped UUID, and resets to defaults).
+         * @link https://nodelink.js.org/docs/api/rest#clearsponsorblock
+         * @param {string} guildId
+         * @throws {Error} If the node is not a NodeLink Server.
+         * @throws {TypeError} If `guildId` is not a string.
+         */
+        clearSponsorBlock: (guildId: string) => Promise<object>;
+    };
+
+    /**
+     * [Nodelink-Only](https://nodelink.js.org) & works when `enableTrackStreamEndpoint` config option is enabled on the Nodelink Server.
+     * 
+     * @description Retrives the Source's Audio Stream URL & formats for the provided encoded track string and itag.
+     * 
+     * **Note:** This method is only for fetching the audio source URL for a track, it doesn't actually fetch or return the audio stream itself, you can use the returned URL to directly stream the audio from the source.
+     * @param {string} encodedTrackStr The Encoded Track String of the track to fetch the stream for.
+     * @param {number} itag The itag of the source to fetch
+     * @returns {Promise<string>} The Audio Source URL for the provided track and (optionally) itag.
+     * @throws {Error} If the node is not a Nodelink Server.
+     * @see https://nodelink.js.org/docs/api/nodelink-features#direct-streaming
+     */
+    fetchTrackStream(encodedTrackStr: string, itag?: number | null): Promise<string>;
+    /**
+     * [Nodelink-Only](https://nodelink.js.org) & works when `enableLoadStreamEndpoint` config option is enabled on the Nodelink Server.
+     * 
+     * Stream raw PCM audio for custom processing or recording.
+     * 
+     * @param {string} encodedTrackStr 
+     * @param {number|null} volume 
+     * @param {number|null} position 
+     * @param {string|object|null} filters 
+     * @returns {Promise<ReadableStream>} Readable Stream of raw PCM audio data for the provided track, volume, position, and filters.
+     * @throws {Error} If the node is not a Nodelink Server.
+     * @throws {TypeError} If the provided parameters are of invalid types or values.
+     * @see https://nodelink.js.org/docs/api/nodelink-features#pcm-streaming
+     */
+    fetchPCMStream(encodedTrackStr: string, volume?: number | null, position?: number | null, filters?: string | object | null): Promise<ReadableStream | null>;
+
+    /**
+     * [Nodelink-Only](https://nodelink.js.org)
+     *
+     * Retrieves chapter markers from YouTube videos.
+     * @link https://nodelink.js.org/docs/api/nodelink-features#chapters-api
+     * @param {string} encodedTrackStr The encoded track string of the YouTube video.
+     * @returns {Promise<object>} The chapter markers for the provided track.
+     * @throws {Error} If the node is not a NodeLink Server.
+     * @throws {TypeError} If `encodedTrackStr` is not a string.
+     */
+    loadChapters(encodedTrackStr: string): Promise<object>;
 
     public connect(): Promise<void>;
     public open(): Promise<void>;
@@ -1239,13 +1563,66 @@ export type FilterOptions = {
         smoothing: number;
     } | null;
     /**
+     * NodeLink only: delay-based repetitions with feedback control.
+     */
+    echo?: {
+        delay: number;
+        feedback: number;
+        mix: number;
+    } | null;
+    /**
+     * NodeLink only: simulates multiple voices with modulated delays.
+     */
+    chorus?: {
+        rate: number;
+        depth: number;
+        delay: number;
+        mix: number;
+        feedback: number;
+    } | null;
+    /**
+     * NodeLink only: dynamic range compression.
+     */
+    compressor?: {
+        threshold: number;
+        ratio: number;
+        attack: number;
+        release: number;
+        gain: number;
+    } | null;
+    /**
+     * NodeLink only: attenuates low frequencies.
+     */
+    highpass?: {
+        smoothing: number;
+    } | null;
+    /**
+     * NodeLink only: all-pass filter sweep effect.
+     */
+    phaser?: {
+        stages: number;
+        rate: number;
+        depth: number;
+        feedback: number;
+        mix: number;
+        minFrequency: number;
+        maxFrequency: number;
+    } | null;
+    /**
+     * NodeLink only: cross-channel spatial effect.
+     */
+    spatial?: {
+        depth: number;
+        rate: number;
+    } | null;
+    /**
      * The BassBoost of the player
      */
     bassboost?: number | null;
     /**
      * The Slowmode of the player
      */
-    slowmode?: number | null;
+    slowmode?: boolean | null;
     /**
      * The Nightcore of the player
      */
@@ -1273,6 +1650,18 @@ export declare class Filters {
     public distortion: FilterOptions["distortion"];
     public channelMix: FilterOptions["channelMix"];
     public lowPass: FilterOptions["lowPass"];
+    /** NodeLink Only. Delay-based repetitions with feedback control. */
+    public echo: FilterOptions["echo"];
+    /** NodeLink Only. Simulates multiple voices with modulated delays. */
+    public chorus: FilterOptions["chorus"];
+    /** NodeLink Only. Dynamic range compression for balanced audio. */
+    public compressor: FilterOptions["compressor"];
+    /** NodeLink Only. Attenuates low frequencies. */
+    public highpass: FilterOptions["highpass"];
+    /** NodeLink Only. Sweeps all-pass filters across the frequency spectrum. */
+    public phaser: FilterOptions["phaser"];
+    /** NodeLink Only. Creates spatial audio using cross-channel delays. */
+    public spatial: FilterOptions["spatial"];
     public bassboost: FilterOptions["bassboost"];
     public slowmode: FilterOptions["slowmode"];
     public nightcore: FilterOptions["nightcore"];
@@ -1331,6 +1720,106 @@ export declare class Filters {
         smoothing: number;
     }): this;
 
+    /**
+     * NodeLink Only.
+     * Delay-based repetitions with feedback control.
+     * @param {boolean} enabled
+     * @param {object} [options]
+     * @param {number} [options.delay] Delay time in milliseconds (0–5000). Default: 500
+     * @param {number} [options.feedback] Amount of signal fed back (0.0–1.0). Default: 0.3
+     * @param {number} [options.mix] Dry/wet mix ratio (0.0–1.0). Default: 0.5
+     */
+    public setEcho(enabled: boolean, options?: {
+        delay: number;
+        feedback: number;
+        mix: number;
+    }): this;
+
+    /**
+     * NodeLink Only.
+     * Simulates multiple voices with modulated delays.
+     * @param {boolean} enabled
+     * @param {object} [options]
+     * @param {number} [options.rate] LFO modulation rate in Hz. Default: 1.5
+     * @param {number} [options.depth] Modulation depth (0.0–1.0). Default: 0.5
+     * @param {number} [options.delay] Base delay time in milliseconds (1–45ms). Default: 25
+     * @param {number} [options.mix] Dry/wet mix ratio (0.0–1.0). Default: 0.6
+     * @param {number} [options.feedback] Feedback amount (0.0–0.95). Default: 0.2
+     */
+    public setChorus(enabled: boolean, options?: {
+        rate: number;
+        depth: number;
+        delay: number;
+        mix: number;
+        feedback: number;
+    }): this;
+
+    /**
+     * NodeLink Only.
+     * Dynamic range compression for balanced audio.
+     * @param {boolean} enabled
+     * @param {object} [options]
+     * @param {number} [options.threshold] Threshold level in dB. Default: -20
+     * @param {number} [options.ratio] Compression ratio (1.0 = no compression). Default: 4
+     * @param {number} [options.attack] Attack time in milliseconds. Default: 10
+     * @param {number} [options.release] Release time in milliseconds. Default: 100
+     * @param {number} [options.gain] Makeup gain in dB. Default: 5
+     */
+    public setCompressor(enabled: boolean, options?: {
+        threshold: number;
+        ratio: number;
+        attack: number;
+        release: number;
+        gain: number;
+    }): this;
+
+    /**
+     * NodeLink Only.
+     * Attenuates low frequencies.
+     * @param {boolean} enabled
+     * @param {object} [options]
+     * @param {number} [options.smoothing] Smoothing factor (>1.0 to enable). Default: 20
+     */
+    public setHighpass(enabled: boolean, options?: {
+        smoothing: number;
+    }): this;
+
+    /**
+     * NodeLink Only.
+     * Sweeps all-pass filters across the frequency spectrum.
+     * @param {boolean} enabled
+     * @param {object} [options]
+     * @param {number} [options.stages] Filter stages (2–12). Default: 6
+     * @param {number} [options.rate] LFO rate in Hz. Default: 0.5
+     * @param {number} [options.depth] Modulation depth (0.0–1.0). Default: 0.7
+     * @param {number} [options.feedback] Feedback amount (0.0–0.9). Default: 0.5
+     * @param {number} [options.mix] Dry/wet mix (0.0–1.0). Default: 0.5
+     * @param {number} [options.minFrequency] Minimum sweep frequency in Hz. Default: 200
+     * @param {number} [options.maxFrequency] Maximum sweep frequency in Hz. Default: 2000
+     */
+    public setPhaser(enabled: boolean, options?: {
+        stages: number;
+        rate: number;
+        depth: number;
+        feedback: number;
+        mix: number;
+        minFrequency: number;
+        maxFrequency: number;
+    }): this;
+
+    /**
+     * NodeLink Only.
+     * Creates spatial audio using cross-channel delays.
+     * @param {boolean} enabled
+     * @param {object} [options]
+     * @param {number} [options.depth] Effect depth (0.0–1.0). Default: 0.8
+     * @param {number} [options.rate] Modulation rate in Hz. Default: 0.3
+     */
+    public setSpatial(enabled: boolean, options?: {
+        depth: number;
+        rate: number;
+    }): this;
+
 
     public setBassboost(enabled: boolean, options?: {
         value: number;
@@ -1352,16 +1841,16 @@ export declare class Filters {
         rotationHz: number;
     }): this;
 
-    public clearFilters(): this;
+    public clearFilters(): Promise<this>;
 
-    public updateFilters(): this;
+    public updateFilters(): Promise<this>;
 }
 
 export type Voice = {
     /**
      * The voice session id
      */
-    sessionId: string,
+    sessionId: string | null,
     /**
      * The voice event
      */
@@ -1369,18 +1858,19 @@ export type Voice = {
     /**
      * The voice endpoint
      */
-    endpoint: string
+    endpoint: string | null,
+    token?: string | null
 }
 
 export declare class Connection {
     constructor(player: Player);
     public player: Player;
-    public sessionId: string;
+    public sessionId: string | null;
     public voice: Voice;
-    public region: string;
+    public region: string | null;
     public self_deaf: boolean;
     public self_mute: boolean;
-    public voiceChannel: string;
+    public voiceChannel: string | null;
 
     /**
      * Tracks the promise for the initial connection (credentials)
@@ -1397,7 +1887,7 @@ export declare class Connection {
      * @private
      * @since 1.0.9
      */
-    private pendingUpdate: Promise<void> | null;
+    private pendingUpdate: Promise<any> | null;
     /**
      * @default false
      * @since 1.0.9
@@ -1408,6 +1898,8 @@ export declare class Connection {
      * Checks if we have all necessary voice credentials.
      */
     get isReady(): boolean;
+
+    private _credentialsChanged(): boolean;
 
     /**
     * Waits for the connection to be ready and for any active voice updates to the Node to complete.
@@ -1420,7 +1912,7 @@ export declare class Connection {
     */
     private checkAndSend(): Promise<void>;
 
-    public setServerUpdate(data: { endpoint: string; token: string }): void;
+    public setServerUpdate(data: { endpoint: string; token: string }): Promise<void>;
 
     public setStateUpdate(data: {
         session_id: string;

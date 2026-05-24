@@ -90,7 +90,7 @@ class Player extends EventEmitter {
 
     /**
      * @private
-     * @param {import("./Track").Track} track 
+     * @param {import("./Track").Track} track
      */
     addToPreviousTrack(track) {
         const limit = this.riffy.options.multipleTrackHistory;
@@ -169,6 +169,63 @@ class Player extends EventEmitter {
         });
 
         return this;
+    }
+
+    /**
+     * NodeLink Only.
+     * 
+     * Sends the next track in the queue to the player.
+     * Informs the node about the next track to preload for gapless transitions (between tracks)
+     * 
+     * @throws {Error} If the player is not playing
+     * @throws {Error} If the track is not provided for sending next track
+     */
+    async sendNextTrack(track) {
+        if(!this.playing) throw new Error("Player is not playing");
+        if(!track || !track.encoded) throw new Error("Track is not provided for sending next track");
+
+        await this.node.rest.updatePlayer({
+            guildId: this.guildId,
+            data: {
+                nextTrack: {
+                    encoded: track.encoded,
+                },
+            },
+        });
+      
+        return this;
+    }
+
+    /**
+     * NodeLink Only
+     * Smooth volume transitions for track changes, seeking, and pausing.
+     * NodeLink supports high-fidelity volume fading to prevent jarring audio clips.
+     * @param {boolean} enabled
+     * @param {object} fading accepts a fading object containing settings for different scenarios (or types) such as `trackStart`, `trackEnd`, `trackStop`, `seek`, and `ducking`, each with a duration (in milliseconds) and curve (Mathematical curve for the fade (linear, exponential, logarithmic, s-curve)) properties.
+     */
+    async setFadings(enabled = true, fading = { "trackStart": { "duration": 1000, "curve": "linear" } }) {
+
+      if (typeof fading !== "object") throw new TypeError("Fading must be an object in setFading");
+
+      Object.entries(fading).forEach(([key, value]) => {
+        if (!["trackStart", "trackEnd", "trackStop", "seek", "ducking"].includes(key)) {
+          throw new TypeError(`Invalid ${key} fading key/type (scenarios), expected it to be one of the following: "trackStart", "trackEnd", "trackStop", "seek", "ducking".`);
+        }
+
+        if (typeof value !== "object" || typeof value.duration !== "number" || typeof value.curve !== "string") {
+          throw new TypeError(`Invalid ${key} fading configuration in setFading, ${key} must be an object with duration (number) and curve (string) properties.`);
+        }
+      });
+
+      await this.node.rest.updatePlayer({
+            guildId: this.guildId,
+            data: {
+                fading: {
+                    "enabled": enabled,
+                    ...fading
+                }
+            },
+        });
     }
 
     /**
@@ -472,7 +529,58 @@ class Player extends EventEmitter {
                 this.socketClosed(player, payload);
                 break;
 
+            case "LyricsFoundEvent": 
+                this.riffy.emit("lyricsFound", player, payload.lyrics, payload);
+                this.#emitNodeLinkEvent("lyricsFound", payload.lyrics, payload);
+                break;
+            
+            case "LyricsNotFoundEvent":
+                this.riffy.emit("lyricsNotFound", player, payload);
+                this.#emitNodeLinkEvent("lyricsNotFound", payload);
+                break;
+            
+            case "LyricsLineEvent":
+                this.riffy.emit("lyricsLine", player, payload);
+                this.#emitNodeLinkEvent("lyricsLine", payload);
+                break;
+
+            case "SponsorBlockSegmentsLoadedEvent":
+                this.riffy.emit("sponsorBlockSegmentsLoaded", player, payload.segments, payload);
+                break;
+            
+            case "SponsorBlockSegmentSkippedEvent":
+                this.riffy.emit("sponsorBlockSegmentSkipped", player, payload.segment, payload);
+                break;
+
+            case "MixStartedEvent":
+                this.riffy.emit("mixStarted", player, payload);
+                this.#emitNodeLinkEvent("mixStarted", payload);
+                break;
+            
+            case "MixEndedEvent":
+                this.riffy.emit("mixEnded", player, payload);
+                this.#emitNodeLinkEvent("mixEnded", payload);
+                break;
+
+            case "SeekEvent":
+                this.position = payload.position;
+                this.#emitNodeLinkEvent("seek", payload);
+                break;
+
+            case "VolumeChangedEvent":
+                this.volume = payload.volume;
+                this.#emitNodeLinkEvent("volumeChanged", payload);
+                break;
+            
+            case "PauseEvent":
+                this.paused = payload.pause;
+                this.#emitNodeLinkEvent("pause", payload);
+                break;
+
             default:
+
+                if(this.node.info?.isNodeLink) this.#emitNodeLinkEvent(payload.type, payload);
+
                 const error = new Error(`Node encountered an unknown event: '${payload.type}'`);
                 this.riffy.emit("nodeError", this, error);
                 break;
@@ -650,6 +758,13 @@ class Player extends EventEmitter {
         }
 
         return this;
+    }
+
+    #emitNodeLinkEvent(eventName, ...args) {
+
+        if(!this.node.info?.isNodeLink) return;
+
+        this.riffy.emit("nodeLinkEvent", eventName, ...args);
     }
 }
 

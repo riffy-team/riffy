@@ -5,6 +5,7 @@ class Track {
     constructor(data, requester, node) {
         this.rawData = data;
         this.track = data.encoded;
+        this.encoded = data.encoded;
         this.info = {
             identifier: data.info.identifier,
             seekable: data.info.isSeekable,
