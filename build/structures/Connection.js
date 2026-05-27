@@ -124,6 +124,13 @@ b    */
             await this.pendingUpdate;
             // Only update lastSentVoice after successful send
             this.#lastSentVoice = voiceToSend;
+            if (this.player.initialVolumePendingSync) {
+                this.player.initialVolumePendingSync = false;
+            }
+            if (this.player.pausedBySocketClose && this.player.paused) {
+                this.player.paused = false;
+                this.player.pausedBySocketClose = false;
+            }
             this.player.riffy.emit("debug", `[Player ${this.player.guildId} - CONNECTION] Successfully sent voice update`);
         } catch (error) {
             this.player.riffy.emit("debug", `[Player ${this.player.guildId} - CONNECTION] Voice update failed: ${error.message}`);
@@ -153,17 +160,7 @@ b    */
 
         this.player.riffy.emit("debug", `[Player ${this.player.guildId} - CONNECTION] Received voice server, ${previousVoiceRegion !== null ? `Changed Voice Region from(oldRegion) ${previousVoiceRegion} to(newRegion) ${this.region}` : `Voice Server: ${this.region}`}, Updating Node's Voice Data.`)
 
-        // console.log("Paused Data", this.player.paused)
-        if (this.player.paused) {
-            this.player.riffy.emit(
-                "debug",
-                this.player.node.name,
-                `unpaused ${this.player.guildId} player, expecting it was paused while the player moved to ${this.voiceChannel}`
-            );
-            await this.player.pause(false);
-        }
-
-        this.checkAndSend();
+        await this.checkAndSend();
     }
 
     setStateUpdate(data) {
@@ -188,34 +185,35 @@ b    */
         this.self_mute = self_mute;
         this.voice.sessionId = session_id || null;
 
+
+        console.log(`[CONNECTION] [voice state update] region=${this.region}, `, this.voice, this.#lastSentVoice);
+
         this.checkAndSend();
     }
 
     updatePlayerVoiceData(voiceData) {
         this.establishing = true;
 
-        const updatePlayerBody = {
+        const data = {
             voice: voiceData,
-            /**
--            * FIXME: Need a better way so that we don't the volume each time.
--            */
-            volume: this.player.volume,
+        };
+
+        if (this.player._initialVolumePendingSync) {
+            data.volume = this.player.volume;
         }
 
-        // Just In case...
-        if (this.player.paused) {
+        if (this.player._pausedBySocketClose && this.player.paused) {
             this.player.riffy.emit(
                 "debug",
                 this.player.node.name,
                 `unpaused ${this.player.guildId} player, expecting it was paused while the player moved to ${this.voiceChannel}`
-            )
-            updatePlayerBody["paused"] = false;
+            );
+            data.paused = false;
         }
-
 
         return this.player.node.rest.updatePlayer({
             guildId: this.player.guildId,
-            data: updatePlayerBody
+            data
         });
     }
 }

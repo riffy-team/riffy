@@ -51,6 +51,8 @@ class Player extends EventEmitter {
         this.ping = 0;
         this.isAutoplay = false;
         this.migrating = false;
+        this._initialVolumePendingSync = true;
+        this._pausedBySocketClose = false;
 
         // @ts-ignore this.connectionTimeout exists on the constructor.
         Object.defineProperty(this, "connectionTimeout", {
@@ -148,10 +150,27 @@ class Player extends EventEmitter {
         if (!this.connected) throw new Error("Player connection is not initiated. Kindly use Riffy.createConnection() and establish a connection, TIP: Check if Guild Voice States intent is set/provided & 'updateVoiceState' is used in the raw(Gateway Raw) event");
         if (!this.queue.length) throw new Error(`Unable to play for Player with Guild Id ${this.guildId}, Queue is empty (length: ${this.queue.length})!`);
 
-        this.current = this.queue.shift();
+        const nextTrack = this.queue.shift();
+        if (!nextTrack) {
+            this.current = null;
+            this.playing = false;
+            this.riffy.emit("debug", `Player (${this.guildId}) queue became empty before playback could start, emitting queueEnd.`);
+            this.riffy.emit("queueEnd", this);
+            return this;
+        }
+
+        this.current = nextTrack;
 
         if (!this.current.track) {
+            if (typeof this.current.resolve !== "function") {
+                throw new Error(`Unable to play for Player with Guild Id ${this.guildId}, Track is not encoded and cannot be resolved.`);
+            }
+
             this.current = await this.current.resolve(this.riffy);
+        }
+
+        if (!this.current?.track) {
+            throw new Error(`Unable to play for Player with Guild Id ${this.guildId}, Track resolution failed.`);
         }
 
         this.playing = true;
@@ -159,7 +178,7 @@ class Player extends EventEmitter {
 
         const { track } = this.current;
 
-        this.node.rest.updatePlayer({
+        await this.node.rest.updatePlayer({
             guildId: this.guildId,
             data: {
                 track: {
@@ -364,6 +383,7 @@ class Player extends EventEmitter {
 
         this.playing = this.playing ? false : this.playing;
         this.paused = toggle;
+        if (!toggle) this._pausedBySocketClose = false;
 
         return this;
     }
@@ -379,9 +399,10 @@ class Player extends EventEmitter {
         };
 
         const trackLength = this.current.info.length;
-        this.position = Math.max(0, Math.min(trackLength, position));
+        const clampedPosition = Math.max(0, Math.min(trackLength, position));
+        this.position = clampedPosition;
 
-        this.node.rest.updatePlayer({ guildId: this.guildId, data: { position } });
+        this.node.rest.updatePlayer({ guildId: this.guildId, data: { position: clampedPosition } });
     }
 
     /**
@@ -396,6 +417,7 @@ class Player extends EventEmitter {
 
         this.node.rest.updatePlayer({ guildId: this.guildId, data: { volume } });
         this.volume = volume;
+        this._initialVolumePendingSync = false;
         return this;
     }
 
@@ -573,7 +595,7 @@ class Player extends EventEmitter {
                 break;
             
             case "PauseEvent":
-                this.paused = payload.pause;
+                this.paused = payload.paused;
                 this.#emitNodeLinkEvent("pause", payload);
                 break;
 
@@ -590,12 +612,19 @@ class Player extends EventEmitter {
     trackStart(player, track, payload) {
         this.playing = true;
         this.paused = false;
+
+        if (!track?.info) {
+            this.riffy.emit("debug", `Player (${player.guildId}) received TrackStartEvent without a current track.`);
+            this.riffy.emit("trackStart", player, track, payload);
+            return;
+        }
+
         this.riffy.emit(`debug`, `Player (${player.guildId}) has started playing ${track.info.title} by ${track.info.author}`);
         this.riffy.emit("trackStart", player, track, payload);
     }
 
     trackEnd(player, track, payload) {
-        this.addToPreviousTrack(track)
+        if (track) this.addToPreviousTrack(track)
         const previousTrack = this.previous;
         // By using lower case We handle both Lavalink Versions(v3, v4) Smartly 😎,
         // If reason is replaced do nothing expect User do something hopefully else RIP.
@@ -606,23 +635,29 @@ class Player extends EventEmitter {
         if (["loadfailed", "cleanup"].includes(payload.reason.replace("_", "").toLowerCase())) {
             if (player.queue.length === 0) {
                 this.playing = false;
-                this.riffy.emit("debug", `Player (${player.guildId}) Track-Ended(${track.info.title}) with reason: ${payload.reason}, emitting queueEnd instead of trackEnd as queue is empty/finished`);
+                this.riffy.emit("debug", `Player (${player.guildId}) Track-Ended(${track?.info?.title || "Unknown Track"}) with reason: ${payload.reason}, emitting queueEnd instead of trackEnd as queue is empty/finished`);
+                this.riffy.emit("trackEnd", player, track, payload);
+                return this.riffy.emit("queueEnd", player);
             }
 
             this.riffy.emit("trackEnd", player, track, payload);
             return player.play();
         }
 
-        this.riffy.emit("debug", `Player (${player.guildId}) has the track ${track.info.title} by ${track.info.author} ended with reason: ${payload.reason}`);
+        if (!track?.info) {
+            this.riffy.emit("debug", `Player (${player.guildId}) received TrackEndEvent without a current track. Reason: ${payload.reason}`);
+        } else {
+            this.riffy.emit("debug", `Player (${player.guildId}) has the track ${track.info.title} by ${track.info.author} ended with reason: ${payload.reason}`);
+        }
 
-        if (this.loop === "track") {
+        if (this.loop === "track" && previousTrack) {
             player.queue.unshift(previousTrack);
-            this.riffy.emit("debug", `Player (${player.guildId}) looped track ${track.info.title} by ${track.info.author}, as loop mode is set to 'track'`);
+            this.riffy.emit("debug", `Player (${player.guildId}) looped track ${track?.info?.title || "Unknown Track"} by ${track?.info?.author || "Unknown Author"}, as loop mode is set to 'track'`);
             this.riffy.emit("trackEnd", player, track, payload);
             return player.play();
         }
 
-        else if (track && this.loop === "queue") {
+        else if (track && this.loop === "queue" && previousTrack) {
             player.queue.push(previousTrack);
             this.riffy.emit("debug", `Player (${player.guildId}) looping Queue, as loop mode is set to 'queue'`);
             this.riffy.emit("trackEnd", player, track, payload);
@@ -644,14 +679,22 @@ class Player extends EventEmitter {
     }
 
     trackError(player, track, payload) {
-        this.riffy.emit("debug", `Player (${player.guildId}) has an exception/error while playing ${track.info.title} by ${track.info.author} this track, exception received: ${inspect(payload.exception)}`);
+        if (!track?.info) {
+            this.riffy.emit("debug", `Player (${player.guildId}) received TrackExceptionEvent without a current track, exception received: ${inspect(payload.exception)}`);
+        } else {
+            this.riffy.emit("debug", `Player (${player.guildId}) has an exception/error while playing ${track.info.title} by ${track.info.author} this track, exception received: ${inspect(payload.exception)}`);
+        }
         this.riffy.emit("trackError", player, track, payload);
         this.stop();
     }
 
     trackStuck(player, track, payload) {
         this.riffy.emit("trackStuck", player, track, payload);
-        this.riffy.emit("debug", `Player (${player.guildId}) has been stuck track ${track.info.title} by ${track.info.author} for ${payload.thresholdMs}ms, skipping track...`);
+        if (!track?.info) {
+            this.riffy.emit("debug", `Player (${player.guildId}) received TrackStuckEvent without a current track for ${payload.thresholdMs}ms, stopping player...`);
+        } else {
+            this.riffy.emit("debug", `Player (${player.guildId}) has been stuck track ${track.info.title} by ${track.info.author} for ${payload.thresholdMs}ms, skipping track...`);
+        }
         this.stop();
     }
 
@@ -666,7 +709,10 @@ class Player extends EventEmitter {
         }
 
         this.riffy.emit("socketClosed", player, payload);
-        if (!this.connection?.establishing) await this.pause(true);
+        if (!this.connection?.establishing) {
+            this._pausedBySocketClose = true;
+            await this.pause(true);
+        }
         this.riffy.emit("debug", `Player (${player.guildId}) Voice Connection has been closed with code: ${payload.code}, Player might be paused(to any avoid track playing). some possible causes: Voice channel deleted, Or Client(Bot) was kicked`);
     }
 
@@ -762,7 +808,7 @@ class Player extends EventEmitter {
 
     #emitNodeLinkEvent(eventName, ...args) {
 
-        if(!this.node.info?.isNodeLink) return;
+        if(!this.node.info?.isNodelink) return;
 
         this.riffy.emit("nodeLinkEvent", eventName, ...args);
     }
