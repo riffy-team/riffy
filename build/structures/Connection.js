@@ -124,12 +124,12 @@ b    */
             await this.pendingUpdate;
             // Only update lastSentVoice after successful send
             this.#lastSentVoice = voiceToSend;
-            if (this.player.initialVolumePendingSync) {
-                this.player.initialVolumePendingSync = false;
+            if (this.player._initialVolumePendingSync) {
+                this.player._initialVolumePendingSync = false;
             }
-            if (this.player.pausedBySocketClose && this.player.paused) {
+            if (this.player._pausedBySocketClose && this.player.paused) {
                 this.player.paused = false;
-                this.player.pausedBySocketClose = false;
+                this.player._pausedBySocketClose = false;
             }
             this.player.riffy.emit("debug", `[Player ${this.player.guildId} - CONNECTION] Successfully sent voice update`);
         } catch (error) {
