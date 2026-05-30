@@ -632,12 +632,15 @@ class Player extends EventEmitter {
 
         // Replacing & to lower case it Again Smartly 😎, Handled Both Lavalink Versions.
         // This avoids track that got cleaned-up or failed to load to be played again (Via Loop Mode).
-        if (["loadfailed", "cleanup"].includes(payload.reason.replace("_", "").toLowerCase())) {
+        const normalizedReason = payload.reason.replace("_", "").toLowerCase()
+        if (["loadfailed", "cleanup"].includes(normalizedReason)) {
             if (player.queue.length === 0) {
                 this.playing = false;
-                this.riffy.emit("debug", `Player (${player.guildId}) Track-Ended(${track?.info?.title || "Unknown Track"}) with reason: ${payload.reason}, emitting queueEnd instead of trackEnd as queue is empty/finished`);
-                this.riffy.emit("trackEnd", player, track, payload);
-                return this.riffy.emit("queueEnd", player);
+                if(normalizedReason === "cleanup") {
+                    this.riffy.emit("debug", `Player (${player.guildId}) Track-Ended(${track?.info?.title || "Unknown Track"}) with reason: ${payload.reason}, emitting queueEnd instead of trackEnd as queue is empty/finished`);
+                    this.riffy.emit("queueEnd", player);
+                }
+                return;
             }
 
             this.riffy.emit("trackEnd", player, track, payload);
@@ -710,8 +713,8 @@ class Player extends EventEmitter {
 
         this.riffy.emit("socketClosed", player, payload);
         if (!this.connection?.establishing) {
-            this._pausedBySocketClose = true;
-            await this.pause(true);
+            // this._pausedBySocketClose = true;
+            // await this.pause(true);
         }
         this.riffy.emit("debug", `Player (${player.guildId}) Voice Connection has been closed with code: ${payload.code}, Player might be paused(to any avoid track playing). some possible causes: Voice channel deleted, Or Client(Bot) was kicked`);
     }
