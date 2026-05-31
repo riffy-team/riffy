@@ -158,6 +158,16 @@ b    */
         this.voice.token = token;
         this.region = endpoint.split(".").shift()?.replace(/[0-9]/g, "") || null;
 
+        // TODO: We should not require this ideally, but currently due to some issue in nodelink we do need this.
+        if (this.player._pausedBySocketClose && this.player.paused) {
+            this.player.riffy.emit(
+                "debug",
+                this.player.node.name,
+                `unpausing ${this.player.guildId} player, expecting it was paused while the player moved to ${this.voiceChannel}`
+            );
+            await this.player.pause(false);
+        }
+
         this.player.riffy.emit("debug", `[Player ${this.player.guildId} - CONNECTION] Received voice server, ${previousVoiceRegion !== null ? `Changed Voice Region from(oldRegion) ${previousVoiceRegion} to(newRegion) ${this.region}` : `Voice Server: ${this.region}`}, Updating Node's Voice Data.`)
 
         await this.checkAndSend();
