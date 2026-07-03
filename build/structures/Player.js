@@ -53,6 +53,7 @@ class Player extends EventEmitter {
         this.migrating = false;
         this._initialVolumePendingSync = true;
         this._pausedBySocketClose = false;
+        this._playingBeforePause = false;
 
         // @ts-ignore this.connectionTimeout exists on the constructor.
         Object.defineProperty(this, "connectionTimeout", {
@@ -362,6 +363,8 @@ class Player extends EventEmitter {
     stop() {
         this.position = 0;
         this.playing = false;
+        this.paused = false;
+        this._playingBeforePause = false;
         this.node.rest.updatePlayer({
             guildId: this.guildId,
             data: { track: { encoded: null } },
@@ -381,7 +384,15 @@ class Player extends EventEmitter {
             data: { paused: toggle },
         });
 
-        this.playing = this.playing ? false : this.playing;
+        const wasPaused = this.paused;
+        if (toggle) {
+            if (!wasPaused) this._playingBeforePause = this.playing;
+            this.playing = false;
+        } else if (wasPaused) {
+            this.playing = this._playingBeforePause;
+            this._playingBeforePause = false;
+        }
+
         this.paused = toggle;
         if (!toggle) this._pausedBySocketClose = false;
 
@@ -612,6 +623,7 @@ class Player extends EventEmitter {
     trackStart(player, track, payload) {
         this.playing = true;
         this.paused = false;
+        this._playingBeforePause = false;
 
         if (!track?.info) {
             this.riffy.emit("debug", `Player (${player.guildId}) received TrackStartEvent without a current track.`);

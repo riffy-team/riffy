@@ -179,9 +179,9 @@ class Node {
     },
 
     /**
-     * @param {string} guildId 
-     * @param {import("..").AddMixLayerOptions} mixLayerOptions 
-     * @returns 
+     * @param {string} guildId
+     * @param {import("..").AddMixLayerOptions} mixLayerOptions
+     * @returns
      */
     addMixLayer: async (guildId, mixLayerOptions) => {
       if (!this.mixer.check()) {
@@ -259,14 +259,14 @@ class Node {
   }
 
   /**
-   * [Nodelink-Only](https://nodelink.js.org) 
+   * [Nodelink-Only](https://nodelink.js.org)
    * SponserBlock API
    */
 
   sponserBlock = {
     /**
      * @internal
-     * 
+     *
      * Validates the provided segment object, throws an error if it's invalid (as everything is required)
      */
     _validateSponsorBlockSegment: (segment) => {
@@ -293,7 +293,7 @@ class Node {
 
     /**
      * Returns the current SponsorBlock state for a player.
-     * @param {string} guildId 
+     * @param {string} guildId
      */
     getCurrentBlock: async (guildId) => {
       if(!this.sponserBlock.check()) throw new Error("This node is not a Nodelink Server");
@@ -305,12 +305,12 @@ class Node {
 
 
     /**
-     * 
+     *
      * Updates SponsorBlock settings for a player. Only the provided options are changed.
      * @link https://nodelink.js.org/docs/api/rest#updatesponsorblock
-     * 
-     * @param {string} guildId 
-     * @param {object} options 
+     *
+     * @param {string} guildId
+     * @param {object} options
      * @returns {Promise<object>}
      * @throws {Error} If the node is not a Nodelink Server.
      * @throws {TypeError} If the provided options are of invalid types or values.
@@ -346,9 +346,9 @@ class Node {
     /**
      * Overrides the segments array for a player with a custom set of segments.
      * @link https://nodelink.js.org/docs/api/rest#setsponsorblocksegments
-     * 
-     * @param {string} guildId 
-     * @param {Array} segments 
+     *
+     * @param {string} guildId
+     * @param {Array} segments
      */
     setBlockSegments: async (guildId, segments) => {
 
@@ -372,8 +372,8 @@ class Node {
     /**
      * Clears all SponsorBlock state for a player (segments, last skipped UUID, and resets to defaults).
      * @link https://nodelink.js.org/docs/api/rest#clearsponsorblock
-     * 
-     * @param {string} guildId 
+     *
+     * @param {string} guildId
      */
     clearSponsorBlock: async (guildId) => {
       if(!this.sponserBlock.check()) {
@@ -390,9 +390,9 @@ class Node {
 
   /**
    * [Nodelink-Only](https://nodelink.js.org) & works when `enableTrackStreamEndpoint` config option is enabled on the Nodelink Server.
-   * 
+   *
    * @description Retrives the Source's Audio Stream URL & formats for the provided encoded track string and itag.
-   * 
+   *
    * **Note:** This method is only for fetching the audio source URL for a track, it doesn't actually fetch or return the audio stream itself, you can use the returned URL to directly stream the audio from the source.
    * @param {string} encodedTrackStr The Encoded Track String of the track to fetch the stream for.
    * @param {number} itag The itag of the source to fetch
@@ -419,13 +419,13 @@ class Node {
 
   /**
    * [Nodelink-Only](https://nodelink.js.org) & works when `enableLoadStreamEndpoint` config option is enabled on the Nodelink Server.
-   * 
+   *
    * Stream raw PCM audio for custom processing or recording.
-   * 
-   * @param {string} encodedTrackStr 
-   * @param {number|null} volume 
-   * @param {number|null} position 
-   * @param {string|object|null} filters 
+   *
+   * @param {string} encodedTrackStr
+   * @param {number|null} volume
+   * @param {number|null} position
+   * @param {string|object|null} filters
    * @returns {Promise<ReadableStream>} Readable Stream of raw PCM audio data for the provided track, volume, position, and filters.
    * @throws {Error} If the node is not a Nodelink Server.
    * @throws {TypeError} If the provided parameters are of invalid types or values.
@@ -466,12 +466,12 @@ class Node {
 
   /**
    * [Nodelink-Only](https://nodelink.js.org)
-   * 
+   *
    * Retrieves chapter markers from YouTube videos.
-   * 
+   *
    * @link https://nodelink.js.org/docs/api/nodelink-features#chapters-api
-   * 
-   * @param {string} encodedTrackStr 
+   *
+   * @param {string} encodedTrackStr
    */
   async loadChapters(encodedTrackStr) {
 
@@ -612,14 +612,14 @@ class Node {
     this.connected = true;
     this.riffy.emit('debug', `[Node: ${this.name}] Websocket connection established on ${this.wsUrl}`);
 
-    this.info = 
+    this.info =
           await this.fetchInfo()
             .then((info) => this.info = info)
             .catch((e) => (this.riffy.emit('debug', `[Node: ${this.name}] Failed to fetch info on open: ${e.message}`)));
 
     // @ts-ignore this.options exists on the constructor
-    if (!this.info && !this.options.bypassChecks.nodeFetchInfo) {
-      // Throws the Error because it's a critical failure, Node should have info 
+    if (!this.info && !this.options?.bypassChecks?.nodeFetchInfo) {
+      // Throws the Error because it's a critical failure, Node should have info
       // about the server configuration (i.e sources, version, plugins, etc).
       throw new Error(`Node (${this.name} - URL: ${this.restUrl}) Failed to fetch info on WS-OPEN`);
     }
@@ -686,8 +686,9 @@ class Node {
     if (payload.guildId && player) player.emit(payload.op, payload);
   }
 
-  async close(event, reason) {
-    this.riffy.emit("nodeDisconnect", this, { event, reason });
+  async close(event, reason, ...args) {
+  	reason = reason.toString();
+    this.riffy.emit("nodeDisconnect", this, { code: event, reason: reason });
     this.riffy.emit("debug", `Connection with Lavalink closed with Error code : ${event || "Unknown code"}, reason: ${reason || "Unknown reason"}`);
 
     this.connected = false;
