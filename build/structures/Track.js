@@ -10,12 +10,12 @@ class Track {
         this.info = {
             identifier: info.identifier ?? null,
             seekable: info.isSeekable ?? false,
-            author: info.author ?? null,
-            length: info.length ?? null,
+            author: info?.author,
+            length: info?.length,
             stream: info.isStream ?? false,
-            position: info.position ?? null,
+            position: info.position ?? 0,
             title: info.title ?? null,
-            uri: info.uri ?? null,
+            uri: info?.uri,
             requester,
             sourceName: info.sourceName ?? null,
             isrc: info?.isrc || null,
@@ -35,8 +35,8 @@ class Track {
         };
 
 
-        this.pluginInfo = data?.pluginInfo ?? null
-        this.userData = data?.userData ?? null
+        this.pluginInfo = data?.pluginInfo
+        this.userData = data?.userData
         this.isAutoplay = false;
     }
 
