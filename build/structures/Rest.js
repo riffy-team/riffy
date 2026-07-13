@@ -69,7 +69,7 @@ class Rest {
 
   async updatePlayer(options) {
     // destructure data as requestBody for ease of use.
-    let { data: requestBody } = options;
+    let requestBody = options.data ?? {};
 
     if (
       (typeof requestBody.track !== "undefined" &&
@@ -84,14 +84,14 @@ class Rest {
         } are mutually exclusive (Can't be provided together) in Update Player Endpoint`
       );
 
-    if (this.version === "v3" && options.data?.track) {
+    if (this.version === "v3" && requestBody.track) {
       const { track, ...otherRequestData } = requestBody;
 
       requestBody = { ...otherRequestData };
 
       Object.assign(
-        options.data,
-        typeof options.data.track.encoded !== "undefined"
+        requestBody,
+        typeof track.encoded !== "undefined"
           ? { encodedTrack: track.encoded }
           : { identifier: track.identifier }
       );
@@ -100,7 +100,7 @@ class Rest {
     return this.makeRequest(
       "PATCH",
       `/${this.version}/sessions/${this.sessionId}/players/${options.guildId}?noReplace=false`,
-      options.data
+      requestBody
     );
   }
 

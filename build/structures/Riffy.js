@@ -13,7 +13,7 @@ const versions = ["v3", "v4"];
  */
 class Riffy extends EventEmitter {
   /**
-   * @param {import("discord.js").Client} client Discord Client instance
+   * @param {any} client Discord Client instance
    * @param {import("..").NodeOptions[]} nodes Array of Node Options
    * @param {import("..").RiffyOptions} options Riffy Options
    */
@@ -21,7 +21,7 @@ class Riffy extends EventEmitter {
     super();
     if (!client) throw new Error("Client is required to initialize Riffy");
     if (!nodes || !Array.isArray(nodes)) throw new Error(`Nodes are required & Must Be an Array(Received ${typeof nodes}) for to initialize Riffy`);
-    if (!options.send || typeof options.send !== "function") throw new Error("Send function is required to initialize Riffy");
+    if (!options || typeof options.send !== "function") throw new Error("Send function is required to initialize Riffy");
 
     this.client = client;
     this.nodes = nodes;
@@ -30,7 +30,7 @@ class Riffy extends EventEmitter {
     this.options = options;
     this.clientId = null;
     this.initiated = false;
-    this.send = options.send || null;
+    this.send = options.send;
     this.defaultSearchPlatform = options.defaultSearchPlatform || "ytmsearch";
     this.autoMigratePlayers = options.autoMigratePlayers ?? false;
     this.migrateOnDisconnect = options.migrateOnDisconnect ?? false;
@@ -347,16 +347,18 @@ class Riffy extends EventEmitter {
         }
       }
 
+      const loadType = response.loadType ?? null;
+
       // Process response based on version
       this.tracks = [];
       let tracks = [];
       let playlistInfo = null;
       if (requestNode.rest.version === "v4") {
-        if (response.loadType === "track") {
+        if (loadType === "track") {
           tracks = response.data ? [new Track(response.data, requester, requestNode)] : [];
-        } else if (response.loadType === "playlist") {
+        } else if (loadType === "playlist") {
           tracks = response.data?.tracks ? response.data.tracks.map((track) => new Track(track, requester, requestNode)) : [];
-        } else if (response.loadType === "search") {
+        } else if (loadType === "search") {
           tracks = response.data ? response.data.map((track) => new Track(track, requester, requestNode)) : [];
         }
       } else {
@@ -364,22 +366,22 @@ class Riffy extends EventEmitter {
         tracks = response?.tracks ? response.tracks.map((track) => new Track(track, requester, requestNode)) : [];
       }
 
-      this.emit("debug", `Search ${["error", "LOAD_FAILED"].includes(response.loadType) ? "Failed" : "Success"} for "${query}" on node "${requestNode.name}", loadType: ${response.loadType}, tracks: ${tracks.length}`);
+      this.emit("debug", `Search ${["error", "LOAD_FAILED"].includes(loadType) ? "Failed" : "Success"} for "${query}" on node "${requestNode.name}", loadType: ${loadType}, tracks: ${tracks.length}`);
 
-      if (requestNode.rest.version === "v4" && response.loadType === "playlist") {
+      if (requestNode.rest.version === "v4" && loadType === "playlist") {
         playlistInfo = response.data?.info ?? null;
       } else {
         playlistInfo = response.playlistInfo ?? null;
       }
 
-      this.loadType = response.loadType ?? null;
+      this.loadType = loadType;
       this.playlistInfo = playlistInfo;
       this.pluginInfo = response.pluginInfo ?? {};
       this.tracks = tracks;
 
       return {
-        loadType: response.loadType ?? null,
-        exception: response.loadType === "error" ? response.data : response.loadType === "LOAD_FAILED" ? response.exception : null,
+        loadType,
+        exception: loadType === "error" ? response.data : loadType === "LOAD_FAILED" ? response.exception : null,
         playlistInfo: playlistInfo,
         pluginInfo: response.pluginInfo ?? {},
         tracks: tracks,

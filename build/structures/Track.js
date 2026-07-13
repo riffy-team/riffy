@@ -3,44 +3,40 @@ const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 class Track {
     constructor(data, requester, node) {
+        const info = data?.info ?? {};
         this.rawData = data;
-        this.track = data.encoded;
-        this.encoded = data.encoded;
+        this.track = data?.encoded ?? null;
+        this.encoded = data?.encoded ?? null;
         this.info = {
-            identifier: data.info.identifier,
-            seekable: data.info.isSeekable,
-            author: data.info.author,
-            length: data.info.length,
-            stream: data.info.isStream,
-            position: data.info.position,
-            title: data.info.title,
-            uri: data.info.uri,
+            identifier: info.identifier ?? null,
+            seekable: info.isSeekable ?? false,
+            author: info.author ?? null,
+            length: info.length ?? null,
+            stream: info.isStream ?? false,
+            position: info.position ?? null,
+            title: info.title ?? null,
+            uri: info.uri ?? null,
             requester,
-            sourceName: data.info.sourceName,
-            isrc: data.info?.isrc || null,
-            _cachedThumbnail: data.info.thumbnail ?? null,
+            sourceName: info.sourceName ?? null,
+            isrc: info?.isrc || null,
+            _cachedThumbnail: info.thumbnail ?? null,
             get thumbnail() {
                 if (this._cachedThumbnail) return this._cachedThumbnail;
-                if (data.info.thumbnail) return data.info.thumbnail;
+                if (info.thumbnail) return info.thumbnail;
 
-                if (node.rest.version === "v4") {
-                    if (data.info.artworkUrl) {
-                        this._cachedThumbnail = data.info.artworkUrl;
-                        return data.info.artworkUrl
-                    } else {
-                        return !this._cachedThumbnail ? (this._cachedThumbnail = getImageUrl(this)) : this._cachedThumbnail ?? null
-                    }
-                } else {
-                    return !this._cachedThumbnail
-                        ? (this._cachedThumbnail = getImageUrl(this))
-                        : this._cachedThumbnail ?? null;
+                if (node.rest.version === "v4" && info.artworkUrl) {
+                    this._cachedThumbnail = info.artworkUrl;
+                    return this._cachedThumbnail ?? null;
                 }
+
+                this._cachedThumbnail = getImageUrl(this);
+                return this._cachedThumbnail ?? null;
             }
         };
 
 
-        this.pluginInfo = data.pluginInfo
-        this.userData = data.userData
+        this.pluginInfo = data?.pluginInfo ?? null
+        this.userData = data?.userData ?? null
         this.isAutoplay = false;
     }
 
