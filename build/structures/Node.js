@@ -260,10 +260,10 @@ class Node {
 
   /**
    * [Nodelink-Only](https://nodelink.js.org)
-   * SponserBlock API
+   * SponsorBlock API
    */
 
-  sponserBlock = {
+  sponsorBlock = {
     /**
      * @internal
      *

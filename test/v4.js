@@ -3,7 +3,7 @@ const { Riffy } = require("../build/index");
 const { inspect } = require("node:util");
 const winston = require('winston');
 /**
- * @type {import("discord.js").Client & { riffy: Riffy}}
+ * @type {import("discord.js").Client & { riffy: import("../build/index").Riffy<typeof nodes> }}
  */
 const client = new Client({
   intents: [
@@ -76,6 +76,8 @@ client.riffy = new Riffy(client, nodes, {
   defaultSearchPlatform: "ytmsearch",
   restVersion: "v4",
 });
+
+const p247Config = new Set();
 
 client.on("ready", () => {
   client.riffy.init(client.user.id);
@@ -169,8 +171,17 @@ client.on("messageCreate", async (message) => {
     const player = client.riffy.players.get(message.guild.id);
     if (!player) return message.channel.send("No player found.");
 
+    if (p247Config.has(message.guild.id)) return message.channel.send("Cannot stop the player while in 24/7 mode.");
     player.destroy();
     message.channel.send("Stopped the player.");
+  }
+
+  if (command === "destroy") {
+    const player = client.riffy.players.get(message.guild.id);
+    if (!player) return message.channel.send("No player found.");
+
+    player.destroy();
+    message.channel.send("Destroyed the player.");
   }
 
   if (command === "pause") {
@@ -211,7 +222,8 @@ client.on("messageCreate", async (message) => {
       title: "Queue",
       description: queue.map((track, i) => {
         return `${i + 1}) ${track.info.title} | ${track.info.author}`;
-      }).join("\n")
+      }).join("\n").slice(0, 6000),
+      footer: { text: `Queue size: ${queue.length}` }
     };
 
     message.channel.send({ embeds: [embed] });
@@ -415,8 +427,8 @@ client.on("messageCreate", async (message) => {
       return message.reply("Please specify `on` or `off` i.e `<prefix>livelyrics on`")
     }
 
-    if (toggle === "on") await player.node.rest.makeRequest("POST", `/v4/sessions/${player.node.sessionId}/players/${player.guildId}/lyrics/subscribe?skipTrackSource=true`)
-    else if (toggle === "off") await player.node.rest.makeRequest("DELETE", `/v4/sessions/${player.node.sessionId}/players/${player.guildId}/lyrics/subscribe?skipTrackSource=true`)
+    if (toggle === "on") await player.node.lyrics.subscribe(message.guild.id);
+    else if (toggle === "off") await player.node.lyrics.unsubscribe(message.guild.id);
 
     player.set("liveLyrics", true);
 
@@ -443,10 +455,23 @@ client.on("messageCreate", async (message) => {
       message.reply(`\`\`\`js\n${error}\n\`\`\``);
     }
   }
+
+  if (command === "247") {
+    if (p247Config.has(message.guild.id)) {
+      p247Config.delete(message.guild.id);
+      return message.reply("24/7 mode disabled.");
+    }
+    p247Config.add(message.guild.id);
+    return message.reply("24/7 mode enabled.");
+  }
 })
 
 client.riffy.on("nodeConnect", (node) => {
   logger.info(`[NODE] Node "${node.name}" connected, with sessionId ${node.sessionId}`);
+});
+
+client.riffy.on("nodeDisconnect", (node, { code, reason }) => {
+  logger.info(`[NODE] Node "${node.name}" disconnected, with sessionId ${node.sessionId}. Code: ${code}, Reason: ${reason}`);
 });
 
 client.riffy.on("nodeError", (node, error) => {
@@ -461,6 +486,14 @@ client.riffy.on("trackStart", async (player, track) => {
   const channel = client.channels.cache.get(player.textChannel);
 
   channel.send(`\`${track.info.title} by ${track.info.author}\``)
+
+  if (player.queue.length) {
+    const nextTrack = player.queue.first;
+    if (nextTrack) {
+      channel.send(`Next track: \`${nextTrack.info.title} by ${nextTrack.info.author}\``);
+      player.sendNextTrack(nextTrack);
+    }
+  }
 });
 
 client.riffy.on("queueEnd", async (player) => {
@@ -472,22 +505,76 @@ client.riffy.on("queueEnd", async (player) => {
   if (player.isAutoplay) {
     player.autoplay(player);
   } else {
-    player.destroy();
-    channel.send("Queue has ended.");
+    // player.destroy();
+    channel.send(`Queue has ended. staying in voice channel...`);
   }
 });
 
-client.riffy.on("raw", (type, payload) => {
-  if (!["LyricsFoundEvent", "LyricsNotFoundEvent", "LyricsLineEvent"].includes(payload.type)) return;
+// client.riffy.on("raw", (type, payload) => {
+//   if (!["LyricsFoundEvent", "LyricsNotFoundEvent", "LyricsLineEvent"].includes(payload.type)) return;
 
-  logger.debug(`[RAW] :: ${type} :: payload: ${inspect(payload)}`);
+//   logger.debug(`[RAW] :: ${type} :: payload: ${inspect(payload)}`);
+// })
+//
+client.riffy.on("lyricsFound", (player, payload) => {
+  logger.debug(`[LYRICS] :: lyricsFound :: payload: ${inspect(payload, false, 2)}`);
+
+  const channel = client.channels.cache.get(player.textChannel);
+
+  channel.send({
+    content: `# ${payload.title} Lyrics`,
+    embeds: [new EmbedBuilder().setTitle(`${player?.current?.info.title} Lyrics (${payload?.lyrics?.provider ?? "Unknown Provider"})`).setDescription(payload.lyrics.lines.map((line) => {
+      return `[${line?.timestamp}] ${line?.line?.trim()}`
+    }).join("\n"))]
+  }).then((msg) => player.set("lyricsMsgId", msg.id))
+});
+
+client.riffy.on("lyricsNotFound", (player, payload) => {
+  logger.debug(`[LYRICS] :: lyricsNotFound :: payload: ${inspect(payload)}`);
+
+  const channel = client.channels.cache.get(player.textChannel);
+
+  channel.send(`Lyrics for ${payload.title} not found.`);
+});
+
+client.riffy.on("lyricsLine", (player, payload) => {
+  logger.debug(`[LYRICS] :: lyricsLine :: payload: ${inspect(payload)}`, { skipped: !payload.skipped || !payload.skipped });
+
+  if (!payload.line || payload.skipped) return;
+
+  const channel = client.channels.cache.get(player.textChannel);
+
+  // bold the current line from the lyrics
+  channel.messages.fetch(player.get("lyricsMsgId")).then((msg) => {
+
+    const updatedDescription = msg.embeds?.[0].data.description.toString()
+      .replace(`${payload.timestamp !== 0 ? `[${payload.timestamp}] ${payload.line?.line}` : payload.line?.line}`, "**➡️ $&**");
+    logger.debug(`[LYRICS] :: lyricsLine :: updatedDescription: ${updatedDescription}, description: ${msg.embeds?.[0].data.description}`);
+
+    msg.edit({
+      content: `# ${payload.title} Lyrics (${payload.skipped})`,
+      // embeds: [new EmbedBuilder(msg).setTitle(`${player?.current?.info.title} Lyrics`).setDescription(payload.lyrics.lines.map((line, index) => {
+      //   if (index === payload.lineIndex) return `➡️ [${line.timestamp}] **${line.trim()}**`
+      //   return `[${line.timestamp}] ${line.trim()}`
+      // }).join("\n"))]
+      embeds: [
+        new EmbedBuilder(msg.embeds?.[0].data)
+          .setDescription(updatedDescription)
+      ]
+    });
+  });
+});
+
+client.riffy.on("nodeLinkEvent", (event, payload) => {
+  console.log(`[NODE LINK] :: event: ${event} :: payload: ${inspect(payload)}`);
+  logger.debug(`[NODE LINK] :: event: ${event} :: payload: ${inspect(payload)}`);
 })
 
 process.on("uncaughtException", (err, origin) =>
   logger.error(`[EXCEPTION] [UNCAUGHT ERRORS Reporting - Exception] >> origin: ${origin} | Error: ${err.stack ?? err}`)
 );
 process.on("unhandledRejection", (err, _) =>
-  logger.error(`[EXCEPTION] [unhandled ERRORS Reporting - Rejection] >> ${err}, Promise: ignored/not included`)
+  logger.error(`[EXCEPTION] [unhandled ERRORS Reporting - Rejection] >> ${err.stack}, Promise: ignored/not included`)
 );
 
 client.on("raw", (d) => {
@@ -498,6 +585,26 @@ client.on("raw", (d) => {
     ].includes(d.t)
   )
     return;
+
+  // check if it's different;
+
+  if (d.t === GatewayDispatchEvents.VoiceStateUpdate) {
+
+    if(d.d.user_id !== client.user.id) return;
+
+    const player = client.riffy.players.get(d.d.guild_id);
+
+    console.log(`(${new Date().toISOString()}) [VOICE STATE UPDATE] :: ${inspect(d)}`, d.d.session_id === player?.connection?.sessionId ? "SAME SESSION" : "CHANGED SESSION", { session: player.connection.sessionId, voice: player.connection.voice });
+  } else if (d.t === GatewayDispatchEvents.VoiceServerUpdate) {
+
+    const player = client.riffy.players.get(d.d.guild_id);
+
+    const hasEndpointChanged = (player.connection.voice.endpoint !== d.d.endpoint);
+    const hasTokenChanged = (player.connection.voice.token !== d.d.token);
+
+    console.log(`(${new Date().toISOString()}) [VOICE SERVER UPDATE] :: ${inspect(d)}`, { endpoint: hasEndpointChanged ? "YES" : "NO", token: hasTokenChanged ? "YES" : "NO", session: player.connection.sessionId, voice: player.connection.voice });
+  }
+
   client.riffy.updateVoiceState(d);
 });
 
