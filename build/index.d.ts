@@ -1350,7 +1350,7 @@ export declare class Node {
      * [Nodelink-Only](https://nodelink.js.org)
      * SponsorBlock API.
      */
-    sponserBlock: {
+    sponsorBlock: {
         /**
          * @internal
          * Validates the provided segment object, throws an error if it's invalid (all fields are required).
